@@ -1,270 +1,359 @@
-# COMMISH.FUN — complete project handoff (v2)
-*Paste this whole document into your coding assistant. It is self-contained: product, game rules, on-chain design, security, wallet integration, design system, screens, copy, and the 7-day plan. It supersedes every earlier version. Decisions marked FINAL are not up for re-litigation.*
+# COMMISH.FUN — build specification (handoff v3)
+*Paste this whole document into your coding assistant. It is the complete, self-contained spec: what to build, exactly how, in what order. It supersedes every earlier version. Items marked FINAL are decided; do not re-open them. Every feature is tagged MUST / SHOULD / STRETCH — when time is short, cut STRETCH first, then SHOULD. Seven days is the entire budget.*
 
 ---
 
-## 0. Read this first: how to work from this document
+## 0. Working rules
 
-- **Division of labor.** The assistant scaffolds the web app, the results-sync server, wallet wiring, UI, and tests. The Anchor program and every instruction that moves tokens are hand-written and reviewed by the founder. Generate program skeletons when asked, and flag every lamport- or token-moving line for human review.
-- **Scope discipline.** Everything below is tagged MUST (ships or the product doesn't work), SHOULD (ships if on schedule), or STRETCH (only if ahead). When in doubt, cut STRETCH first, then SHOULD. Seven days is the whole budget.
-- **Secrets never appear in chat or in the repo.** Code references env var names only. Values are entered by the founder in the hosting dashboard.
+1. **Division of labor.** The assistant scaffolds and builds the web app, database, jobs, API, UI, and tests. The Anchor program and every token-moving instruction are hand-written and reviewed by the founder. Generate program code when asked, and flag every line that moves tokens for human review.
+2. **Secrets never appear in chat or in the repo.** Code references env var names; the founder enters values in the hosting dashboard.
+3. **On-chain state is the source of truth.** The database is a cache; the API is read-only; the program is the write API.
+4. **Build order is fixed** (§16). Do not start a SHOULD before the MUSTs of the same day are green.
 
 ---
 
-## 1. What Commish is
+## 1. Product (FINAL)
 
 **One-liner:** The Solana version of the office Survivor pool. Buy-ins escrowed on-chain, picks locked before kickoff, eliminations settled from real NFL results, pot to the last wallet standing. Nobody holds the money, because nobody needs to.
 
-**Tagline (FINAL):** "Your Survivor pool, out of that one guy's Venmo."
-**Trust line (FINAL):** "The commissioner keeps the job, loses the custody."
-**Domain / brand name (FINAL):** commish.fun — written as COMMISH.FUN in display type, `commish.fun` in running text.
-
-**Context:** Entry in NoahAI Nitro 03 (Sept 3–10, 2026; theme "Build the Solana version of your favorite Web2 product"). NFL Week 1 kicks off Thursday Sept 10, 8:20pm ET — submission day is the last day to join a Week 1 Survivor pool. The Web2 product being replaced: the Venmo/Cash App group where one guy holds everyone's buy-ins all season.
-
-**Positioning decisions (FINAL):**
-- Private pools only, link-to-join. No public directory. This is for people who already know each other.
-- **Commish takes no cut.** 100% of buy-ins go to the winner. A platform fee is a later decision, not a v1 feature.
-- **$0 buy-in pools are allowed.** A pool with buyIn = 0 still runs the full game (picks, locks, eliminations, bragging rights). This lets leagues that don't want money involved use it, and is the safest onboarding for first-timers.
+- Tagline: "Your Survivor pool, out of that one guy's Venmo."
+- Trust line: "The commissioner keeps the job, loses the custody."
+- Name: commish.fun (display: COMMISH.FUN, ".FUN" in leather orange).
+- Context: NoahAI Nitro 03 entry, Sept 3–10, 2026. NFL Week 1 kicks off Thu Sept 10, 8:20pm ET.
+- Private pools only, link-to-join, no directory. **Commish takes no cut** (100% of buy-ins to the winner). **$0 buy-in pools allowed** (full game, no money).
+- No NFL or team logos/marks anywhere. City names, abbreviations, and colors are facts and are fine.
 
 ---
 
-## 2. Game rules (FINAL — fixed, not configurable)
+## 2. Game rules (FINAL, not configurable)
 
-- Everyone pays the buy-in (USDC; may be 0) to join. Pool closes to new members at Week 1 lock.
-- Each week: pick ONE NFL team to WIN. All picks lock at that week's first kickoff (one global weekly lock, Thursday night).
-- Your team wins → you advance. Loses OR ties → OUT. No pick by lock → OUT.
-- Each team usable once per season (enforced by a per-member 32-bit mask).
-- Teams on a bye week cannot be picked (the UI hides/greys them; if a pick somehow lands on a bye team, the results mask has that bit off, so it is treated as a loss — consistent and deterministic).
-- Last member standing takes the pot. Edge cases, all in-program:
-  - Everyone remaining is eliminated in the same week → pot splits evenly among that week's entrants.
-  - Multiple survivors after Week 18 → even split.
-  - Pool never settled (abandoned commissioner, dead server) → **deadman refund**: after refundDeadlineTs (season end + 30 days), any member reclaims their pro-rata share. The pot cannot be stranded by anyone.
+- Buy-in (USDC, may be 0) to join. Pool closes to new members at Week 1 lock.
+- One pick per week: an NFL team to WIN. Picks lock at that week's first kickoff (one global weekly lock).
+- Win → advance. Loss or tie → OUT. No pick by lock → OUT. Bye-week teams cannot be picked (UI blocks; the results mask has their bit off, so it would count as a loss).
+- Each team usable once per season (32-bit mask per member).
+- Last one standing takes the pot. All remaining eliminated the same week → that week's entrants split evenly. Multiple survivors after Week 18 → even split. Pool never settled by refundDeadlineTs (season end + 30 days) → deadman refund, pro-rata, claimable by each member.
 
-### Team index (FINAL — the bitmask order)
-Index = alphabetical by abbreviation, 0-based:
-`ARI ATL BAL BUF CAR CHI CIN CLE DAL DEN DET GB HOU IND JAX KC LAC LAR LV MIA MIN NE NO NYG NYJ PHI PIT SEA SF TB TEN WAS`
-(0 = ARI … 31 = WAS). Ship a static `teams.json` with abbr, city, nickname, primary + secondary hex colors, and the ESPN team id used to map scoreboard results to this index.
-
-**Trademark rule:** never use NFL or team logos, marks, or the "NFL" name in the brand. City names, abbreviations, and colors are facts and are fine. Team tiles are colored circles with the abbreviation, not logos.
+**Team index (FINAL):** alphabetical by abbreviation, 0-based:
+`ARI ATL BAL BUF CAR CHI CIN CLE DAL DEN DET GB HOU IND JAX KC LAC LAR LV MIA MIN NE NO NYG NYJ PHI PIT SEA SF TB TEN WAS` (ARI=0 … WAS=31).
 
 ---
 
-## 3. On-chain design (Anchor program, Solana)
+## 3. Tech stack (FINAL)
 
-### Accounts
-- **Pool PDA** — seeds `["pool", commissioner, nonce]`
-  - commissioner, usdcMint, buyInAmount, maxMembers, memberCount, aliveCount
-  - currentWeek (u8), weekLockTs (i64), disputeWindowSecs (u32, ~86400), refundDeadlineTs (i64)
-  - pendingResults: Option<{week: u8, winnersMask: u32}>, resultsPostedTs, vetoCount (u16)
-  - settled: bool, winnersCount (u16), potPerWinner (u64)
-  - name: [u8; 32] (pool display name), bump
-- **Vault** — USDC associated token account owned by the Pool PDA. Only program logic moves funds.
-- **Member PDA** — seeds `["member", pool, wallet]`
-  - wallet, paid: bool, joinedTs
-  - displayName: [u8; 24] (so the UI shows "Dave", not `7xK…`)
-  - eliminatedWeek: Option<u8>, usedTeamsMask: u32
-  - currentPick: Option<u8>, pickWeek: u8
-  - vetoedWeek: Option<u8> (one veto per member per posted result), claimed: bool
-
-### Instructions
-1. `create_pool(name, buy_in, max_members, week1_lock_ts, refund_deadline_ts)`
-2. `join_pool(display_name)` — transfers buy-in to vault; one member per wallet; rejects after Week 1 lock or when full.
-3. `submit_pick(team)` — rejects if `now >= weekLockTs`, team bit set in usedTeamsMask, member eliminated, or team index > 31. Overwrite allowed until lock. **Build this instruction and its rejection tests before any UI exists.**
-4. `post_week_results(week, winners_mask)` — commissioner only; requires `now >= weekLockTs` (can't post before games), no pending results, week == currentWeek. Starts the dispute window.
-5. `veto_results` — any alive member, once per posted result; when vetoCount > aliveCount / 2, pendingResults is cleared for a re-post.
-6. `settle_week` — permissionless, requires `now >= resultsPostedTs + disputeWindowSecs`. Marks OUT every alive member whose pick's bit is off or who has no pick; commits the pick to usedTeamsMask; increments week; sets next lock. aliveCount → 0: that round's entrants become winners. aliveCount == 1 or week > 18: settled, potPerWinner computed once.
-7. `claim_pot` — winner pulls their share; `claimed` flag prevents double-claim.
-8. `reclaim_dues` — deadman path: `now >= refundDeadlineTs && !settled`; pro-rata by paid members; sets claimed.
-
-### Trust model (state this on the site, in the repo, and in the submission)
-Results enter through the commissioner's signature; there is no oracle pretense. What the chain removes is every way that trust historically fails: the commissioner cannot spend the pot, change rules mid-season, slow-pay, quietly post fake results (24h member veto against results anyone can check on any scoreboard), or strand the money (deadman refund). *The commissioner keeps the job, loses the custody.*
-
-### Pick privacy
-- MVP (MUST): picks are technically public on-chain; the app hides other members' current picks until lock, then reveals. Say so honestly in the FAQ.
-- STRETCH: commit-reveal (store hash(team, salt); server holds salts and reveals after lock).
+| Layer | Choice | Why |
+|---|---|---|
+| On-chain | Anchor 0.30+, Rust, `anchor-spl` for SPL Token | Standard; founder expertise |
+| Frontend | Next.js 14 (App Router, TypeScript), Tailwind CSS, `@tanstack/react-query` | API routes, OG images, cron endpoints in one deploy; AI-friendly |
+| Wallet | `@solana/wallet-adapter-react` + `-react-ui` (Phantom/Solflare/Backpack via Wallet Standard) | Zero keys, best AI codegen coverage |
+| Chain client | `@coral-xyz/anchor` (IDL-typed client), `@solana/web3.js` | Typed instructions from the IDL |
+| Database + auth | Supabase (Postgres, RLS, Auth with X/Twitter provider) | Founder already runs it at HoldFlow |
+| RPC | Helius (dedicated key, domain-restricted) | Reliable; founder account exists |
+| Jobs | Next.js route handlers hit by a scheduler (Vercel Cron or equivalent) with `CRON_SECRET` | No extra infra |
+| Hosting | Vercel (or the assistant's fastest deploy); DNS on Cloudflare (already hardened) | Speed |
+| Fonts | Anton + Space Grotesk, self-hosted woff2 in `/public/fonts` (OFL) | OG images need local font files |
 
 ---
 
-## 4. Security (program, wallet, app, ops)
+## 4. Repository layout
 
-### Program security checklist (each item gets a test)
-- **Canonical USDC only.** `create_pool` hard-checks `usdc_mint == EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` on mainnet (devnet: the devnet USDC mint used in tests). A fake-mint "USDC" is the #1 attack on any escrow; the vault must be the ATA of the pool PDA for that exact mint.
-- Signer + owner checks on every instruction; PDAs re-derived from seeds and bump-validated; `has_one = commissioner` where commissioner-only.
-- Token accounts validated: vault owner == pool PDA, mint matches, token program is the real SPL Token program.
-- Checked arithmetic everywhere (`checked_add/sub/mul/div`); potPerWinner uses integer division, dust stays in the vault (document it).
-- Time from `Clock::get()` only; every time-gated path (pick lock, post-after-lock, dispute expiry, deadman) tested at boundary ±1 second.
-- No re-initialization: `init` only, never `init_if_needed` on member or pool accounts.
-- Idempotency: `settle_week` cannot run twice for the same week; `claim_pot` / `reclaim_dues` gated by `claimed`.
-- Veto integrity: one veto per member per posted result (`vetoedWeek`), only alive members count, commissioner's own veto counts like anyone's.
-- `deadman` and `claim_pot` are mutually exclusive by `settled`.
-- Upgrade authority: keep it on the founder's dev wallet during the hackathon (bugfix ability), disclose that on the site's trust page, and note the plan to move it to a multisig after. Never pretend it's immutable.
-- Tests: Anchor test suite covering happy path + every rejection path above + the three payout paths (last standing, co-winner split, deadman). Run on devnet before mainnet.
-
-### Wallet integration (MUST)
-- `@solana/wallet-adapter-react` + `@solana/wallet-adapter-react-ui`. Auto-detects Phantom, Solflare, Backpack via Wallet Standard. Standard modal, dark-themed to the palette.
-- **No embedded-wallet provider (Privy/Dynamic) in v1** — noted as the phase-2 path for non-crypto users.
-- Transaction hygiene: one user action = one transaction; simulate before send; the confirm sheet says in plain words what moves ("Locks 20 USDC in the pool vault. You get it back if the pool is abandoned."), shows the vault address, and links it to the explorer.
-- Never request a blanket token approval/delegate. Never ask for a signature that isn't a transaction the user initiated (no drive-by signMessage on load).
-- Session state: the app is wallet-only; no accounts, passwords, or email logins. If the server ever needs to know who's asking (STRETCH), use a signed-message challenge (Sign-In-With-Solana pattern), short-lived, never stored beyond the session.
-
-### App & ops security
-- Public repo: `.env*` in `.gitignore` from commit one; keys referenced by name; a leaked key gets rotated in Helius, not just deleted from git.
-- Browser RPC key: Helius key restricted to `commish.fun`, `www.commish.fun`, `localhost` in the Helius dashboard (domain allowlist is the protection; the key itself is public by nature in a frontend bundle).
-- Server secrets (results server, any fee-payer keypair for cranks) live only in the hosting platform's environment/secrets UI. A crank keypair holds a few dollars of SOL, nothing more.
-- Strict Content-Security-Policy; no inline eval; dependencies pinned; no third-party analytics that captures wallet addresses. Cloudflare already set: Full (strict) TLS, Always HTTPS, min TLS 1.2, DNSSEC, DMARC reject. Enable HSTS on launch day after the site serves cleanly.
-- Rate-limit the results proposal endpoint; ESPN calls are cached server-side (one fetch per minute max), never made from the browser.
-- Trust page (`/trust`) on the site: the trust table, the vault-per-pool explanation, upgrade-authority disclosure, "we take no cut," and links to the program on the explorer and the public repo.
-
----
-
-## 5. Design system — "Primetime"
-
-### The idea
-The visual world of a **Thursday-night broadcast graphics package**: night-game black, chalk-white type, leather orange, gold for money. Condensed display type like a scorebug lower-third; restrained, confident, zero cartoon. Football is in the *bones* (chalk lines, tabular scoreboard numbers, the laces mark, ALIVE/OUT status language), not in decoration (no clip-art helmets, no turf textures, no team logos).
-
-**Dark theme only (FINAL).** One theme = half the CSS and every screenshot on-brand.
-
-### Tokens (FINAL)
 ```
---night:      #120D0A   ground
---night-2:    #1D1310   raised surfaces (cards, sheets)
---line:       rgba(246,239,226,0.10)   chalk hairlines / dividers
---cream:      #F6EFE2   primary text, the wordmark
---cream-60:   rgba(246,239,226,0.60)   secondary text
---cream-40:   rgba(246,239,226,0.40)   labels, captions
---leather:    #FF5C1B   brand, links, primary buttons, focus rings
---leather-hi: #FF7A45   hover
---gold:       #E9C258   MONEY ONLY: pot totals, payouts, buy-in amounts
---alive:      #35C97A   ALIVE state, confirmed tx
---out:        #E5484D   OUT state, destructive, errors (never brand)
---radius-sm: 10px  --radius: 14px  --radius-lg: 20px  --pill: 999px
---space: 4px base; 8 / 12 / 16 / 24 / 32 / 48
+commish.fun/
+├── programs/commish/          # Anchor program (Rust)
+│   └── src/{lib.rs,state.rs,errors.rs,instructions/*.rs}
+├── tests/                     # Anchor TS tests
+├── idl/commish.json           # committed IDL after each build
+├── app/                       # Next.js
+│   ├── app/                   # routes (see §11)
+│   ├── components/            # see §10
+│   ├── lib/{anchor,pda,tx,teams,schedule,format}.ts
+│   ├── lib/server/{indexer,results,espn,supabase,verify}.ts
+│   ├── public/{fonts,brand,manifest.webmanifest}
+│   └── data/{teams.json,schedule.json}
+├── supabase/migrations/       # SQL (§7)
+├── sdk/                       # STRETCH TypeScript SDK
+├── brand/                     # PNG kit + laces.svg
+├── docs/{PROGRAM.md,API.md}
+├── COMMISH-HANDOFF.md
+└── README.md
+```
+
+---
+
+## 5. On-chain program — full specification
+
+### 5.1 State machine (per pool)
+`Open` (joins + picks) → each week: `Locked` (picks frozen at lock) → `ResultsPosted` (dispute window) → `Finalizing` (per-member settlement) → `Advanced` (next week Open for picks) … → `Settled` (winners claim) | `Abandoned` (deadman refunds).
+
+Per-member settlement is deliberate: a single instruction cannot touch hundreds of member accounts, so results are applied one member at a time by a permissionless crank, and the week advances when every alive member has been processed.
+
+### 5.2 Accounts
+
+**Pool** — PDA seeds `["pool", commissioner, nonce_le_u64]`, space 640 (padded).
+```
+commissioner: Pubkey        usdc_mint: Pubkey          vault: Pubkey
+nonce: u64                  name: [u8;32]              buy_in: u64 (USDC base units, 6 dp; 0 allowed)
+max_members: u16            member_count: u16          alive_count: u16
+alive_at_week_start: u16    processed_this_week: u16
+current_week: u8 (1..=18)   lock_ts: [i64;18]          refund_deadline_ts: i64
+dispute_window_secs: u32    results: [u32;18]          results_posted: [bool;18]
+pending_mask: u32           pending_week: u8           pending_posted_ts: i64
+veto_count: u16             finalized_week: u8         status: u8 (enum PoolStatus)
+winners_week: u8 (0 = survivors after W18)             winners_count: u16
+pot_per_winner: u64         bump: u8
+```
+**Member** — PDA seeds `["member", pool, wallet]`, space 200 (padded).
+```
+pool: Pubkey   wallet: Pubkey   display_name: [u8;24]   paid: bool   joined_ts: i64
+used_mask: u32   current_pick: u8 (255 = none)   pick_week: u8
+processed_week: u8 (last week applied)   eliminated_week: u8 (0 = alive)
+vetoed_week: u8   claimed: bool   bump: u8
+```
+**Vault** — the pool PDA's associated token account for `usdc_mint`. Created in `create_pool`. Only program CPIs move tokens out of it.
+
+### 5.3 Instructions, constraints, errors
+
+| # | Instruction | Signer | Constraints (all must hold) | Effect |
+|---|---|---|---|---|
+| 1 | `create_pool(nonce, name, buy_in, max_members, lock_ts[18], refund_deadline_ts, display_name)` | commissioner | `usdc_mint == CANONICAL_USDC` (per cluster constant); `max_members 2..=500`; `lock_ts` strictly increasing and `lock_ts[0] > now`; `refund_deadline_ts > lock_ts[17] + 7d` | init pool + vault; auto-join commissioner (pays buy-in) |
+| 2 | `join_pool(display_name)` | member | `now < lock_ts[0]`; `member_count < max_members`; member PDA `init` (one per wallet); transfer `buy_in` to vault (skip transfer if 0) | member_count++, alive_count++ |
+| 3 | `submit_pick(team)` | member | `team <= 31`; `now < lock_ts[current_week-1]`; `eliminated_week == 0`; `used_mask & (1<<team) == 0`; status Open | set `current_pick`, `pick_week = current_week` (overwrite allowed) |
+| 4 | `post_results(week, mask)` | commissioner (`has_one`) | `week == current_week`; `now >= lock_ts[week-1] + 3h` (games have started; server proposes only when final); `!results_posted[week-1]`; no pending | `pending_mask/week/posted_ts` set; `veto_count = 0` |
+| 5 | `veto_results` | member | pending exists; member alive; `vetoed_week != pending_week` | `veto_count++`; if `veto_count * 2 > alive_count` → clear pending |
+| 6 | `finalize_week` | anyone | pending exists; `now >= pending_posted_ts + dispute_window_secs` | `results[w] = mask; results_posted[w] = true; finalized_week = w; processed_this_week = 0; alive_at_week_start = alive_count`; clear pending |
+| 7 | `settle_member(member)` | anyone | `finalized_week == current_week`; member alive; `processed_week < current_week` | if `pick_week != week` or `current_pick == 255` or `results[w] & (1<<pick) == 0` → `eliminated_week = w`, `alive_count--`; else `used_mask |= 1<<pick`; `processed_week = w`; `current_pick = 255`; `processed_this_week++` |
+| 8 | `advance_week` | anyone | `finalized_week == current_week`; `processed_this_week == alive_at_week_start` | if `alive_count == 1` → Settled, `winners_week = 0`, `winners_count = 1`; if `alive_count == 0` → Settled, `winners_week = w`, `winners_count = alive_at_week_start`; if `w == 18` → Settled, `winners_week = 0`, `winners_count = alive_count`; else `current_week++`. On Settled: `pot_per_winner = vault_balance / winners_count` |
+| 9 | `claim_pot` | member | status Settled; `!claimed`; winner test: (`winners_week == 0 && eliminated_week == 0`) or (`eliminated_week == winners_week`) | transfer `pot_per_winner` from vault via PDA signer; `claimed = true` |
+| 10 | `reclaim_dues` | member | status != Settled; `now >= refund_deadline_ts`; `paid && !claimed` | transfer `vault_balance_at_first_reclaim / paid_members` (store `refund_per_member` on first call); `claimed = true` |
+
+Errors (enum): `WrongMint, PoolFull, JoinClosed, PicksLocked, TeamAlreadyUsed, InvalidTeam, MemberEliminated, ResultsAlreadyPosted, ResultsPending, NoPendingResults, DisputeWindowOpen, AlreadyVetoed, TooEarly, NotFinalized, AlreadyProcessed, WeekIncomplete, NotSettled, NotAWinner, AlreadyClaimed, RefundNotAvailable, BadSchedule, NameTooLong, MathOverflow`.
+
+Events (emit, for the indexer and explorers): `PoolCreated, MemberJoined, PickSubmitted, ResultsPosted, ResultsVetoed, WeekFinalized, MemberSettled, WeekAdvanced, PoolSettled, PotClaimed, DuesReclaimed`.
+
+### 5.4 Security requirements (each has a test)
+- Canonical USDC mint per cluster (mainnet `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`; devnet test mint via env). Vault must be the pool PDA's ATA for that mint; token program must be SPL Token.
+- Signer/owner checks; PDA seeds + bump validated on every account; `has_one = commissioner` where applicable; `init` only (never `init_if_needed`).
+- Checked arithmetic everywhere; integer division dust stays in the vault (documented).
+- All time from `Clock::get()`; boundary tests at ±1s for every time gate.
+- Idempotency: `settle_member` once per member per week; `claim_pot`/`reclaim_dues` gated by `claimed`; `finalize_week` once per week.
+- Veto integrity: one veto per member per posted result; only alive members; majority = strictly more than half of `alive_count`.
+- Upgrade authority stays with the founder during the hackathon, disclosed on `/trust`, with the stated plan to move to a multisig after.
+
+### 5.5 Program tests (Anchor, TypeScript)
+Happy path across 3 members and 3 weeks; every rejection path in §5.3; both payout paths (last standing; all-out-same-week split); Week-18 multi-survivor split; deadman refund; veto majority clears pending; boundary timestamps; fake-mint rejection; double-claim rejection.
+
+---
+
+## 6. Static data
+
+- `data/teams.json`: 32 entries `{index, abbr, city, nickname, primary, secondary, espnId}` in the §2 order.
+- `data/schedule.json`: `{season: 2026, weeks: [{week, lockTs, byeTeams: [abbr]}]}` for weeks 1–18. Generated once by a script from ESPN's scoreboard (`?week=N&seasontype=2&dates=2026`): `lockTs` = earliest kickoff that week (unix seconds), `byeTeams` = teams with no game. Committed; the app and `create_pool` both read it (the app passes `lock_ts[18]` into `create_pool`).
+
+---
+
+## 7. Database (Supabase) and jobs
+
+### 7.1 Schema (`supabase/migrations/0001_init.sql`)
+```sql
+create table pools (
+  address text primary key, commissioner text not null, name text not null,
+  buy_in bigint not null, max_members int, member_count int, alive_count int,
+  current_week int, status text, winners_week int, winners_count int,
+  pot_per_winner bigint, vault text, vault_balance bigint, refund_deadline_ts bigint,
+  lock_ts bigint[] not null, results int[] , results_posted boolean[],
+  pending_mask bigint, pending_week int, pending_posted_ts bigint, veto_count int,
+  updated_slot bigint, updated_at timestamptz default now()
+);
+create table members (
+  address text primary key, pool text references pools(address), wallet text not null,
+  display_name text, paid boolean, joined_ts bigint, used_mask bigint,
+  current_pick int, pick_week int, processed_week int, eliminated_week int,
+  claimed boolean, updated_at timestamptz default now()
+);
+create index on members(pool); create index on members(wallet);
+create table x_links (
+  wallet text primary key, x_user_id text unique not null, x_username text not null,
+  avatar_url text, show_on_board boolean default false, linked_at timestamptz default now()
+);
+create table link_nonces (nonce text primary key, wallet text, expires_at timestamptz);
+create table results_proposals (
+  week int primary key, season int, mask bigint, games_total int, games_final int,
+  payload jsonb, fetched_at timestamptz
+);
+create view board as
+  select x.x_username, x.avatar_url, m.wallet,
+    max(case when m.eliminated_week = 0 then p.current_week - 1 else m.eliminated_week - 1 end) as weeks_survived,
+    bool_or(m.eliminated_week = 0 and p.status <> 'settled') as alive,
+    count(*) filter (where p.status = 'settled' and m.claimed) as pools_won,
+    coalesce(sum(case when p.status='settled' and m.claimed then p.pot_per_winner end),0) as usdc_won
+  from members m join pools p on p.address = m.pool join x_links x on x.wallet = m.wallet
+  where x.show_on_board group by 1,2,3;
+```
+RLS: `pools`, `members`, `results_proposals`, `board` → public SELECT; all writes via service role only. `x_links` → no public access (the API exposes only the `board` view). `link_nonces` → service role only.
+
+### 7.2 Indexer job — `GET /api/cron/index` (every 5 min; header `Authorization: Bearer ${CRON_SECRET}`)
+1. `getProgramAccounts(PROGRAM_ID, memcmp discriminator = Pool)`; decode with the Anchor coder; upsert `pools` (include vault balance via `getTokenAccountBalance`).
+2. Same for `Member`; upsert `members`.
+3. Record `updated_slot`. At hackathon scale this is seconds; Helius webhooks are the later upgrade.
+
+### 7.3 Results job — `GET /api/cron/results` (every 15 min, Thu–Tue)
+1. Determine the current week from `schedule.json` and `now`.
+2. Fetch ESPN scoreboard for that week (server-side only; cache 60s).
+3. For each event: if `status.type.completed` and a winner exists → set the winner's bit (map `espnId → index`); ties set nothing.
+4. Upsert `results_proposals` with `games_total`, `games_final`, `mask`, raw `payload`.
+5. The commissioner panel shows the proposal; **CONFIRM is enabled only when `games_final == games_total`** (all games final). Postponed games: commissioner waits; the dispute window and veto cover mistakes.
+
+### 7.4 Cranking (MUST via UI, STRETCH via server)
+- MUST: every pool page shows a SETTLE button when a crank is possible (`finalize_week`, then `settle_member` for each alive member in batches of ~15 per transaction, then `advance_week`). Anyone can press it; the presser pays a few cents of fees. No server keypair required in v1.
+- STRETCH: `GET /api/cron/crank` with a low-balance `CRANK_KEYPAIR` does the same automatically.
+
+---
+
+## 8. Wallet, transactions, sessions
+
+- Wallet Adapter with the default modal, restyled to the palette. Auto-connect on return visits.
+- **Transaction hygiene:** one user action = one transaction; `simulateTransaction` before sending; the `TxSheet` states what moves in plain English and shows the vault address with an explorer link; never request token delegation; never prompt a signature the user did not initiate.
+- **No accounts, no passwords.** Wallet is identity. X linking (§13) is the only other login, and it is opt-in.
+- Reads: the pool page fetches the pool + member accounts directly from the RPC (truth) and uses the API for lists and the board (cache). React Query with 15s stale time; invalidate after each confirmed transaction.
+- Errors map to copy: `PicksLocked` → "Picks are locked for this week."; `TeamAlreadyUsed` → "You already used the {TEAM} in Week {n}."; simulation failure → "This transaction would fail: {reason}. Nothing left your wallet."
+
+---
+
+## 9. Design system — "Primetime" (FINAL)
+
+The visual world of a Thursday-night broadcast graphics package: night-game black, chalk type, leather orange, gold for money. Football is in the bones (chalk-line dividers, tabular scoreboard numbers, the laces mark, ALIVE/OUT stamps), never in decoration (no helmets, no turf textures, no logos). **Dark theme only.**
+
+**Tokens (Tailwind `theme.extend.colors`):**
+```
+night #120D0A · night2 #1D1310 · line rgba(246,239,226,.10)
+cream #F6EFE2 · cream60 rgba(246,239,226,.60) · cream40 rgba(246,239,226,.40)
+leather #FF5C1B · leatherHi #FF7A45 · gold #E9C258 · alive #35C97A · out #E5484D
+radius: sm 10px · md 14px · lg 20px · pill 999px · spacing base 4px
 ```
 **The one rule:** orange is the brand, gold is the money. Nothing else is ever gold.
 
-### Type
-- Display: **Anton** (Google Fonts) — wordmark, pot totals, week headers, ALIVE/OUT stamps. Always uppercase, letter-spacing 0.015em. Tabular numerals for money.
-- UI/body: **Space Grotesk** 400/500/600/700.
-- Scale: 12 caption · 14 body-sm · 16 body · 20 h3 · 28 h2 · 40 h1 · 64+ display (pot number).
+**Type:** Anton (display: wordmark, pot totals, week headers, stamps; uppercase, tracking .015em, tabular numerals) + Space Grotesk 400–700 (UI). Scale 12/14/16/20/28/40/64+.
 
-### The mark
-THE LACES — SVG below. Cream on leather (avatar, app icon, favicon, empty states); leather on night (in-app header, loaders). Never drawn as a football; never inside the wordmark. The wordmark is the text COMMISH.FUN in Anton, ".FUN" in leather.
+**The mark — THE LACES** (`brand/laces.svg`; cream on leather for avatar/icon/empty states; leather on night in-app; never inside the wordmark; never drawn as a football):
 ```svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200">
-  <g transform="rotate(-14)" fill="#FF5C1B">
-    <rect x="-9" y="-84" width="18" height="168" rx="9"/>
-    <rect x="-49" y="-63" width="98" height="18" rx="9"/>
-    <rect x="-49" y="-27" width="98" height="18" rx="9"/>
-    <rect x="-49" y="9" width="98" height="18" rx="9"/>
-    <rect x="-49" y="45" width="98" height="18" rx="9"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200"><g transform="rotate(-14)" fill="#FF5C1B"><rect x="-9" y="-84" width="18" height="168" rx="9"/><rect x="-49" y="-63" width="98" height="18" rx="9"/><rect x="-49" y="-27" width="98" height="18" rx="9"/><rect x="-49" y="9" width="98" height="18" rx="9"/><rect x="-49" y="45" width="98" height="18" rx="9"/></g></svg>
 ```
-**Signature motion (SHOULD):** the laces glyph is the app's progress/loading indicator — the four ticks light up in sequence. In a pool view, the member's row shows a mini laces glyph with one tick lit per week survived (5+ weeks wraps to a count). That single detail turns the logo into the product.
+**Signature motion (SHOULD):** the laces are the loading indicator (ticks light in sequence) and each member row shows a mini laces glyph with one tick lit per week survived.
 
-### Layout principles
-- **Mobile-first.** Picks happen on phones on Thursday afternoons. Design at 390px, then let it breathe on desktop (max content width 640px for game screens; 960px for the commissioner panel).
-- **One screen, one action.** Every screen has exactly one leather button. Secondary actions are text links.
-- **The pot is the hero.** Wherever a pool is shown, the pot (gold, Anton, tabular) is the largest thing on the screen, with "N alive" beside it.
-- **Chalk lines, not cards-in-cards.** Sections separated by 1px `--line` hairlines; cards (`--night-2`) only for interactive tiles and sheets.
-- **Status is a stamp.** ALIVE (alive green) / OUT (out red) rendered as small Anton pills, uppercase. No icons needed.
-- **Countdown is always visible** on any pool screen before lock: "PICKS LOCK THU 8:20 PM ET · 2d 4h 12m", in the viewer's local time with ET in parentheses.
-- Motion: 150–200ms ease-out on state changes; one celebratory moment only (the payout screen); respect `prefers-reduced-motion`.
-- Accessibility: cream-on-night and leather-on-night both clear 4.5:1; 44px minimum tap targets; focus ring = 2px leather; team tiles are buttons with the full team name as their accessible label.
-
-### Components
-`WalletButton` (adapter modal, restyled) · `PotDisplay` (gold display number + "N alive") · `Countdown` · `TeamGrid` / `TeamTile` (32 tiles: colored circle with abbreviation; states: default / selected (leather ring) / used (struck, dimmed) / bye (dimmed, "BYE" caption)) · `MemberRow` (display name, ALIVE/OUT stamp, weeks-survived laces) · `StatusBanner` (results proposed → dispute countdown → settled) · `TxSheet` (plain-English confirm + explorer link + states: signing / sending / confirmed / failed) · `ShareCard` (see §7) · `RulesSheet` (the rules from §2, verbatim).
+**Layout principles:** mobile-first at 390px (game screens max 640px wide, commissioner panel 960px); one leather button per screen; the pot is the largest element wherever a pool appears; chalk hairlines instead of nested cards; ALIVE/OUT as Anton pill stamps; the lock countdown is always visible before lock (local time, ET in parentheses); 150–200ms ease-out transitions, one celebration (payout), `prefers-reduced-motion` respected; 44px tap targets; 2px leather focus ring; contrast ≥ 4.5:1.
 
 ---
 
-## 6. Screens (MUST unless marked)
+## 10. Components
 
-1. **`/` Landing** — wordmark, tagline, three mechanics, one button: CREATE A POOL. Below the fold: the trust table, "How the money moves" (buy-in → vault PDA → winner, with a live explorer link once any pool exists), FAQ (5 questions max), link to `/trust` and the repo.
-2. **`/new` Create pool** — name, buy-in (USDC, 0 allowed), max members, display name for the commissioner (who auto-joins). Week 1 lock time is set by the app from the schedule, shown, not editable. One button: CREATE. Result: the pool page with a big COPY INVITE LINK.
-3. **`/p/:pool` Pool page (the hub)** — works **without a wallet connected**: pool name, pot, alive count, countdown, member list (names + status), rules link, vault address → explorer. With wallet: JOIN (if open) or the current-week pick state. This page is the share target; everything a skeptical buddy wants to verify is on it, wallet or not.
-4. **`/p/:pool/pick` Pick** — TeamGrid for the current week; selected team confirm → transaction. After lock: shows your locked pick and, once revealed, everyone's.
-5. **`/p/:pool/commish` Commissioner panel** — proposed results from the server (ESPN scores side by side with the winners mask), CONFIRM button (signs `post_week_results`), dispute-window status, member veto count, and SETTLE WEEK (permissionless crank, but surfaced here).
-6. **`/p/:pool/history` Season board (SHOULD)** — week-by-week grid: each member's pick per week, colored by result. This is the Monday-morning group-chat screenshot.
-7. **`/p/:pool/claim` Payout (MUST, small)** — for winners: CLAIM POT (gold), the one celebratory moment. For deadman: RECLAIM BUY-IN with an explanation.
-8. **`/trust`** — static; see §4.
-
-Empty/loading/error states are designed, not defaulted: loading = laces ticks; empty pool = "No picks yet. Lock is in 2d 4h."; tx failure = plain English + "nothing left your wallet" when true.
+`WalletButton` · `PotDisplay` (gold Anton number + "N alive") · `Countdown` · `TeamGrid`/`TeamTile` (32 colored circles with abbreviation; states default / selected (leather ring) / used (struck, dim) / bye (dim, "BYE")) · `MemberRow` (name, stamp, weeks-survived laces) · `StatusBanner` (Open → Locked → Results proposed (dispute countdown, VETO) → Settling → Settled) · `TxSheet` (plain-English confirm; states signing / sending / confirmed / failed; explorer link) · `SettleButton` (crank, §7.4) · `RulesSheet` (§2 verbatim) · `ShareCard` (§12) · `LacesLoader` · `Stamp` (ALIVE / OUT).
 
 ---
 
-## 7. Features that boost usability, trust, and fun (all ≤ 7 days)
+## 11. Screens and routes
 
-**MUST**
-- **Display names on-chain** (member PDA) so the pool reads like a group chat, not a block explorer.
-- **Public, wallet-less pool page** with explorer links for the vault and every settlement transaction. Trust by inspection.
-- **Countdown + lock time in local timezone**, plus an "Add lock time to calendar" (.ics download) link — the reminder system that needs no email infra.
-- **Plain-English transaction sheets** (§4 wallet hygiene).
-- **$0 pools** (§1).
-- **Rules sheet** reachable from every pool screen; the rules are short enough to read in 20 seconds.
+| Route | Screen | MUST content |
+|---|---|---|
+| `/` | Landing | Wordmark, tagline, three mechanics, CREATE A POOL. Below: trust table, "How the money moves," 5-question FAQ, links to `/trust`, `/board`, repo |
+| `/new` | Create pool | Name, buy-in (0 allowed), max members, your display name; lock schedule shown (from `schedule.json`), not editable; CREATE → pool page with COPY INVITE LINK |
+| `/p/[pool]` | Pool hub (**works without a wallet**) | Name, pot, alive count, countdown, StatusBanner, member list, vault → explorer, rules; with wallet: JOIN or current pick state; SETTLE when crankable |
+| `/p/[pool]/pick` | Pick | TeamGrid for the current week → TxSheet; after lock: your pick, then everyone's |
+| `/p/[pool]/commish` | Commissioner | Proposal vs ESPN scores, CONFIRM (enabled only when all games final), dispute status, veto count, SETTLE |
+| `/p/[pool]/history` | Season board (SHOULD) | Week × member grid of picks colored by result |
+| `/p/[pool]/claim` | Payout | CLAIM POT (gold, the one celebration) or RECLAIM BUY-IN (deadman) |
+| `/board` | Leaderboard (SHOULD) | §13 |
+| `/me` | Profile (SHOULD) | Display name per pool, Link X, "show me on the board" |
+| `/trust` | Trust page | Trust table, vault explanation, upgrade-authority disclosure, no-cut statement, program + repo links |
+| `/api/v1/*` | Public API | §14 |
+| `/p/[pool]/opengraph-image` | OG image (SHOULD) | 1200×630 ShareCard via `ImageResponse` with local Anton |
 
-**SHOULD**
-- **Season board** (`/history`) and a **ShareCard**: a 1200×630 image of the pool state (pot, alive count, week) rendered server-side for the invite link's Open Graph preview, so the link itself sells the pool in the group chat. Static OG fallback if dynamic rendering slips.
-- **Weekly recap banner** after settlement: "Week 3: 4 out, 6 alive. Dave picked the Jets. Dave is out." — generated from on-chain state; it's the banter engine.
-- **Laces-as-progress** (§5 signature motion).
-- **PWA manifest** with the app icon: installable to the home screen in one tap; the pick screen becomes a Sunday-morning app.
-- **Demo/replay flag** on a pool: settles against a real historical week so the stage demo shows an elimination live.
-
-**STRETCH**
-- Commit-reveal picks. Sleeper league attach (full-league dues escrow with standings payouts). Telegram bot for lock reminders.
-
-**Explicitly NOT in v1:** public pool directory, platform fees, fiat on-ramp, embedded wallets, chat, push notifications, light theme, multi-sport.
+Loading = LacesLoader; empty = "No picks yet. Lock is in {countdown}."; tx failure copy per §8.
 
 ---
 
-## 8. Off-chain
+## 12. Features (tagged)
 
-### Data
-- **Game winners:** ESPN public scoreboard JSON — `site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard` (optionally `?week=N&seasontype=2`). Server maps ESPN team ids → §2 index, computes `winnersMask` (tie or not-final = bit off), caches per minute. Verify the endpoint and the response shape at build time; paste a real sample response into the assistant's context.
-- **Schedule / lock times:** the same endpoint yields each week's first kickoff; store the 18 weekly lock timestamps in `schedule.json` at build time so lock logic never depends on a live call.
-- **Backup:** nflverse datasets (GitHub, free). **Stretch mode:** Sleeper public API (no auth): `/v1/state/nfl`, `/v1/league/{id}`, `/rosters`, `/users`, `/matchups/{week}`.
-
-### Server (thin, stateless where possible)
-Polls ESPN, produces proposed results, renders them on the commissioner panel, and pre-builds the `post_week_results` transaction for the commissioner's wallet to sign. Optionally runs the permissionless `settle_week` crank with a low-balance fee-payer keypair after each dispute window. No user accounts, no database required for MVP (all game state is on-chain; server state is a cache).
-
-### Infrastructure (FINAL)
-- RPC: **Helius** (separate key for Commish; domain-restricted in the Helius dashboard). Devnet through day 6, mainnet for the demo pool.
-- Hosting: wherever the assistant deploys fastest during the week; DNS is already on Cloudflare (zone hardened), connect via CNAME on day one.
-- Env var names: `NEXT_PUBLIC_RPC_URL` (or `VITE_RPC_URL`), `NEXT_PUBLIC_PROGRAM_ID`, `NEXT_PUBLIC_USDC_MINT`, `NEXT_PUBLIC_CLUSTER`; server-side `CRANK_KEYPAIR` (base58, optional), `ESPN_CACHE_TTL`.
+**MUST:** on-chain display names · wallet-less public pool page with explorer links · countdown in local time + "Add lock to calendar" (.ics) · plain-English TxSheets · $0 pools · rules sheet everywhere · SETTLE button crank · PWA manifest with app icon.
+**SHOULD:** season board · OG ShareCard · weekly recap banner ("Week 3: 4 out, 6 alive. Dave took the Jets. The Jets did not cooperate.") · laces progress · `/board` + X linking · demo/replay flag (a pool whose `lock_ts` are in the past and whose results come from a historical week, for the stage demo).
+**STRETCH:** commit-reveal picks · server crank · TypeScript SDK · Sleeper league attach.
+**Not v1:** public directory, platform fees, fiat on-ramp, embedded wallets, chat, push notifications, light theme, multi-sport, webhooks, API keys.
 
 ---
 
-## 9. Copy bank (voice: confident, league-native, plain; no em dashes in social copy)
+## 13. X account linking + leaderboard (SHOULD, day 5)
 
-- Tagline: Your Survivor pool, out of that one guy's Venmo.
-- Mechanics: Buy-ins escrowed on-chain · Picks locked at kickoff · Last one standing takes the pot
-- Trust: The commissioner keeps the job, loses the custody.
-- Lock: No "I definitely picked the Bills" texts on Monday.
-- No-cut: 100% of the buy-ins go to the winner. Commish takes nothing.
-- Tx sheet (join): Locks {amount} USDC in this pool's vault. Only the winner can take it out. If the pool is ever abandoned, you can reclaim your share.
-- Tx sheet (pick): Locks in {TEAM} for Week {n}. You can change it until kickoff.
-- OUT copy: {name} took the {TEAM}. The {TEAM} did not cooperate.
-- Empty pool: No picks yet. Lock is in {countdown}.
-- X bio: Your Survivor pool, out of that one guy's Venmo. Buy-ins escrowed on-chain, picks locked at kickoff, last one standing takes the pot. Built on Solana. 🏈
+**Purpose:** a public season leaderboard by X handle — the brag surface that makes people post about Commish on X. Opt-in.
+
+**Prerequisite (founder, before the window):** X developer app created; callback URL = the Supabase project's auth callback; X provider enabled in Supabase Auth with the app's keys.
+
+**Link flow (two-sided verification):**
+1. `/me` → LINK X → `supabase.auth.signInWithOAuth({ provider: 'twitter' })` → returns a session; the server reads `x_user_id` and `user_name` from the Supabase JWT (never from the client).
+2. Server issues a nonce (`link_nonces`, 5-minute expiry, single-use).
+3. Wallet signs the exact message: `commish.fun link\nx:{x_user_id}\nwallet:{pubkey}\nnonce:{nonce}`.
+4. `POST /api/link` with `{ signature, nonce }` + the Supabase JWT. Server verifies the JWT, the nonce, and the ed25519 signature over the exact message (`tweetnacl`), then upserts `x_links` (one X per wallet, one wallet per X; re-link replaces). Never store X tokens; never post on the user's behalf.
+5. `DELETE /api/link` unlinks (same proof). `PATCH /api/link` toggles `show_on_board`.
+6. Fallback if the X app is not approved in time: self-declared handle on the profile, shown without a verified badge, excluded from `/board`.
+
+**Leaderboard (`/board`):** reads the `board` view. Rank: weeks_survived desc → pools_won → usdc_won → earliest link. Season-scoped. Rows: rank, X avatar + @handle, ALIVE/OUT stamp, laces glyph, pots won (gold). No wallet addresses. Every row links to the member's pool pages (proof). Footer: "A cache of on-chain results. Updated {time}."
+
+**Share card (SHOULD):** "Week 6. Still standing. #12 of 418 on commish.fun" — same OG renderer, one-tap post to X.
 
 ---
 
-## 10. Seven-day plan (Sept 3–10)
+## 14. Integration surface — "the program is the API"
 
-- **Day 1 (Thu 3):** Anchor: pool/member accounts, `create_pool`, `join_pool`, `submit_pick` with all rejection tests, canonical-mint check. Devnet green. App: scaffold, wallet adapter, design tokens, `teams.json`, `schedule.json`, Landing + Create screens.
-- **Day 2 (Fri 4):** `post_week_results` → `veto_results` → `settle_week` with boundary tests. App: Pool page (wallet-less), TeamGrid, Pick flow end to end on devnet.
-- **Day 3 (Sat 5):** Payout paths: `claim_pot`, co-winner split, `reclaim_dues`; tests. ESPN results server + Commissioner panel + CONFIRM. Demo/replay flag.
-- **Day 4 (Sun 6):** Full loop on devnet with 3 wallets: create → join → pick → post → veto → settle → claim. Fix everything that hurts. TxSheet copy, empty/error states, Countdown + .ics.
-- **Day 5 (Mon 7):** Season board, ShareCard/OG, PWA manifest, laces progress, `/trust` page, rules sheet. Security checklist pass on the program (every item in §4 has a test).
-- **Day 6 (Tue 8):** Mainnet deploy of the program; domain connected; Helius key restricted; HSTS on. Record the backup demo video. Onboard the founder's real league as the first pool.
-- **Day 7 (Wed 9):** Polish, submission writeup, launch thread scheduled. Reserve the evening for nothing — buffer.
-- **Sept 10 (Thu):** Submit. Kickoff 8:20pm ET. Launch thread from the brand account (banner) and the founder's personal account (the Cash App story).
+**Principle:** writes are on-chain transactions signed by the user; the hosted API only reads.
 
-## 11. Demo script (~90s)
+**Layer 1 — Program + IDL (MUST, free):** `anchor idl init` on deploy; commit `idl/commish.json`; `docs/PROGRAM.md` lists program ID, PDA seeds, and each instruction's accounts. Integrators build join/pick/claim transactions for their users directly.
+
+**Layer 2 — Public read API (SHOULD, day 6; on the §7 tables):** base `/api/v1`, JSON, versioned, CORS open for GET, no auth, rate limit 60 req/min per IP, `Cache-Control: public, s-maxage=30, stale-while-revalidate=60` (edge-cached by Cloudflare).
+- `GET /pools/{address}` → pool fields (§7.1) + `explorer` links + `source: "on-chain"` + `asOfSlot`.
+- `GET /pools/{address}/members` → display name, alive/out, weeks survived, pick (only when `now >= lock`), `x_username` if opted in.
+- `GET /pools/{address}/results` → per week: mask decoded to abbreviations, posted/finalized timestamps, veto count.
+- `GET /schedule` → `schedule.json`.
+- `GET /board?limit=100`.
+- Errors: `{ error: { code, message } }`; 404 for unknown pool; 429 on rate limit.
+- `docs/API.md` documents all of the above with example responses.
+
+**Layer 3 — SDK (STRETCH):** `@commishfun/sdk`: `createPool, joinPool, submitPick, claimPot, getPool, getMember, pda.*`; MIT; 20-line README example.
+
+**Vision line for the writeup (not built this week):** the program is a general results-settled escrow pool engine — Survivor is the first game; pick'em, squares, and brackets are the same rails with a different results shape.
+
+---
+
+## 15. Configuration, security, deploy runbook
+
+**Env vars:** client `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_CLUSTER`, `NEXT_PUBLIC_PROGRAM_ID`, `NEXT_PUBLIC_USDC_MINT`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`; server `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `HELIUS_SERVER_RPC_URL`, `CRANK_KEYPAIR` (stretch). `.env*` gitignored from commit one; values only in the hosting dashboard.
+
+**Security posture:** Helius browser key restricted to `commish.fun`, `www`, `localhost`; strict CSP (no inline eval; `connect-src` = RPC, Supabase, self); dependencies pinned; no analytics that capture wallets; ESPN fetched server-side only; rate limits on `/api/link` and `/api/v1`; Cloudflare already: Full (strict), Always HTTPS, min TLS 1.2, DNSSEC, DMARC reject — enable HSTS on launch day after a clean deploy.
+
+**Runbook:**
+1. `anchor build && anchor test` (localnet) → `anchor deploy --provider.cluster devnet` → copy program ID into env + `Anchor.toml` → `anchor idl init`.
+2. Deploy app (devnet env) → run the 3-wallet loop (§16 day 4) → fix.
+3. Mainnet: `anchor deploy --provider.cluster mainnet` (funded deployer wallet) → `anchor idl init` → env to mainnet + canonical USDC → redeploy app → Cloudflare CNAME → verify domain → Helius domain restriction → HSTS on.
+4. Create the founder's real league pool. Screenshot everything for the submission.
+
+---
+
+## 16. Seven-day plan (Sept 3–10)
+
+- **Day 1 (Thu 3):** Program: state, `create_pool`, `join_pool`, `submit_pick` + all rejection tests + canonical mint check; devnet green. App: scaffold, tokens, fonts, wallet adapter, `teams.json`, `schedule.json` script, Landing, Create, Pool hub (read-only).
+- **Day 2 (Fri 4):** Program: `post_results`, `veto_results`, `finalize_week`, `settle_member`, `advance_week` + boundary tests. App: TeamGrid, Pick flow, TxSheet, JOIN flow, Countdown + .ics.
+- **Day 3 (Sat 5):** Program: `claim_pot`, `reclaim_dues`, both split paths, deadman tests. Supabase schema + indexer job; ESPN results job; Commissioner panel with CONFIRM; SETTLE crank button.
+- **Day 4 (Sun 6):** Full loop on devnet with 3 wallets: create → join → pick → post → veto → finalize → settle → advance → claim; deadman path on a test pool. Fix everything. Empty/error states, `/trust`, rules sheet, PWA manifest.
+- **Day 5 (Mon 7):** X linking + `/me` + `/board`; season board; OG ShareCard; recap banner; laces progress; demo/replay flag.
+- **Day 6 (Tue 8):** Public API + `docs/API.md` + `docs/PROGRAM.md`; mainnet deploy (runbook §15); domain live; HSTS; backup demo video; onboard the founder's real league.
+- **Day 7 (Wed 9):** Polish, security pass (every §5.4 item has a test), submission writeup, launch thread scheduled. Evening = buffer, nothing scheduled.
+- **Sept 10 (Thu):** Submit. Kickoff 8:20pm ET. Launch from @commishfun (banner) and the founder's personal account (the Cash App story).
+
+## 17. Demo script (~90s)
 1. "Every year I send $20 to my buddy's Cash App for our league and trust him for five months. Here's the version where nobody has to."
-2. Create a pool live; two phones join; the pot fills on screen, vault address on the explorer.
+2. Create a pool live; two phones join; the pot fills; vault on the explorer.
 3. Both phones pick; lock hits; picks frozen. "No 'I definitely picked the Bills' texts on Monday."
-4. Replay a real historical week → CONFIRM → one phone stamps OUT; the survivor claims the pot in gold.
+4. Demo-flag pool → CONFIRM a real historical week → SETTLE → one phone stamps OUT; the survivor claims the pot in gold.
 5. "Results anyone can veto, a pot nobody can strand, picks nobody can backdate, and Commish takes nothing. Week 1 locks Thursday. Real pools can use this today."
 
-## 12. Founder context
-Solo founder who also runs HoldFlow (Solana creator-fee distribution: escrow PDAs, holder snapshots, payout engines). The money code review is in experienced hands; the assistant's job is to make everything around it fast, clean, and on-brand. Check the Nitro 03 rules for what counts as building inside the window; first repo commit is inside it.
+## 18. Copy bank (no em dashes in social copy)
+Tagline · Mechanics ("Buy-ins escrowed on-chain · Picks locked at kickoff · Last one standing takes the pot") · Trust line · Lock line ("No 'I definitely picked the Bills' texts on Monday.") · No-cut ("100% of the buy-ins go to the winner. Commish takes nothing.") · TxSheet join ("Locks {amount} USDC in this pool's vault. Only the winner can take it out. If the pool is ever abandoned, you can reclaim your share.") · TxSheet pick ("Locks in {TEAM} for Week {n}. You can change it until kickoff.") · OUT ("{name} took the {TEAM}. The {TEAM} did not cooperate.") · Empty ("No picks yet. Lock is in {countdown}.") · X bio ("Your Survivor pool, out of that one guy's Venmo. Buy-ins escrowed on-chain, picks locked at kickoff, last one standing takes the pot. Built on Solana. 🏈").
+
+## 19. Founder context
+Solo founder who also runs HoldFlow (Solana creator-fee distribution: escrow PDAs, holder snapshots, payout engines, Supabase). Money-code review is in experienced hands; the assistant's job is to make everything around it fast, clean, and on-brand. First repo commit inside the hackathon window; spec and API research before it are fine.
