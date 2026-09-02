@@ -1,284 +1,359 @@
-# COMMISH.FUN — product design & build document (handoff v5)
+# COMMISH.FUN — product design & build document (handoff v6)
 
-*Complete, self-contained specification. Paste it whole into the coding assistant. Supersedes every earlier version. FINAL = decided. MUST / SHOULD / STRETCH tags govern cuts: STRETCH goes first, then SHOULD, never a MUST. Section 21 is the build order. Section 19 is the legal framework — every product decision below was checked against it.*
+*Complete, self-contained specification. Paste it whole into the coding assistant. Supersedes every earlier version. FINAL = decided. MUST / SHOULD / STRETCH govern cuts: STRETCH first, then SHOULD, never a MUST. Section 21 is the build order. Section 19 is the legal framework — every product decision was checked against it.*
 
-**Contents:** 0 Working rules · 1 What a Survivor pool is · 2 Product & positioning · 3 Revenue model (legally constrained) · 4 Survivor rules · 5 Game modes (with legal posture) · 6 Fantasy layer · 7 Tech stack · 8 Repo layout · 9 On-chain program · 10 Static data · 11 Database & jobs · 12 Wallet & onboarding · 13 Design system · 14 Components · 15 Screens & acceptance · 16 Loyalty loop · 17 X linking & leaderboard · 18 Integration API · 19 Legal framework & compliance controls · 20 Security & ops · 21 Build order · 22 QA · 23 Copy bank · 24 Demo & launch · 25 Founder context
+**Contents:** 0 Working rules · 1 The two products · 2 Positioning · 3 Revenue · 4 Survivor rules · 5 League Treasurer rules · 6 Other game modes · 7 Fantasy layer (later) · 8 Tech stack · 9 Repo · 10 On-chain program · 11 Static data · 12 Database & jobs · 13 Wallet & onboarding · 14 Design system · 15 Components · 16 Screens · 17 Loyalty · 18 X linking · 19 Legal & compliance · 20 API, security, ops · 21 Build order · 22 QA · 23 Copy · 24 Demo & launch · 25 Founder context
 
 ---
 
 ## 0. Working rules
-1. The assistant builds app, DB, jobs, API, UI, tests, and generates the Anchor program from §9; every token-moving line is reviewed by the founder before deploy. Flag those lines.
+1. The assistant builds app, DB, jobs, API, UI, tests, and generates the Anchor program from §10; every token-moving line is reviewed by the founder before deploy. Flag those lines explicitly.
 2. On-chain state is the source of truth; the DB is a cache; the API is read-only; the program is the write API.
 3. Secrets never appear in chat or repo.
 4. Simplicity is the design: one primary action per screen.
-5. **Compliance controls in §19.6 are MUST**, not polish. They ship with the first paid pool.
-6. Build order (§21) is fixed; vertical slices.
+5. Compliance controls (§19.6) are MUST, not polish.
+6. Build order (§21) is fixed; vertical slices; each step leaves a working product.
 
 ---
 
-## 1. What a Survivor pool is
-Everyone puts in the same buy-in. Each week every player picks **one NFL team to win its game** (no point spreads). Win → you survive. Lose or tie → you're out. The twist: **each team can be used only once per season**, so you have to plan. Most players are gone within a few weeks; the last one standing takes the pot; if everyone left is eliminated the same week, they split it. Ten seconds a week, drama every Sunday, and today it runs through one person's Venmo — which is the problem Commish solves.
+## 1. The two products (FINAL)
+
+Commish is **one escrow engine with two front doors**. Both solve the same problem — the guy holding everyone's money — and both run on identical on-chain machinery.
+
+**A. Survivor pool** *(the launch demo)*
+Everyone buys in. Each week you pick one NFL team to win (no spreads). Win → survive; lose or tie → out. Each team usable only once per season, so you have to plan. Most players are gone in a few weeks; last one standing takes the pot. Ten seconds a week, drama every Sunday.
+
+**B. League Treasurer** *(the product people sign up for)*
+A real fantasy league — Sleeper, ESPN, Yahoo, NFL.com, a spreadsheet, doesn't matter — puts its **dues** in an on-chain vault instead of the commissioner's Venmo. Every team connects their own wallet. The prize split is fixed and visible before anyone pays. At season's end the commissioner posts who finished where, the league gets a window to dispute it, then winners claim straight from the vault. **Commish never touches the money and neither does the commissioner.**
+
+Why both: Survivor is the *story* (it demos in 90 seconds and it's novel), League Treasurer is the *market* (millions of leagues, average pot far larger, and it's the pain people already complain about every January). Build the engine once; ship both doors.
 
 ---
 
-## 2. Product & positioning (FINAL)
-- **One-liner:** The Solana version of the office Survivor pool. Buy-ins escrowed on-chain, picks locked before kickoff, eliminations settled from real NFL results, pot to the last one standing. Nobody holds the money, because nobody needs to.
-- **Tagline:** "Your Survivor pool, out of that one guy's Venmo." **Trust line:** "The commissioner keeps the job, loses the custody."
-- **Brand:** COMMISH.FUN (display) / commish.fun (text). Launch at NoahAI Nitro 03 (Sept 3–10, 2026); NFL Week 1 kicks off Thu Sept 10, 8:20pm ET.
-- **Who:** commissioners running pools for people they know; members on phones on Thursday afternoons, mostly not crypto users.
-- **Private pools only**, link-to-join, no directory; **$0 pools allowed** everywhere; pools can start any week.
-- **Language (FINAL):** "pool," "buy-in," "pot," "contest," "pick." Never "bet," "wager," "odds," "book." This is product truth, not cosmetics (§19).
-- **No NFL/team logos or marks**; city names, abbreviations, colors only.
-- **Commish takes no economic benefit from any real-money pool** in Season 1 (§3, §19). The program has fee fields so the policy can change per state later, never retroactively.
+## 2. Positioning (FINAL)
+- **One-liner:** Your league's money, out of that one guy's Venmo. Dues and buy-ins escrowed on-chain, payouts fixed before anyone pays, nobody in the middle.
+- **Survivor tagline:** "Your Survivor pool, out of that one guy's Venmo."
+- **League tagline:** "Your league dues, out of that one guy's Venmo."
+- **Trust line:** "The commissioner keeps the job, loses the custody."
+- **Brand:** COMMISH.FUN (display) / commish.fun (text). Launch at NoahAI Nitro 03 (Sept 3–10, 2026); NFL Week 1 kicks off Thu Sept 10, 8:20pm ET — the same week most leagues draft and collect dues.
+- **Who:** commissioners running things for people they know; members on phones, mostly not crypto users.
+- **Private only**, link-to-join, no directory. **$0 pools allowed** everywhere. Pools can start any week; leagues can be created any time before their dues deadline.
+- **Language (FINAL):** "pool," "league," "dues," "buy-in," "pot," "prize," "pick." Never "bet," "wager," "odds," "book." This is legal posture, not style (§19).
+- **No NFL/team logos or marks.** City names, abbreviations, colors only.
+- **Commish takes no economic benefit from any real-money pool** in Season 1 (§3, §19).
 
 ---
 
 ## 3. Revenue model (legally constrained — read §19 first)
 
-**The governing fact:** in Texas (the founder's state), private pools are defensible only when *no person receives any economic benefit other than personal winnings* (Penal Code §47.02(b)), and anyone who "for gain, becomes a custodian of anything of value bet" commits gambling promotion (§47.03). The Attorney General's 2016 opinion summarized it as: "it is prohibited gambling in Texas if you bet on the performance of a participant in a sporting event and the house takes a cut." A rake on real-money pools is therefore off the table for Texas users, and any fee tied to real-money contests anywhere needs state-by-state counsel.
+**Governing fact:** Texas Penal Code §47.02(b) protects private contests only when *no person receives any economic benefit other than personal winnings*; §47.03 makes it an offense to "for gain, become a custodian of anything of value bet." The 2016 AG opinion: *"it is prohibited gambling in Texas if you bet on the performance of a participant in a sporting event and the house takes a cut."* So: **no rake, ever, on any pot.**
 
-**Season 1 (FINAL): zero platform economics on real-money pools.** 100% of buy-ins to winners. This is the legal posture, and it happens to be the best marketing line the product has.
+**Season 1 (FINAL): zero platform economics on real-money pools.** 100% to winners.
 
-**Revenue paths, in order of legal cleanliness:**
-1. **Commish Pro — software subscription for commissioners (SHOULD, post-hackathon).** The established no-rake model (RunYourPool sells software and disclaims wagering; Splash never touches funds on self-managed pools). Features priced: custom pool branding, season archives, multi-pool dashboards, pool templates, priority support, advanced recap/share tools. Applies identically to $0 pools; never gates trust, payout, or fairness features; never scales with pot size. Counsel question to resolve before launch: whether a software fee from an operator whose *program* custodies the pot reads as "for gain … custodian" under §47.03 — the mitigation is that the company controls nothing (§9, §19.4).
-2. **Sponsorships and brand partnerships** on the free product (non-sportsbook only), e.g. a Season 1 title sponsor for the public leaderboard. No in-app ads.
-3. **Pot fee (`fee_bps`, capped) and creation fee (`creation_fee`)** — built into the program, **default 0, and enable-able only per state where counsel confirms a licensed or exempt basis** (many states regulate paid fantasy/skill contests with licensing; Texas has no statute and an adverse AG opinion). Geo-gated by §19.6 controls. Not a Season 1 lever.
-4. **Fantasy-format fees** (§6) have the strongest federal posture (UIGEA carve-out) but the same Texas problem; treated like #3.
+**Paths, cleanest first:**
+1. **Commish Pro — software subscription for commissioners** (SHOULD, post-demand). The RunYourPool model: sell software, never touch the money. Custom league branding, season archives, multi-league dashboards, templates, priority support, advanced share/recap tools. Identical for $0 pools; never gates trust, payout, or fairness features; never scales with pot size.
+2. **Sponsorships** on the free product (non-sportsbook only). No in-app ads.
+3. **Pot/creation fees** — fields exist in the program at **0**, enable-able per state only after counsel confirms a basis. Not a Season 1 lever, and never in Texas under the current posture.
+4. **A community token — funded by its own trading volume, never by pool money** (§3.1).
 
-Explicitly excluded: sportsbook affiliates, lending the escrowed pot for yield, anything paid by the pot in Texas.
+Excluded: sportsbook affiliates, lending the escrowed pot for yield, any fee paid out of a pot.
+
+### 3.1 Token boundary (FINAL, load-bearing)
+A community token (e.g. $LACES) may exist **only** as an arm's-length community layer whose economics come from *its own trading* — pump.fun creator fees routed through HoldFlow to holders/buybacks. **No pool, league, dues, prize, or payout may ever fund a buyback, burn, treasury, or token in any way.** Reasons: (a) a cut from a pot is the exact "house takes a cut" the AG named, and directing it to a burn still benefits the operator and holders; (b) a token whose value is driven by the platform's transaction revenue stops resembling a memecoin and starts resembling a revenue-backed instrument, which is a different legal category. The token is never shown in the pool product's core flow. Any future build session that proposes wiring pool fees to a token should treat this paragraph as a hard stop.
 
 ---
 
-## 4. Survivor rules (FINAL, not configurable)
-Buy-in (may be 0). Joining closes at the start-week lock. One pick per week, a team to WIN; picks lock at the week's first kickoff. Win → advance; loss/tie → OUT; no pick → OUT. Each team once per season (32-bit mask). Bye teams unpickable. **Push:** cancelled/no-contest game → picks of either team survive and the team is consumed; postponed games are waited for (results post only when every game is final or pushed). Last standing takes the pot; all-out-same-week → that week's entrants split; multiple survivors after Week 18 → split; not settled by `refund_deadline` (season end + 30 days) → deadman refund, pro-rata. Integer division; dust stays in the vault.
+## 4. Survivor rules (`pool_type = 0`) — FINAL, not configurable
+Buy-in (may be 0). Joining closes at the start-week lock. One pick per week, a team to WIN; picks lock at that week's first kickoff. Win → advance; loss/tie → OUT; no pick → OUT. Each team once per season (32-bit mask). Bye teams unpickable. **Push:** cancelled/no-contest game → picks of either team survive and the team is consumed; postponed games are waited for. Last standing takes the pot; all-out-same-week → that week's entrants split; multiple survivors after Week 18 → split; not settled by `refund_deadline` → deadman refund pro-rata. Integer division; dust stays in the vault.
+**Loser pool (`pool_type = 1`)** is the same with an inverted test.
 **Team index (FINAL):** `ARI ATL BAL BUF CAR CHI CIN CLE DAL DEN DET GB HOU IND JAX KC LAC LAR LV MIA MIN NE NO NYG NYJ PHI PIT SEA SF TB TEN WAS` (0..31).
 
 ---
 
-## 5. Game modes — build as many as the week allows, in this order
+## 5. League Treasurer rules (`pool_type = 8`) — MUST for the hackathon
 
-All modes run on one engine: escrow vault, on-chain locked picks, commissioner-posted results behind a member veto window, deterministic settlement, deadman refund. `pool_type` selects the pick shape and the scoring rule.
+**The core decision (FINAL): standings are declared by the commissioner, not synced from an API.** This makes Commish work with *every* league platform on earth instead of one, removes a build dependency, and keeps the veto meaningful — all ten members can see the same standings page wherever their league actually lives. Sleeper sync is a later convenience that only pre-fills the sheet (§7).
 
-| # | Mode (`pool_type`) | Rules in one line | Results shape | Legal posture (§19) | Tag |
-|---|---|---|---|---|---|
-| 0 | **Survivor** | One team to win per week; team once per season; last standing | winners + pushes masks | Pool on team outcomes: relies on state social-pool defenses; no fees | **MUST** |
-| 1 | **Loser pool** | One team to LOSE per week; if it wins you're out | same masks | same as Survivor | **MUST** (one branch) |
-| 2 | **Pick'em** | Pick every game's winner; a point each; weekly pot to top score, season pot to best total | pick = u32 mask; score = popcount(pick & winners) + pushes | same as Survivor; more skill-weighted | **SHOULD** |
-| 3 | **Confidence** | Pick every winner and rank 1..N; correct pick scores its rank | pick mask + rank bytes | same; strongly skill-weighted | SHOULD (after 2) |
-| 4 | **Pick-3 Jackpot** | Pick 3 winners; all correct → split the week; none → pot rolls over | 3-bit pick; rollover accounting | same; rollover pot must remain in-vault, no house stake | STRETCH |
-| 5 | **Team Draft** | Snake-draft the 32 teams pre-season; your score = your teams' wins; season standings | owned-teams mask per member; weekly popcount(owned & winners) | same; season-long skill | STRETCH |
-| 6 | **Squares** | 10×10 grid; digits assigned at lock; payouts per quarter | quarter line scores | Chance-based (no skill): defensible only as a no-benefit private pool; never fee-bearing | Playoffs (Jan) |
-| 7 | **Playoff bracket** | Fill the bracket; points per round | playoff results tree | skill-weighted pool | January |
-| — | **Spread pick'em / Underdog / Over-under** | Uses betting lines | odds feed | **Excluded**: sports-betting-adjacent; sports betting is illegal in Texas through at least 2027 | Not built |
-| — | **Player of the Week** | One athlete, one game | player stats | **Excluded**: outside the UIGEA fantasy carve-out (single athlete, single event) | Not built |
-| — | **Charity pools** | Part of the pot to a charity wallet | — | **Excluded for now**: a third party receiving part of the pot may defeat the "no economic benefit" defense | Counsel first |
+**Setup.** The commissioner creates a league vault with: league name, dues amount (USDC, may be 0), number of teams, a **dues deadline** (usually draft day), and a **prize split** — up to 8 slots, each with a label and a percentage in basis points, which must total exactly 100%. Examples: `1st 60% / 2nd 30% / 3rd 10%`; `1st 70% / Most Points 20% / Last Place 10%`; `1st 50% / 2nd 25% / Week 5 High 5% / Week 10 High 5% / Playoff Champ 15%`. The split is locked at creation and shown to every member before they pay a cent.
 
-Pool creation shows a mode picker once mode 1 exists. Hackathon target: **0, 1 as MUST; 2 as SHOULD; 3–5 as STRETCH**, with `pool_type` and the pick/score abstractions built so each addition is a scoring function and a pick control, not a redesign.
+**Joining.** Members join by invite link, connect their own wallet, enter their **team name**, and pay dues. Members always connect their own wallets — the commissioner never types in wallet addresses (a typo sends money nowhere). The commissioner *can* cover someone's dues with `sponsor_join` and settle up offline. Joining closes at the dues deadline; `total_dues` is fixed at that moment and every prize is computed from it, so interim payouts never distort later ones.
+
+**During the season** nothing happens on-chain. The league plays on whatever platform it already uses. The league page shows the pot, every team, the prize split, and the vault address — public by link, so any member can verify the money is untouched at any time.
+
+**Payouts.** The commissioner posts a **payout sheet**: assign one or more prize slots to member wallets. A 24-hour dispute window opens; any member can veto, and a majority of members clears the sheet for a re-post. After the window, the assignments finalize and each winner claims their slot's share. Sheets can be posted **more than once** — that's how weekly or mid-season prizes work: pay out the "Week 5 High" slot in October, the championship slots in January. The pool is Settled when every slot is claimed.
+
+**Failure modes.** Commissioner posts wrong standings → member veto. Commissioner ghosts entirely → after `refund_deadline` (season end + 30 days) every member reclaims their pro-rata share of whatever is left, via `reclaim_dues`. Commissioner tries to pay himself everything → the league sees the sheet during the window and vetoes. Nobody, including Commish, can move funds outside these paths.
+
+**Why this is the cheapest mode to build:** no weekly picks, no team masks, no eliminations, no results feed, no weekly cranks. It is the escrow spine plus one instruction. It also demos instantly (create → join → post sheet → claim) without waiting on any real game.
 
 ---
 
-## 6. Fantasy layer (post-hackathon; architecture reserved now)
+## 6. Game modes — all of them are in scope (same engine, `pool_type` selects pick shape + scoring)
 
-**Track A — Sleeper league treasurer (SHOULD, October).** Attach a Sleeper league (public API, no auth: `/v1/league/{id}`, `/rosters`, `/users`, `/matchups/{week}`, `/v1/state/nfl`). Dues escrowed at draft time; final standings synced; payouts fire by the split chosen at creation (1st/2nd/3rd, optional weekly high score). Same post → veto → settle spine; results shape = a **scoresheet root** (below). Biggest fantasy market for the least build.
+**The mode kit (FINAL architecture).** Every mode is three small, isolated pieces plugged into one unchanging spine (escrow → locked picks → posted results → veto window → deterministic settlement → claims):
+1. **a pick control** (React component: TeamGrid, GamePicker, ConfidenceRanker, DraftBoard, or none),
+2. **a scoring rule** (one `match` arm inside `settle_member`, ~10–30 lines of Rust),
+3. **a results view** (how standings render).
+Nothing else changes — not the vault, not the veto, not the deadman refund, not the claim path. Build the kit in Slice A and each additional mode costs hours, not days. **Do not special-case modes anywhere outside these three seams**; if a mode seems to need a change to the escrow spine, that is a design error, stop and reconsider.
 
-**Track B — native fantasy-lite modes (November+):**
-- **One & Done:** one player per week, any position, standard scoring, never reuse a player, best season total wins. Single search box; Survivor's strategic DNA applied to players.
-- **Weekly Showdown:** QB/RB/WR/TE/FLEX each week, no salary cap, no player reuse across the season; weekly + season pots.
-Both accumulate stats across many players and many games, which is what the federal fantasy carve-out requires (§19.3). Player-of-the-Week is excluded for that reason.
+| # | Mode | One line | Results shape | Priority |
+|---|---|---|---|---|
+| 0 | **Survivor** | One team to win per week; team once per season; last standing | winners + pushes masks | **P0** |
+| 8 | **League Treasurer** | League dues escrowed; prize slots paid by declared standings | payout sheet | **P0** |
+| 1 | **Loser pool** | One team to LOSE; if it wins you're out | same masks, inverted | **P0** (one branch) |
+| 2 | **Pick'em** | Pick every game's winner; a point each; weekly + season pots | pick mask; popcount | **P1** |
+| 3 | **Confidence** | Pick every winner, rank them 1..N; a correct pick scores its rank | mask + ranks | **P1** |
+| 5 | **Team Draft** | Snake-draft the 32 teams; score = your teams' wins | owned mask | **P2** |
+| 4 | **Pick-3 Jackpot** | Pick 3 winners; all right → split the week; none → rolls over | 3-bit pick + rollover | **P2** |
+| 7 | **Playoff bracket** | Fill the bracket, points per round | bracket tree | **P3** (Jan is fine) |
+| 6 | **Squares** | 10×10 grid, digits assigned at lock, quarter payouts | quarter line scores | **P3** (Super Bowl is the moment) |
+| — | Spread / underdog / over-under | uses betting lines | odds feed | **Excluded** (§19) |
+| — | Player of the Week | one athlete, one game | player stats | **Excluded** (§19.3) |
+| — | Charity split | part of the pot to a third party | — | **Excluded** pending counsel |
 
-**Engine generalization (reserve now, build later):** Pool gets `results_root: [u8;32]` per week. For scored modes the server computes every member's points from player stats (nflverse, free, post-game; Sleeper stats as backup), publishes the full scoresheet, and the commissioner posts its Merkle root behind the veto window; `settle_member` takes `(points, proof)` and verifies against the root. Masks for pick games, roots for scored games, one escrow underneath.
+**Priority meaning:** P0 ships or the launch does not happen. P1 ships unless the P0 loop is not clean by end of day 4. P2 ships if Slice C finishes early. P3 is post-launch by design — Squares and brackets are *playoff* products whose natural launch is January, and shipping them in September buys nothing. Cut from the bottom, never from the middle, and never at the cost of the P0 loop being flawless: **one perfect pool beats six shaky ones**, and every mode shares the same money code, so a bug in the spine is a bug in all of them.
+
+Squares carries an extra caveat beyond timing: it is pure chance with no skill component, which makes it the weakest mode legally (§19.2) and the one most in need of counsel before it ever carries a fee anywhere.
 
 ---
 
-## 7. Tech stack (FINAL)
-Anchor 0.30+/Rust/`anchor-spl` · Next.js 14 App Router/TypeScript/Tailwind/`@tanstack/react-query` · `@solana/wallet-adapter-react` + `-react-ui` (Mobile Wallet Adapter on Android; Phantom/Solflare in-app browser on iOS) · `@coral-xyz/anchor` typed client · Supabase (Postgres, RLS, Auth with X provider) · Helius RPC (domain-restricted key) · route-handler jobs on a scheduler with `CRON_SECRET` · Vercel hosting (geo headers used for §19.6) · Cloudflare DNS · self-hosted Anton + Space Grotesk · Plausible/Umami analytics (never wallet addresses).
+## 7. Fantasy layer (post-hackathon; architecture reserved now)
+- **Sleeper sync (SHOULD, October):** attach a league id (public API, no auth: `/v1/league/{id}`, `/rosters`, `/users`, `/matchups/{week}`, `/v1/state/nfl`) to **pre-fill the payout sheet** with final standings and to show live standings on the league page. The commissioner still confirms; the veto still applies. Pure convenience on top of §5.
+- **Native fantasy-lite modes (November+):** **One & Done** (one player per week, never reused, best season total) and **Weekly Showdown** (QB/RB/WR/TE/FLEX, no reuse). Both satisfy the federal fantasy carve-out (many players, many games). Player-of-the-Week does not and is excluded.
+- **Engine generalization (reserve `results_root: [[u8;32];18]` now, build later):** for stat-scored modes the server computes every member's points, publishes the scoresheet, and the commissioner posts its Merkle root behind the same veto window; `settle_member` takes `(points, proof)`. Masks for pick games, sheets for leagues, roots for scored games — one escrow underneath all three.
 
-## 8. Repository layout
+---
+
+## 8. Tech stack (FINAL)
+Anchor 0.30+/Rust/`anchor-spl` · Next.js 14 App Router/TypeScript/Tailwind/`@tanstack/react-query` · `@solana/wallet-adapter-react` + `-react-ui` (Mobile Wallet Adapter on Android; Phantom/Solflare in-app browser on iOS) · `@coral-xyz/anchor` typed client · Supabase (Postgres, RLS, Auth with X provider) · Helius RPC (domain-restricted key) · route-handler jobs on a scheduler with `CRON_SECRET` · Vercel hosting (geo headers for §19.6) · Cloudflare DNS · self-hosted Anton + Space Grotesk · Plausible/Umami analytics (never wallet addresses).
+
+## 9. Repository layout
 ```
 programs/commish/src/{lib.rs,state.rs,errors.rs,events.rs,instructions/*.rs}   tests/   idl/commish.json
 app/app (routes) · app/components · app/lib/{anchor,pda,tx,teams,schedule,format,ics,scoring}.ts
-app/lib/server/{indexer,results,espn,supabase,verify,ratelimit,geo}.ts · app/data/{teams.json,schedule.json,restricted-states.json}
-app/public/{fonts,brand,manifest.webmanifest,icons} · supabase/migrations · scripts/build-schedule.ts
-brand/ · docs/{PROGRAM.md,API.md,MANUAL-CLAIM.md,LEGAL.md} · README.md · COMMISH-HANDOFF.md
+app/lib/server/{indexer,results,espn,supabase,verify,ratelimit,geo}.ts
+app/data/{teams.json,schedule.json,restricted-states.json} · app/public/{fonts,brand,manifest.webmanifest,icons}
+supabase/migrations · scripts/build-schedule.ts · brand/
+docs/{PROGRAM.md,API.md,MANUAL-CLAIM.md,LEGAL.md} · README.md · COMMISH-HANDOFF.md
 ```
 
 ---
 
-## 9. On-chain program
+## 10. On-chain program
 
-### 9.1 State machine
-`Open` → weekly `Locked` → `ResultsPosted` (dispute window) → `Finalized` (per-member settlement) → `Advanced` … → `Settled` (claims) | `Abandoned` (deadman refunds). Per-member settlement via permissionless crank; week advances when every alive member is processed.
+### 10.1 State machines
+**Pick modes (0–7):** `Open` → weekly `Locked` → `ResultsPosted` (dispute) → `Finalized` (per-member settlement) → `Advanced` … → `Settled` | `Abandoned`.
+**League mode (8):** `Open` (joining, until dues deadline) → `Locked` (season running) → `SheetPosted` (dispute) → `SheetFinalized` (slots claimable) → back to `Locked` if slots remain → `Settled` when all slots claimed | `Abandoned` (deadman).
 
-### 9.2 Accounts
-**Config** (`["config"]`): `admin, fee_treasury, default_fee_bps: u16, default_fee_cap: u64, creation_fee: u64, paused: bool`. Defaults copied into pools at creation; changes never touch existing pools. **Season 1: all zero.**
+### 10.2 Accounts
+**Config** (`["config"]`): `admin, fee_treasury, default_fee_bps: u16, default_fee_cap: u64, creation_fee: u64, paused: bool`. Copied into pools at creation; changes never affect existing pools. **Season 1: all zero.**
 
-**Pool** (`["pool", commissioner, nonce_le_u64]`, space 1024):
+**Pool** (`["pool", commissioner, nonce_le_u64]`, space 1280):
 ```
 commissioner, usdc_mint, vault: Pubkey   nonce: u64   name: [u8;32]   pool_type: u8
-buy_in: u64   max_members: u16   member_count: u16   alive_count: u16   alive_at_week_start: u16   processed_this_week: u16
-start_week: u8   current_week: u8   lock_ts: [i64;18]   refund_deadline_ts: i64   dispute_window_secs: u32
+buy_in: u64   max_members: u16   member_count: u16   paid_members: u16   total_dues: u64
+alive_count: u16   alive_at_week_start: u16   processed_this_week: u16
+start_week: u8   current_week: u8   lock_ts: [i64;18]   dues_deadline_ts: i64
+refund_deadline_ts: i64   dispute_window_secs: u32
 winners: [u32;18]   pushes: [u32;18]   results_root: [[u8;32];18]   results_posted: [bool;18]
-pending_winners: u32   pending_pushes: u32   pending_root: [u8;32]   pending_week: u8   pending_posted_ts: i64   veto_count: u16
-finalized_week: u8   status: u8   winners_week: u8   winners_count: u16   pot_per_winner: u64
-weekly_pot_bps: u16 (pick'em: share of pot paid weekly)   rollover: u64 (jackpot modes)
+pending_winners: u32   pending_pushes: u32   pending_root: [u8;32]   pending_week: u8
+pending_posted_ts: i64   veto_count: u16   finalized_week: u8
+prize_slots: [PrizeSlot;8]   slot_count: u8   claimed_bps: u16    // league mode
+status: u8   winners_week: u8   winners_count: u16   pot_per_winner: u64
+weekly_pot_bps: u16   rollover: u64
 fee_bps: u16   fee_cap: u64   fee_treasury: Pubkey   fee_paid: bool   refund_per_member: u64   bump: u8
+
+PrizeSlot { label: [u8;16], bps: u16, assignee: Pubkey, state: u8 }
+// state: 0 unassigned · 1 pending (in dispute window) · 2 finalized · 3 claimed
 ```
 **Member** (`["member", pool, wallet]`, space 256):
 ```
-pool, wallet: Pubkey   display_name: [u8;24]   paid: bool   sponsored_by: Pubkey   joined_ts: i64
-used_mask: u32   current_pick: u8 (255 none)   pick_mask: u32 (pick'em/confidence/pick-3)   ranks: [u8;16] (confidence)
-owned_mask: u32 (team draft)   pick_week: u8   pick_note: [u8;24]   points: u32 (season total, scored modes)
+pool, wallet: Pubkey   display_name: [u8;24]   // team name in league mode
+paid: bool   sponsored_by: Pubkey   joined_ts: i64
+used_mask: u32   current_pick: u8 (255 none)   pick_mask: u32   ranks: [u8;16]   owned_mask: u32
+pick_week: u8   pick_note: [u8;24]   points: u32
 processed_week: u8   eliminated_week: u8   vetoed_week: u8   claimed: bool   bump: u8
 ```
-**Vault:** pool PDA's ATA for `usdc_mint`; only program CPIs move tokens out.
+**Vault:** the pool PDA's ATA for `usdc_mint`. Only program CPIs move tokens out. **There is no admin withdrawal path — by construction, not by policy.**
 
-### 9.3 Instructions (constraints in full)
-| # | Instruction | Signer | Constraints | Effect |
+### 10.3 Instructions
+
+*Shared*
+| # | Instruction | Signer | Key constraints | Effect |
 |---|---|---|---|---|
 | 1 | `init_config` / `update_config` | deployer / admin | once / `has_one admin` | defaults for future pools only |
-| 2 | `create_pool(nonce, name, pool_type, buy_in, max_members, start_week, lock_ts[18], refund_deadline_ts, weekly_pot_bps, commissioner_plays, display_name)` | commissioner | `usdc_mint == CANONICAL_USDC`; `2..=500` members; `1..=18` start; `lock_ts` strictly increasing; `lock_ts[start-1] > now`; `refund_deadline > lock_ts[17]+7d`; `!paused`; creation fee only if `buy_in>0 && creation_fee>0` | init pool + vault; copy fee fields ($0 pool → 0); optional commissioner Member |
-| 3 | `join_pool(display_name)` | member | `now < lock_ts[start-1]`; not full; Member `init`; transfer buy-in (skip if 0) | counts++ |
-| 4 | `sponsor_join(wallet, display_name)` | commissioner pays | as join; `sponsored_by = commissioner` | commissioner covers a friend's seat |
-| 5 | `submit_pick(team, note)` (survivor/loser) | member | `team<=31`; `now<lock`; alive; not used; Open | set pick |
-| 6 | `submit_pick_mask(mask, ranks?)` (pick'em/confidence/pick-3) | member | `now<lock`; mask ⊆ that week's scheduled teams; pick-3: popcount==3; confidence: ranks is a permutation of 1..games | set pick_mask/ranks |
-| 7 | `draft_team(team)` (team draft) | member, in draft order | draft window open; team unowned; turn check via `draft_cursor` on Pool | `owned_mask |= bit` |
-| 8 | `post_results(week, winners, pushes, root)` | commissioner | `week==current`; `now >= lock+3h`; not posted; no pending; `winners & pushes == 0` | pending set; veto_count=0 |
-| 9 | `veto_results` | member | pending; alive; once per posting | majority (`2*veto > alive`) clears pending |
-| 10 | `finalize_week` | anyone | pending; `now >= posted_ts + window` | commit; reset counters |
-| 11 | `settle_member(points?, proof?)` | anyone | finalized; unprocessed | apply mode rule (§9.4) |
-| 12 | `advance_week` | anyone | all alive processed | end conditions or `current_week++`; pick'em pays weekly share to the week's top scorer(s) (`claim_weekly`) |
-| 13 | `claim_pot` / `claim_weekly` | member | Settled / week finalized; winner test; `!claimed` | fee (if any) once to treasury; share to member |
-| 14 | `reclaim_dues` | member | not Settled; `now >= refund_deadline`; paid, unclaimed | pro-rata refund |
-| 15 | `close_member` / `close_pool` | owner / commissioner | after claims; vault empty | rent hygiene |
+| 2 | `create_pool(nonce, name, pool_type, buy_in, max_members, start_week, lock_ts[18], dues_deadline_ts, refund_deadline_ts, prize_slots, weekly_pot_bps, commissioner_plays, display_name)` | commissioner | `usdc_mint == CANONICAL_USDC`; `2..=500` members; `!paused`; pick modes: `lock_ts` strictly increasing, `lock_ts[start-1] > now`; league mode: `slot_count 1..=8`, `Σ bps == 10000`, `dues_deadline_ts > now`; `refund_deadline_ts` after the season | init pool + vault; copy fee fields ($0 → 0); optional commissioner Member |
+| 3 | `join_pool(display_name)` | member | pick modes: `now < lock_ts[start-1]`; league: `now < dues_deadline_ts`; not full; Member `init`; transfer buy-in (skip if 0) | counts++, `total_dues += buy_in` |
+| 4 | `sponsor_join(wallet, display_name)` | commissioner pays | as join; `sponsored_by = commissioner` | covers a member's seat |
+| 5 | `reclaim_dues` | member | not Settled; `now >= refund_deadline_ts`; paid, unclaimed | first call fixes `refund_per_member = vault / paid_members`; transfer |
+| 6 | `close_member` / `close_pool` | owner / commissioner | after claims; vault empty | rent hygiene |
 
-### 9.4 Mode rules in `settle_member`
-- Survivor: no pick → OUT; `winners & bit` or `pushes & bit` → survive, consume team; else OUT.
-- Loser: survive iff picked team is neither winner nor push; consume team.
-- Pick'em: `points += popcount(pick_mask & winners) + popcount(pick_mask & pushes)`; track `week_high` on Pool for the weekly share.
-- Confidence: for each correct game add its rank.
-- Pick-3: all three in winners∪pushes → weekly winner; none → `rollover += weekly share`.
-- Team Draft: `points += popcount(owned_mask & winners)`.
-- Scored (fantasy, later): verify `(member, points)` leaf against `results_root[w]`; `points += points`.
-End conditions (Survivor/Loser): alive==1 → Settled (winners_week=0, count 1); alive==0 → Settled (winners_week=w, count=alive_at_week_start); w==18 → Settled (count=alive). Score modes: Settled after Week 18 with `winners_count` = members tied at the top.
+*Pick modes (0–7)*
+| # | Instruction | Signer | Key constraints | Effect |
+|---|---|---|---|---|
+| 7 | `submit_pick(team, note)` | member | `team<=31`; `now<lock`; alive; not used; Open | set pick |
+| 8 | `submit_pick_mask(mask, ranks?)` | member | `now<lock`; mask ⊆ that week's teams; pick-3: popcount==3 | set mask/ranks |
+| 9 | `draft_team(team)` | member in turn | draft open; team unowned | `owned_mask \|= bit` |
+| 10 | `post_results(week, winners, pushes, root)` | commissioner | `week==current`; `now >= lock+3h`; not posted; no pending; `winners & pushes == 0` | pending set; veto=0 |
+| 11 | `veto_results` | member | pending; alive; once per posting | `2*veto > alive` clears pending |
+| 12 | `finalize_week` | anyone | `now >= posted_ts + window` | commit; reset counters |
+| 13 | `settle_member(points?, proof?)` | anyone | finalized; unprocessed | apply mode rule (§10.4) |
+| 14 | `advance_week` | anyone | all alive processed | end conditions or `current_week++`; pick'em pays the weekly share |
+| 15 | `claim_pot` / `claim_weekly` | member | Settled / week finalized; winner test; `!claimed` | fee (if any) once; share to member |
 
-### 9.5 Errors / events / security
-Errors as in v4 plus `NotYourTurn, BadPickMask, BadRanks, DraftClosed, BadProof`. Events as in v4 plus `WeeklyPaid, RolloverAccrued, TeamDrafted`.
-Security (each tested): canonical USDC per cluster; vault = pool ATA; SPL Token program checked; signer/owner/PDA/bump on every account; `init` only; checked math; `Clock::get()`; boundary tests ±1s; idempotent settle/claim/refund/finalize; veto once per member per posting, strict majority; fee computed once, capped, never on $0 pools; `paused` blocks creation only, never claims/refunds. **Upgrade authority:** founder-held through the hackathon and disclosed; **plan of record: move to a 2-of-3 multisig within 30 days of launch and make the program immutable after an audit** — this is also the money-transmission "control" mitigation (§19.4).
+*League mode (8)*
+| # | Instruction | Signer | Key constraints | Effect |
+|---|---|---|---|---|
+| 16 | `lock_dues` | anyone | `now >= dues_deadline_ts`; status Open | fixes `total_dues` and `paid_members`; status → Locked |
+| 17 | `post_payout_sheet(assignments: Vec<(slot_idx, member_pubkey)>)` | commissioner | status Locked; no slot currently pending; each `slot_idx < slot_count`; each slot `state == 0`; each assignee is an existing paid Member of this pool | slots → pending, `pending_posted_ts = now`, `veto_count = 0`; status → SheetPosted |
+| 18 | `veto_results` (shared) | member | sheet pending; paid member; once per posting | `2*veto > paid_members` → pending slots revert to `state 0`, status → Locked (commissioner re-posts) |
+| 19 | `finalize_sheet` | anyone | `now >= pending_posted_ts + dispute_window_secs` | pending slots → `state 2`; status → SheetFinalized |
+| 20 | `claim_prize(slot_idx)` | slot assignee | slot `state == 2`; signer == assignee | transfer `total_dues * bps / 10000`; slot → `state 3`; `claimed_bps += bps`; if `claimed_bps == 10000` → Settled |
 
-Tests: happy path per mode; every rejection path; push; both split paths; W18 multi-survivor; deadman; fee math + cap + $0; sponsor_join; late-start; fake mint; double claim; veto majority; settle idempotency; pick'em weekly share; rollover accrual.
+**Why prizes are computed from `total_dues`, not the live vault balance:** interim payouts (a Week 5 high-score slot) would otherwise shrink the base and quietly change every later prize. Fixing the base at the dues deadline makes every slot's dollar amount knowable — and displayable — from the moment the league locks.
+
+### 10.4 Mode rules in `settle_member` (pick modes)
+Survivor: no pick → OUT; `winners & bit` or `pushes & bit` → survive + consume team; else OUT. Loser: survive iff picked team is neither winner nor push. Pick'em: `points += popcount(pick & winners) + popcount(pick & pushes)`. Confidence: add each correct game's rank. Pick-3: all three in winners∪pushes → weekly winner; none → `rollover += weekly share`. Team Draft: `points += popcount(owned & winners)`. Scored (later): verify `(member, points)` against `results_root[w]`.
+End conditions (survivor/loser): alive==1 → Settled (winners_week 0, count 1); alive==0 → Settled (winners_week w, count = alive_at_week_start); w==18 → Settled (count = alive). Score modes: Settled after Week 18, `winners_count` = members tied at the top.
+
+### 10.5 Errors, events, security
+Errors: `Paused, WrongMint, BadSchedule, BadStartWeek, BadPrizeSplit, SlotsNotSummingTo100, NameTooLong, NoteTooLong, PoolFull, JoinClosed, DuesDeadlinePassed, DuesNotLocked, PicksLocked, TeamAlreadyUsed, InvalidTeam, MemberEliminated, NotAMember, SlotAlreadyAssigned, SlotNotFinalized, NotSlotAssignee, SheetPending, NoPendingSheet, ResultsAlreadyPosted, ResultsPending, NoPendingResults, OverlappingMasks, DisputeWindowOpen, AlreadyVetoed, TooEarly, NotFinalized, AlreadyProcessed, WeekIncomplete, NotSettled, NotAWinner, AlreadyClaimed, RefundNotAvailable, VaultNotEmpty, NotYourTurn, BadPickMask, BadRanks, DraftClosed, BadProof, MathOverflow`.
+Events: `PoolCreated, MemberJoined, PickSubmitted, ResultsPosted, ResultsVetoed, WeekFinalized, MemberSettled, WeekAdvanced, PoolSettled, DuesLocked, PayoutSheetPosted, SheetVetoed, SheetFinalized, PrizeClaimed, WeeklyPaid, RolloverAccrued, TeamDrafted, FeePaid, PotClaimed, DuesReclaimed`.
+
+Security (each tested): canonical USDC per cluster (mainnet `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`); vault = pool ATA; SPL Token program checked; signer/owner/PDA/bump on every account; `init` only; checked math; `Clock::get()` only, boundary tests ±1s; idempotent settle/claim/refund/finalize; veto once per member per posting, strict majority; **slot assignees must be existing paid members** (prevents paying a typo'd address); prize sum enforced at creation; fee computed once, capped, never on $0 pools; `paused` blocks creation only, never claims or refunds. **Upgrade authority:** founder-held during the hackathon and disclosed on `/trust`; plan of record is a 2-of-3 multisig within 30 days of launch and immutability after audit (this is also the money-transmission "control" mitigation, §19.3).
+
+Tests: happy path per mode; every rejection path; push; both split paths; W18 multi-survivor; deadman refund; fee math + cap + $0; `sponsor_join`; late-start pool; fake mint; double claim; veto majority; settle idempotency; pick'em weekly share; rollover. **League mode:** prize split rejected unless it sums to 100%; join after dues deadline rejected; `lock_dues` fixes the base; sheet to a non-member rejected; partial sheet then a second sheet; veto reverts pending slots and allows a re-post; claim by a non-assignee rejected; double claim rejected; all-slots-claimed → Settled; deadman refund on an abandoned league with one slot already claimed (remaining balance splits pro-rata).
 
 ---
 
-## 10. Static data
-`teams.json` (32: index, abbr, city, nickname, colors, espnId). `schedule.json` generated once from ESPN per week: `lockTs` (earliest kickoff), `byeTeams`, `games[{espnEventId, home, away, kickoffTs}]`; committed; the app passes `lock_ts[18]` to `create_pool`. `restricted-states.json` (§19.6).
+## 11. Static data
+`teams.json` (32: index, abbr, city, nickname, colors, espnId). `schedule.json` generated once from ESPN per week (`lockTs` = earliest kickoff, `byeTeams`, `games[]`); committed; the app passes `lock_ts[18]` to `create_pool`. `restricted-states.json` (§19.5).
 
-## 11. Database and jobs
-Schema as in v4 (`pools, members, x_links, link_nonces, results_proposals, push_subscriptions`, views `career`, `board`) plus: `pools.pool_type, weekly_pot_bps, rollover`, `members.pick_mask, ranks, owned_mask, points`, and **`attestations(wallet, pool, age_ok bool, state text, ip_region text, ts)`** (§19.6) with no public access. RLS: public SELECT on pools/members/results_proposals/career/board only; writes via service role.
-Jobs: `/api/cron/index` (5 min; getProgramAccounts → upsert; vault balances), `/api/cron/results` (15 min Thu–Tue; ESPN scoreboard server-side; winners/pushes; CONFIRM only when all final or pushed), `/api/cron/reminders` (Wed 6pm, Thu 9am, 3h before lock; web push to alive members without a pick), crank via UI SETTLE button (MUST) / `/api/cron/crank` (STRETCH).
+## 12. Database and jobs
+Tables: `pools` (+ `pool_type, prize_slots jsonb, slot_count, claimed_bps, total_dues, dues_deadline_ts, weekly_pot_bps, rollover`), `members` (+ `pick_mask, ranks, owned_mask, points`), `x_links`, `link_nonces`, `results_proposals`, `push_subscriptions`, `attestations` (§19.6, server-only); views `career`, `board`. RLS: public SELECT on pools/members/results_proposals/career/board only; all writes via service role.
+Jobs: `/api/cron/index` (5 min: `getProgramAccounts` → decode → upsert; vault balances). `/api/cron/results` (15 min Thu–Tue: ESPN scoreboard server-side; winners/pushes; CONFIRM only when all games final or pushed). `/api/cron/reminders` (Wed 6pm, Thu 9am, 3h before lock: push to alive members without a pick; **league mode: a reminder to the commissioner when a sheet is finalized and prizes are unclaimed**). Cranks: UI SETTLE button (MUST); `/api/cron/crank` (STRETCH).
 
-## 12. Wallet, onboarding, transactions
-Join page works without a wallet and opens a two-step OnboardingSheet: (1) get Phantom (links, "open this link inside Phantom's browser," 20-second video placeholder); (2) get USDC + ~0.005 SOL via Phantom's in-app buy with the exact amounts, or "ask your commissioner to cover you" (sponsor flow). Wallet Adapter restyled; auto-connect; MWA on Android; iOS deep-link into wallet browsers. One action = one transaction; simulate first; TxSheet in plain English with vault address + explorer link; never delegation; never unrequested signatures. No accounts or passwords. **Age/state attestation and geo check happen inside the JOIN and CREATE flows for paid pools (§19.6).**
+## 13. Wallet, onboarding, transactions
+Join pages work without a wallet and open a two-step OnboardingSheet: (1) get Phantom (links; "open this link inside Phantom's browser"; 20-second video placeholder); (2) get USDC + ~0.005 SOL via Phantom's in-app buy with exact amounts, **or** "ask your commissioner to cover you" (sponsor flow). Wallet Adapter restyled; auto-connect; MWA on Android; iOS deep-link into wallet browsers. One action = one transaction; simulate first; TxSheet in plain English with the vault address + explorer link; never delegation; never unrequested signatures. No accounts or passwords. Eligibility gate on create/join for paid pools (§19.6).
 
-## 13. Design system — "Primetime" (FINAL)
-Night `#120D0A` · night2 `#1D1310` · line `rgba(246,239,226,.10)` · cream `#F6EFE2` · leather `#FF5C1B` · leatherHi `#FF7A45` · gold `#E9C258` (money only) · alive `#35C97A` · out `#E5484D`; radii 10/14/20/pill; 4px base. Anton (display, uppercase, .015em, tabular) + Space Grotesk. Mark = THE LACES (`brand/laces.svg`; cream on leather for avatar/icon; leather on night in-app; never inside the wordmark; never a drawn football). Laces are the loader and the weeks-survived meter. Mobile-first at 390px; one leather button per screen; the pot is the hero; chalk hairlines; ALIVE/OUT stamps; countdown always visible before lock; 150–200ms motion; one celebration; reduced-motion respected; 44px targets; ≥4.5:1 contrast. Dark only.
+## 14. Design system — "Primetime" (FINAL)
+Night `#120D0A` · night2 `#1D1310` · line `rgba(246,239,226,.10)` · cream `#F6EFE2` (60/40 alphas) · leather `#FF5C1B` · leatherHi `#FF7A45` · **gold `#E9C258` (money only: pots, dues, prize amounts)** · alive `#35C97A` · out `#E5484D`; radii 10/14/20/pill; 4px base. Anton (display, uppercase, .015em, tabular numerals) + Space Grotesk 400–700; scale 12/14/16/20/28/40/64+. Mark = THE LACES (below): cream on leather for avatar/icon/empty states, leather on night in-app; never inside the wordmark; never drawn as a football. Laces are the loader and the weeks-survived meter. Mobile-first at 390px (game screens ≤640px, commissioner ≤960px); one leather button per screen; the pot is the hero; chalk hairlines not nested cards; ALIVE/OUT and prize-slot states as Anton pill stamps; countdown always visible before a lock or dues deadline; 150–200ms motion; one celebration (claim); reduced-motion respected; 44px targets; ≥4.5:1 contrast. **Dark only.**
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200"><g transform="rotate(-14)" fill="#FF5C1B"><rect x="-9" y="-84" width="18" height="168" rx="9"/><rect x="-49" y="-63" width="98" height="18" rx="9"/><rect x="-49" y="-27" width="98" height="18" rx="9"/><rect x="-49" y="9" width="98" height="18" rx="9"/><rect x="-49" y="45" width="98" height="18" rx="9"/></g></svg>
 ```
 
-## 14. Components
-As in v4 (`WalletButton, PotDisplay, Countdown, TeamGrid/TeamTile, PickNote, MemberRow, StatusBanner, TxSheet, SettleButton, RulesSheet, ShareCard, LacesLoader, Stamp, OnboardingSheet, PickPopularity, RecapBanner, CareerCard`) plus `ModePicker`, `GamePicker` (pick'em list of the week's games with team pairs), `ConfidenceRanker` (drag to order), `DraftBoard`, `EligibilityGate` (§19.6), `StandingsTable` (score modes).
+## 15. Components
+`WalletButton · PotDisplay · Countdown · TeamGrid/TeamTile · GamePicker · ConfidenceRanker · DraftBoard · PickNote · MemberRow · StatusBanner · TxSheet · SettleButton · RulesSheet · ShareCard · LacesLoader · Stamp · OnboardingSheet · PickPopularity · RecapBanner · CareerCard · ModePicker · EligibilityGate · StandingsTable`
+**League additions:** `PrizeSplitEditor` (add/remove slots, label + %, live total that must hit 100%, warns until it does) · `PrizeSlotRow` (label, %, dollar amount from `total_dues`, assignee, state stamp: OPEN / PENDING / FINAL / PAID) · `PayoutSheetBuilder` (commissioner assigns members to slots, shows exact dollars, one CONFIRM) · `DisputeBanner` (countdown + VETO button + veto tally) · `TeamRoster` (team name, wallet short form, paid stamp).
 
-## 15. Screens and acceptance
-As in v4 (`/`, `/new`, `/p/[pool]`, `/p/[pool]/pick`, `/p/[pool]/commish`, `/p/[pool]/history`, `/p/[pool]/claim`, `/me`, `/board`, `/trust`, `/rules`, `/api/v1/*`, OG image) plus: `/new` has a **mode picker**; `/p/[pool]/pick` renders the mode's pick control; `/p/[pool]/standings` for score modes; **`/terms`, `/privacy`, `/responsible-play`** (with self-exclusion), and `/trust` includes the legal posture and the fee policy. Acceptance: every state renders from fixtures without a wallet; EligibilityGate blocks a restricted-state paid join and allows $0 pools; Lighthouse perf ≥ 90 mobile, a11y ≥ 95.
+## 16. Screens
+| Route | Content | Done when |
+|---|---|---|
+| `/` Landing | Wordmark, one-liner, **two doors: START A POOL and RUN YOUR LEAGUE**, three mechanics, trust table, "How the money moves," FAQ (incl. "what is a Survivor pool"), links to `/trust`, `/board`, repo | Two clear entry points above the fold; Lighthouse a11y ≥95 |
+| `/new` Create | ModePicker (Survivor · Loser · League Treasurer · others as built) → mode-specific form. **League:** name, dues, teams, dues deadline, PrizeSplitEditor, "I'm playing too," team name | Creating either type takes one signature; invite link copies |
+| `/p/[pool]` Hub | **No wallet needed.** Pot/dues total (gold), members or teams with stamps, countdown, StatusBanner, vault → explorer, rules. **League:** the prize split with dollar amounts, sheet status, dispute banner when live. With wallet: JOIN / PICK / SETTLE / CLAIM as applicable | Every state renders from fixtures without a wallet |
+| `/p/[pool]/pick` | Mode's pick control → TxSheet; after lock, everyone's picks | Used/bye teams unselectable; lock enforced |
+| `/p/[pool]/commish` | Pick modes: proposal vs ESPN, push toggles, CONFIRM, SETTLE. **League: PayoutSheetBuilder**, post/re-post, veto tally, sponsor a seat | A commissioner can run a week (or a payout) without leaving the page |
+| `/p/[pool]/claim` | CLAIM POT / **CLAIM PRIZE (per slot)** / RECLAIM DUES | One signature; gold celebration |
+| `/p/[pool]/history` (SHOULD) | Pick modes: week × member grid. League: sheet history with tx links | Screenshot-ready on mobile |
+| `/me` (SHOULD) | My pools and leagues, career card, display names, Link X, board opt-in, reminders | Works with only a wallet |
+| `/board` (SHOULD) | §18 | Renders from the `board` view |
+| `/trust` · `/rules` · `/terms` · `/privacy` · `/responsible-play` | §19 language, self-exclusion | Founder-reviewed |
+| `/api/v1/*` · OG image | §20 | Documented; previews render |
 
-## 16. Loyalty loop
-Web-push reminders (PWA, VAPID) + .ics fallback; pick popularity after lock; pick notes; recap banner; career card; season board; share cards; commissioner friction-killers (sponsor a seat, copy link everywhere). One reminder cadence, opt-in, no marketing pushes.
+States: loading = LacesLoader; empty = "No picks yet. Lock is in {countdown}." / "Dues close in {countdown}."; failures per §23.
 
-## 17. X linking + leaderboard (SHOULD, day 5)
-Supabase Auth X provider → server reads `x_user_id`/`user_name` from the JWT → single-use 5-minute nonce → wallet signs `commish.fun link\nx:{id}\nwallet:{pubkey}\nnonce:{nonce}` → server verifies JWT + nonce + ed25519 → `x_links` (one-to-one). Unlink/opt-in endpoints. Never store X tokens. Fallback: self-declared handle, no badge, off the board. `/board` from the `board` view; rank best_run → pools_won → usdc_won; no wallets; rows link to proof.
+## 17. Loyalty loop
+Web-push reminders (PWA/VAPID) + .ics fallback; pick popularity after lock; pick notes; recap banner; career card; season board; share cards; commissioner friction-killers (sponsor a seat, copy link everywhere, **one-tap payout sheet from last season's split**). **League-specific:** a "dues collected" progress bar the commissioner can screenshot into the league chat — the single best organic growth surface the product has, because it lands in a group of ten people who all have leagues of their own. One reminder cadence, opt-in, no marketing pushes.
 
-## 18. Integration API
-Layer 1 (MUST): IDL on-chain + `idl/`, `docs/PROGRAM.md`. Layer 2 (SHOULD): `/api/v1` read-only (`/pools/{a}`, `/members`, `/results`, `/schedule`, `/board`, `/career/{wallet}`), CORS GET, 60/min/IP, edge-cached 30s, `source: "on-chain"`, `asOfSlot`; `docs/API.md`. Layer 3 (STRETCH): `@commishfun/sdk`. Not v1: webhooks, keys, write proxies.
+## 18. X linking + leaderboard (SHOULD)
+Supabase Auth X provider → server reads `x_user_id`/`user_name` from the JWT → single-use 5-minute nonce → wallet signs `commish.fun link\nx:{id}\nwallet:{pubkey}\nnonce:{nonce}` → server verifies JWT + nonce + ed25519 → `x_links` (one-to-one). Unlink/opt-in endpoints. Never store X tokens; never post for the user. Fallback: self-declared handle, no badge, off the board. `/board` from the `board` view; rank best_run → pools_won → usdc_won; no wallet addresses; rows link to proof.
 
 ---
 
 ## 19. Legal framework and compliance controls
+*Research summary for a Texas-resident founder; not legal advice. Retain a Texas gaming attorney before any fee is set above zero, and before launching Commish Pro.*
 
-*Research summary prepared for a Texas-resident founder; it is not legal advice. Retain a Texas gaming attorney before launch and before any fee is ever set above zero. Primary sources were consulted via published summaries; cite-check them with counsel.*
+### 19.1 Texas (Penal Code ch. 47)
+- **§47.01 "bet"** excludes prizes to *actual contestants* in a bona fide contest of skill — pool players are not the NFL's contestants, so that exclusion does not apply.
+- **§47.02** makes betting on a contest's result an offense (Class C for participants), with the **§47.02(b) defense**: (1) a *private place*; (2) *no person receives economic benefit other than personal winnings*; (3) equal chances but for skill or luck. Prongs (2) and (3) are fully in Commish's control; "private place" online is untested.
+- **§47.03 gambling promotion** (Class A) covers one who "for gain, becomes a custodian of anything of value bet." **This is the operator risk; any platform gain tied to a Texas real-money pot is the danger zone.**
+- **AG Opinion KP-0057 (2016):** paid daily fantasy likely illegal; **traditional season-long fantasy leagues where the house takes no cut fall within the §47.02(b) defense**. FanDuel exited Texas in a 2016 settlement and returned in 2023; DraftKings sued and no court resolved it; HB 2303 (2019) passed the House 116–26 and died in the Senate; nothing passed in 2025; sports betting needs a constitutional amendment (2027+ at the earliest).
+- **Practical enforcement:** office pools are technically illegal and effectively never prosecuted when nobody profits from running them.
 
-### 19.1 Texas gambling law (Penal Code Chapter 47)
-- **§47.01 "bet"** = an agreement to win or lose something of value solely or partially by chance. Excluded: "an offer of a prize, award, or compensation to the actual contestants in a bona fide contest for the determination of skill, speed, strength, or endurance." Pool players are not the *actual contestants* of the NFL game, so this exclusion does not rescue pools or fantasy (the AG relied on exactly this point).
-- **§47.02 gambling** — making a bet on the result of a game or contest is an offense (Class C misdemeanor for participants). **Defense §47.02(b):** (1) gambling in a *private place*; (2) *no person received any economic benefit other than personal winnings*; (3) except for skill or luck, risks and chances were the same for all participants. "Private place" = a place the public does not have access to (streets, restaurants, bars, hotel common areas, etc. excluded). Whether an invite-only online pool is a "private place" is unsettled; the defense's other two prongs are fully within Commish's control.
-- **§47.03 gambling promotion** (Class A misdemeanor) — includes one who "for gain, becomes a custodian of anything of value bet or offered to be bet," or operates or participates in the earnings of a gambling place. **This is the operator-side risk. Any platform gain tied to a Texas real-money pool is the danger zone.**
-- **AG Opinion KP-0057 (Jan 2016):** paid daily fantasy is likely illegal gambling; traditional leagues where "the house takes no cut" fall within the §47.02(b) defense; the operative sentence: *"it is prohibited gambling in Texas if you bet on the performance of a participant in a sporting event and the house takes a cut."* FanDuel exited Texas under a 2016 settlement and returned in 2023; DraftKings sued and the matter was never resolved by a court; the industry operates in Texas under a skill-game theory without a statute. **HB 2303 (2019)** would have excluded fantasy contests from "bet"; it passed the House 116–26 and died in the Senate. **No fantasy or sports-betting statute passed in the 2025 session**; sports betting requires a constitutional amendment and is realistically 2027–2029 at the earliest.
-- **Practical enforcement:** office pools are technically illegal and virtually never prosecuted when nobody profits from running them. The exposure concentrates on an *operator that profits*.
-
-### 19.2 What this means for each mode (Texas)
-- **Survivor, Loser, Pick'em, Confidence, Pick-3, Team Draft, Squares, Bracket:** pools on game outcomes. Defensible for participants under §47.02(b) **only if nobody — including Commish — takes economic benefit** from the pool. Skill-weighting (Confidence, Pick'em) helps the narrative, not the statute. Squares is pure chance and has the weakest posture; treat it as strictly no-benefit.
-- **Fantasy modes (One & Done, Showdown, Sleeper treasurer):** same Texas analysis (no statute; adverse AG opinion on paid fantasy with a house cut), but see §19.3 for why they are federally stronger.
-- **Spread/odds-based modes:** sports-betting-adjacent; Texas prohibits sports betting; excluded outright.
-- **Charity split:** a third party receiving part of the pot may defeat prong (2); excluded pending counsel.
+### 19.2 Mode-by-mode posture
+- **League Treasurer is the strongest position in the product** — it is exactly the "traditional fantasy league" the AG described, with no house cut, among people who know each other.
+- **Survivor / Loser / Pick'em / Confidence / Pick-3 / Team Draft / Squares / Bracket:** pools on game outcomes, defensible for participants under §47.02(b) **only while nobody, including Commish, takes economic benefit**. Squares (pure chance) is the weakest; keep it strictly no-benefit.
+- **Excluded:** spread/odds modes (sports-betting-adjacent, illegal in Texas), Player-of-the-Week (outside the federal fantasy carve-out), charity splits (a third party taking part of the pot may defeat prong 2).
 
 ### 19.3 Federal overlay
-- **UIGEA (31 U.S.C. §5362):** applies to businesses accepting payments for *unlawful* Internet gambling (unlawful under the applicable state law). Its **fantasy carve-out** requires outcomes that reflect participants' knowledge and skill, are determined predominantly by accumulated statistics of *individuals* across *multiple* real-world events, and are **not** determined by the score or performance of any single real-world team (or combination of teams) nor solely by a single athlete's performance in a single event. → Survivor/Pick'em (team outcomes) are **not** fantasy under UIGEA; One & Done and Showdown **are** (many players, many games); Player-of-the-Week is not.
-- **Illegal Gambling Business Act (18 U.S.C. §1955):** requires a violation of state law *plus* five or more persons conducting the business *plus* 30 days or $2,000/day. Operator-directed; the no-benefit posture is the mitigation.
-- **Wire Act:** limited to sports "bets or wagers" (First Circuit, 2021) and to those "engaged in the business of betting or wagering." A platform with no stake in outcomes and no rake has the strongest available position; not immunity.
-- **Money transmission:** under the Texas Money Services Modernization Act (2023) and revised Supervisory Memorandum 1037 (Jan 2025), **fiat-pegged stablecoins such as USDC are "money"**; receiving them for transmission or holding them for others can require a license, while software that never takes control of funds generally does not. FinCEN's 2019 guidance likewise treats non-custodial software and DApp developers as outside money transmission unless they themselves conduct it. → Commish's program must be **genuinely non-custodial**: no admin withdrawal path, no ability to move pool funds, and an upgrade-authority plan that removes the founder's unilateral control (§9.5). Document this in `docs/LEGAL.md`; get a DOB read from counsel before Season 2.
-- **Sanctions/AML:** USDC is freezable by its issuer; Commish should not transact with sanctioned wallets. Add a wallet-screening check (free tier of a screening API) at join for paid pools when feasible (SHOULD, post-hackathon).
+**UIGEA (31 U.S.C. §5362)** applies to businesses accepting payments for gambling *unlawful under state law*; its fantasy carve-out requires outcomes from accumulated statistics of multiple individuals across multiple real events, not the score of any single team and not one athlete in one game → season-long fantasy leagues and One & Done qualify; Survivor and Pick'em do not (they are pools, not fantasy). **IGBA (18 U.S.C. §1955)** needs a state-law violation plus five people and 30 days/$2,000 — operator-directed; the no-benefit posture is the mitigation. **Wire Act** is limited to sports betting by those "engaged in the business of betting or wagering" (First Circuit, 2021). **Money transmission:** Texas's Money Services Modernization Act and revised Supervisory Memo 1037 (Jan 2025) treat fiat-pegged stablecoins like USDC as money; holding others' funds can require a license, while software that never takes control generally does not — matching FinCEN's 2019 guidance on non-custodial software and DApp developers. **Therefore the non-custodial construction in §10.2/§10.5 is a legal requirement, not an aesthetic**: no admin withdrawal path, and a credible plan to remove unilateral upgrade authority.
 
-### 19.4 The operating posture (FINAL for Season 1)
-1. **Zero economic benefit from real-money pools.** No rake, no pot fee, no creation fee, no sponsor money tied to pot size. Program fields exist at zero.
-2. **Non-custodial by construction**, with a published path to multisig and immutability.
-3. **Private pools only**, link-gated, no directory, no public matchmaking, no promotion of specific pools.
-4. **No betting language, no odds, no lines**, anywhere in product or marketing.
-5. **$0 pools everywhere**; real-money pools only for eligible users (§19.6).
-6. **Transparency:** `/trust` states all of the above in plain English; `docs/LEGAL.md` records the analysis.
-7. **Entity:** form an LLC before launch (Texas or Delaware) and operate the domain, accounts, and program authority through it.
-8. **Counsel:** Texas gaming attorney review of this section, the terms, and the Commish Pro question before launch; state-by-state review before any fee > 0 anywhere.
+### 19.4 Operating posture (FINAL for Season 1)
+Zero economic benefit from real-money pools · non-custodial by construction with a published path to multisig and immutability · private link-only pools, no directory or matchmaking · no betting language, odds, or lines anywhere · $0 pools available everywhere · full transparency on `/trust` and in `docs/LEGAL.md` · **no pool money ever touches a token (§3.1)**.
 
-### 19.5 Age and state eligibility policy
-- Minimum age 18 (industry norm in Texas for fantasy/pool products), 19 in Alabama and Nebraska, 21 in Arizona, Iowa, Massachusetts, and wherever local law requires; the higher of user-state rule and 18 applies.
-- **Restricted-state list for real-money pools** (mirrors where established pool/fantasy operators do not offer paid contests; keep as `restricted-states.json`, reviewed by counsel): Washington, Montana, Idaho, Nevada, Hawaii, plus the pool-format exclusions used by incumbents: Connecticut, Delaware, Iowa, Louisiana, Mississippi, Pennsylvania, Tennessee (and non-US jurisdictions by default). Texas is **allowed for participants** (no fees, private pools) under this posture; counsel confirms.
+### 19.5 Age and state eligibility
+18+ (19 in AL/NE; 21 in AZ/IA/MA and wherever local law requires — the higher of the local rule and 18). **Restricted-state list for real-money pools** (`restricted-states.json`, counsel-reviewed, mirroring where incumbents withhold paid contests): WA, MT, ID, NV, HI, plus format exclusions used by pool operators: CT, DE, IA, LA, MS, PA, TN; non-US excluded by default. Texas participants are allowed under this posture (no fees, private contests).
 
-### 19.6 Compliance controls (MUST — they ship with the first paid pool)
-1. **EligibilityGate** on CREATE and JOIN for any pool with `buy_in > 0`: age attestation ("I am 18+ / the legal age where I live"), state selection, and a **server-side geo check** using the host's region headers (`x-vercel-ip-country` / `-country-region`) or an IP-geo service; mismatch or restricted state → blocked for paid pools with a clear message and the $0 alternative offered. Record in `attestations` (server-only).
-2. **Terms of Service, Privacy Policy, Responsible Play page** with a self-exclusion list (wallet-level; excluded wallets cannot join paid pools). Link all three from the footer and the join sheet.
-3. **`/trust` legal block:** no fees, non-custodial, private pools, participant responsibility for local law, age policy.
-4. **No promotional pool listings**, no "featured pools," no odds, no "bet" language (lint the copy).
-5. **Commissioner acknowledgment** at pool creation: private group, members known to them, no rake taken by anyone, local law is their responsibility.
-6. **Record-keeping:** attestations and pool events retained; on-chain history is the audit trail.
-7. **Fee switch governance:** `update_config` fee defaults may only be raised after written counsel sign-off per state and after the geo gate maps fee eligibility by state; new pools show the fee before creation and joining; existing pools are never affected.
+### 19.6 Compliance controls (MUST — ship with the first paid pool)
+1. **EligibilityGate** on CREATE and JOIN when `buy_in > 0`: age attestation, state selection, **server-side geo check** (`x-vercel-ip-country` / `-country-region` or IP-geo); mismatch or restricted state → paid pools blocked with a clear message and the $0 alternative offered. Logged to `attestations` (server-only).
+2. **Terms, Privacy, Responsible Play** pages with wallet-level self-exclusion (excluded wallets cannot join paid pools); linked from the footer and every join sheet.
+3. **`/trust` legal block:** no fees, non-custodial, private pools, participant responsibility, age policy.
+4. **No promotional listings**, no featured pools, no odds; a copy lint fails the build on "bet/wager/odds/book."
+5. **Commissioner acknowledgment** at creation: private group, members known personally, no rake by anyone, local law is their responsibility.
+6. **Record-keeping:** attestations retained; on-chain history is the audit trail.
+7. **Fee-switch governance:** fee defaults may rise only after written counsel sign-off per state and after the geo gate maps fee eligibility; new pools display fees before creation and joining; existing pools never change.
+8. **Demand triggers for the legal/entity work** (the founder's stated sequencing — deferred until demand is proven, then done immediately): form the LLC and retain counsel the same week any one of these first occurs — 100 pools created · 1,000 members · $25,000 cumulative escrowed · the first request to pay for a feature · any press or partnership inquiry.
 
-### 19.7 Residual risks, stated plainly
-Online "private place" is untested in Texas; the Commish Pro subscription's interaction with §47.03 needs counsel; the industry's Texas fantasy posture rests on an unresolved dispute; a Texas resident operating a national product should expect the strictest applicable state to govern its behavior. The mitigations above are the strongest available posture short of a state-licensed fantasy operation, which is a Season 2+ decision.
+### 19.7 Residual risks
+"Private place" online is untested in Texas. Commish Pro's interaction with §47.03 needs counsel. The industry's Texas fantasy posture rests on an unresolved dispute. A Texas resident operating a national product should behave as if the strictest applicable state governs. Until the LLC exists, the founder is operating personally — low risk at zero profit with private pools, not zero risk.
 
 ---
 
-## 20. Security and ops
-`.env*` gitignored from commit one; browser Helius key domain-restricted; server keys only in the host's secrets UI; strict CSP; pinned deps; ESPN server-side only; rate limits on `/api/link`, `/api/v1`, attestations; Cloudflare Full (strict), Always HTTPS, min TLS 1.2, DNSSEC, DMARC reject, HSTS on launch day; analytics never see wallets. **Resilience promise:** `docs/MANUAL-CLAIM.md` shows claiming/refunding with the CLI against the public IDL if the site is gone. Abuse cases: fake results → veto; ghosting → permissionless crank + deadman; server down → nothing on-chain depends on it; duplicate wallets → one Member per wallet; pick front-running → hidden until lock, commit-reveal STRETCH.
+## 20. Integration API, security, operations
+**API:** Layer 1 (MUST) — IDL on-chain + `idl/`, `docs/PROGRAM.md`. Layer 2 (SHOULD) — `/api/v1` read-only: `/pools/{a}`, `/members`, `/results`, **`/prizes`**, `/schedule`, `/board`, `/career/{wallet}`; CORS GET; 60/min/IP; edge-cached 30s; `source: "on-chain"` + `asOfSlot`; `docs/API.md`. Layer 3 (STRETCH) — `@commishfun/sdk`. Not v1: webhooks, API keys, write proxies.
+**Security/ops:** `.env*` gitignored from commit one; browser Helius key domain-restricted; server secrets only in the host's dashboard; strict CSP; pinned deps; ESPN server-side only; rate limits on `/api/link`, `/api/v1`, attestations; Cloudflare Full (strict), Always HTTPS, min TLS 1.2, DNSSEC, DMARC reject, HSTS on launch day; analytics never see wallets.
+**Resilience promise:** `docs/MANUAL-CLAIM.md` shows how to claim a pot, claim a prize slot, or reclaim dues with the CLI against the public IDL if commish.fun disappears entirely. Write it on day 6; it is the strongest trust artifact the product has.
+**Abuse cases:** fake results or a self-dealing payout sheet → member veto; commissioner ghosts → permissionless cranks + deadman refund; server down → nothing on-chain depends on it; duplicate wallets → one Member per wallet; pick front-running → hidden in UI until lock (commit-reveal STRETCH); typo'd payouts → impossible, assignees must be existing members.
 
 ---
 
 ## 21. Build order (critical path; each step ships a working slice)
 
-**Slice A — the money is safe (program):** state/errors/events → `init_config`, `create_pool`, `join_pool`, `sponsor_join` (+tests) → `submit_pick`, `submit_pick_mask` (+all rejection tests) → **founder review of every token-moving line** → `post_results`, `veto`, `finalize`, `settle_member` (survivor + loser + pick'em rules), `advance_week` (+boundary tests) → `claim_pot`, `claim_weekly`, `reclaim_dues`, `close_*` (+fee/cap/$0 tests) → devnet deploy, `anchor idl init`, commit IDL.
+**Slice A — the money is safe (program).** state/errors/events → `init_config`, `create_pool` (both shapes, prize-split validation), `join_pool`, `sponsor_join` (+tests) → `submit_pick`/`submit_pick_mask` (+all rejection tests) → **founder reviews every token-moving line** → `post_results`, `veto_results`, `finalize_week`, `settle_member` **built as the mode kit from day one: a `match pool_type` dispatch with P0 arms filled and P1/P2 arms stubbed to `err!(ModeNotEnabled)`** → `advance_week` (+boundary tests) → **league path: `lock_dues`, `post_payout_sheet`, `finalize_sheet`, `claim_prize` (+all league tests)** → `claim_pot`, `reclaim_dues`, `close_*` → devnet deploy, `anchor idl init`, commit IDL.
 
-**Slice B — one pool end to end (app):** scaffold, tokens, fonts, PWA, wallet adapter, `teams.json`, schedule script → `/new` with ModePicker → `/p/[pool]` hub (wallet-less) → JOIN with **EligibilityGate** + TxSheet → `/pick` (TeamGrid for survivor/loser; GamePicker for pick'em) → Supabase schema + indexer + results jobs → `/commish` with CONFIRM/pushes/SETTLE → `/claim` → **three-wallet devnet loop across survivor, loser, pick'em; deadman on a spare pool.**
+**Slice B — both doors end to end (app).** Scaffold, tokens, fonts, PWA, wallet adapter, `teams.json`, schedule script → `/new` with ModePicker + **PrizeSplitEditor** → `/p/[pool]` hub (wallet-less; both shapes) → JOIN with EligibilityGate + TxSheet → `/pick` **rendering `PICK_CONTROLS[pool_type]` from a registry, not a conditional chain** → Supabase + indexer + results jobs → `/commish` (CONFIRM/pushes/SETTLE **and PayoutSheetBuilder**) → `/claim` (pot **and prize slots**) → **three-wallet devnet loop for Survivor *and* for a 10-team league (create → join ×3 → lock dues → partial sheet → veto → re-post → finalize → claim → final sheet → Settled), plus deadman on a spare pool.**
 
-**Slice C — it feels like a product:** OnboardingSheet, Countdown + .ics, PickPopularity, StatusBanner states, empty/error states, `/rules`, `/trust` (with §19 language), `/terms`, `/privacy`, `/responsible-play` + self-exclusion, `/me` + career card, season board, RecapBanner, OG ShareCard, laces progress, push reminders.
+**Slice B2 — fill the mode kit (P1).** Pick'em: `GamePicker` + popcount scoring + weekly-share payout + StandingsTable. Confidence: `ConfidenceRanker` + rank scoring (reuses Pick'em's standings and weekly share). Each is one Rust arm, one component, one results view — and each gets the same rejection tests as Survivor before it counts as done. **Gate:** only start B2 once the Slice B loop is green for both P0 doors.
 
-**Slice D — the world can see it:** X linking + `/board`; `/api/v1` + docs (`API.md`, `PROGRAM.md`, `MANUAL-CLAIM.md`, `LEGAL.md`); Confidence (then Pick-3, Team Draft) if time; mainnet deploy runbook (build → test → deploy → idl init → env → app → Cloudflare CNAME → Helius domain restriction → HSTS); founder's league as pool #1; backup demo video; security pass; submission writeup; launch thread.
+**Slice C — it feels like a product.** OnboardingSheet, Countdown/.ics, PickPopularity, StatusBanner + DisputeBanner states, empty/error states, `/rules`, `/trust`, `/terms`, `/privacy`, `/responsible-play` + self-exclusion, `/me` + career card, season board, RecapBanner, OG ShareCard, laces progress, push reminders, the dues-progress screenshot card.
 
-Calendar: A = days 1–2 · B = days 2–4 · C = day 5 · D = day 6 · day 7 = buffer/polish · Sept 10 = submit + kickoff launch.
+**Slice C2 — P2 modes, only if C finished early.** Team Draft (`DraftBoard`, snake order, `draft_team`, popcount-of-owned scoring) then Pick-3 Jackpot (3-bit pick, rollover accrual). Same done-bar: rejection tests, a devnet run, a results view.
+
+**Slice D — the world can see it.** X linking + `/board`; `/api/v1` + `docs/{API,PROGRAM,MANUAL-CLAIM,LEGAL}.md`; mainnet runbook (build → test → deploy → idl init → env → app → Cloudflare CNAME → Helius domain restriction → HSTS); **the founder's real league onboarded as league #1 and his own Survivor pool as pool #1**; backup demo video; security pass; submission writeup; launch thread.
+
+Calendar: A = days 1–2 · B = days 2–4 · B2 = day 4 evening–5 · C = day 5 · C2 = day 6 morning if clear · D = day 6 · day 7 = buffer/polish · Sept 10 = submit + launch at kickoff. **P3 modes (bracket, Squares) are deliberately post-launch**; they are playoff products and January is their moment.
 
 ## 22. QA (before mainnet)
-All §9.5 tests green; fake mint and double claim rejected; a no-wallet friend joins a $0 pool from a phone in < 5 min; EligibilityGate blocks a restricted-state paid join and allows $0; every pool state renders without a wallet; lock enforced ±1s; push survives and consumes; veto majority clears; SETTLE from a non-commissioner wallet; claim pays exactly; fee = 0; deadman works; manual claim works with the site offline; pick'em weekly share pays the top scorer; OG renders on X/iMessage; PWA installs; push arrives; Lighthouse perf ≥ 90 mobile, a11y ≥ 95; copy lint finds no "bet/wager/odds."
+All §10.5 tests green; fake mint and double claim rejected · a no-wallet friend joins a $0 pool from a phone in under five minutes using only the OnboardingSheet · EligibilityGate blocks a restricted-state paid join and allows $0 · every pool and league state renders without a wallet · lock enforced ±1s · push survives and consumes the team · veto majority clears a bad posting *and* a bad payout sheet · SETTLE works from a non-commissioner wallet · claim pays exactly; fees are 0 · **league: prize split must total 100% to create; dollar amounts on the league page match `total_dues × bps`; a sheet naming a non-member is rejected; a second sheet pays the remaining slots; Settled fires only when `claimed_bps == 10000`** · **every shipped mode has: its own rejection tests, one full devnet run from create to claim, a correct results view, and a `ModeNotEnabled` error for every mode not shipped (no half-built mode is reachable in the UI)** · deadman refund works on an abandoned pool and an abandoned league · manual claim works with the site offline · OG renders on X/iMessage · PWA installs · push arrives · Lighthouse perf ≥90 mobile, a11y ≥95 · copy lint finds no "bet/wager/odds."
 
 ## 23. Copy bank (no em dashes in social copy; never "bet")
-Tagline · mechanics ("Buy-ins escrowed on-chain · Picks locked at kickoff · Last one standing takes the pot") · trust line · lock line ("No 'I definitely picked the Bills' texts on Monday.") · S1 line ("100% of the buy-ins go to the winner. Commish takes nothing.") · TxSheet join ("Locks {amount} USDC in this pool's vault. Only the winner can take it out. If the pool is ever abandoned, you can reclaim your share.") · TxSheet pick ("Locks in {TEAM} for Week {n}. You can change it until kickoff.") · sponsor ("You're covering {name}'s seat ({amount} USDC). Settle up however you like; the pot stays on-chain.") · OUT ("{name} took the {TEAM}. The {TEAM} did not cooperate.") · push ("{TEAM}'s game was cancelled. Everyone on {TEAM} survives.") · empty ("No picks yet. Lock is in {countdown}.") · reminder ("Picks lock in 3 hours. You haven't picked.") · eligibility ("Real-money pools aren't available where you are. You can still play this pool for free.") · X bio ("Your Survivor pool, out of that one guy's Venmo. Buy-ins escrowed on-chain, picks locked at kickoff, last one standing takes the pot. Built on Solana. 🏈").
+Taglines (§2) · mechanics ("Dues escrowed on-chain · Prizes fixed before anyone pays · Winners claim straight from the vault") · trust line · lock line ("No 'I definitely picked the Bills' texts on Monday.") · no-cut ("100% of the dues go to the league. Commish takes nothing.")
+TxSheet join (pool): "Locks {amount} USDC in this pool's vault. Only the winner can take it out. If the pool is ever abandoned, you can reclaim your share."
+TxSheet join (league): "Locks {amount} USDC of league dues in the vault. Payouts follow the split you can see above. If the league is ever abandoned, you can reclaim your share."
+TxSheet pick: "Locks in {TEAM} for Week {n}. You can change it until kickoff."
+Sponsor: "You're covering {name}'s seat ({amount} USDC). Settle up however you like; the pot stays on-chain."
+Payout sheet: "You're assigning {slot} ({pct}%, {amount} USDC) to {team}. Your league gets 24 hours to dispute it before anyone can claim."
+Dispute banner: "{commissioner} posted the payouts. Anything wrong? Your league has {countdown} to flag it."
+OUT: "{name} took the {TEAM}. The {TEAM} did not cooperate." · Push: "{TEAM}'s game was cancelled. Everyone on {TEAM} survives."
+Empty: "No picks yet. Lock is in {countdown}." / "Dues close in {countdown}. {n} of {m} teams are in."
+Reminder: "Picks lock in 3 hours. You haven't picked."
+Eligibility: "Real-money pools aren't available where you are. You can still play this pool for free."
+X bio: "Your league's money, out of that one guy's Venmo. Dues escrowed on-chain, prizes fixed up front, winners claim from the vault. Built on Solana. 🏈"
 
 ## 24. Demo and launch
-~90s: the Cash App story → create a pool live (mode picker shown) → two phones join, one sponsored, one through the eligibility gate → picks with notes → lock → demo-flag pool: CONFIRM a real historical week → SETTLE → OUT stamp; survivor claims in gold → "Results anyone can veto, a pot nobody can strand, picks nobody can backdate, and Commish takes nothing. Week 1 locks Thursday." Launch: @Commishfun banner thread at kickoff; founder's personal account posts the story version; README checklist = build-in-public thread.
+**~90 seconds:** "Every year I send $20 to my buddy's Cash App and trust him for five months. Here's the version where nobody has to." → create a **league** live: name, $20 dues, 1st/2nd/3rd split, invite link → two phones join with team names, one sponsored → the vault fills, shown on the explorer → post the payout sheet, dispute window ticking → veto shown as possible, then finalize → a phone claims first place in gold. → Then, fast: the Survivor pool, picks locked at kickoff, a real historical week confirmed, an OUT stamp. → "Prizes nobody can change, money nobody can move, results anyone can dispute. Commish takes nothing. Week 1 locks Thursday, and every league in America is collecting dues right now."
+**Launch:** @Commishfun posts the banner thread at kickoff; the founder's personal account posts the Cash App story; the README build checklist becomes the build-in-public thread.
 
 ## 25. Founder context
-Solo founder (Texas); also runs HoldFlow (Solana escrow PDAs, holder snapshots, payout engines, Supabase). Money-code review is in experienced hands. Form the LLC and retain counsel in parallel with the build; nothing in §19 blocks the hackathon build, everything in §19.6 ships with it.
+Solo founder (Texas); also runs HoldFlow (Solana creator-fee distribution: escrow PDAs, holder snapshots, payout engines, Supabase). Money-code review is in experienced hands. Entity and counsel are deliberately deferred until a §19.6.8 demand trigger fires; every control that makes that deferral safe ships in the build. First repo commit inside the hackathon window.
