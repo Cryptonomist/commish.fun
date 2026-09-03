@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+/* ── The Pigskin system ───────────────────────────────────────────────────────
+   Every colour Commish is allowed to use, and the one rule that governs them:
+   ORANGE is the brand. GOLD is the money — pot amounts, payouts, and nothing
+   else. Break that and the card stops meaning anything.
+
+   Tailwind v4 reads these straight out of @theme, so `bg-night`, `text-leather`
+   and `font-display` exist as utilities with no config file. */
+@theme {
+  --color-night: #120d0a;      /* ground */
+  --color-night-2: #1d1310;    /* raised surfaces, cards, inputs */
+  --color-night-3: #2a1c17;    /* hairlines, borders */
+  --color-cream: #f6efe2;      /* type */
+  --color-cream-dim: #a89a88;  /* secondary type */
+  --color-leather: #ff5c1b;    /* brand, links, CTAs */
+  --color-leather-hi: #ff7a45; /* hover */
+  --color-gold: #e9c258;       /* MONEY ONLY */
+  --color-alive: #35c97a;      /* still in */
+  --color-out: #e5484d;        /* eliminated */
+
+  --font-display: var(--font-anton), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Anton is a display face: it is all caps in practice and needs air between
+   letters at large sizes or it reads as a wall. */
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.015em;
+  line-height: 0.92;
+}
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-night);
+  color: var(--color-cream);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The stadium-at-night ground: a warm pool of light from above, the way a
+   field looks under floods. Flat #120D0A reads as unconsidered. */
+.field-ground {
+  background:
+    radial-gradient(70% 55% at 50% -10%, rgba(255, 92, 27, 0.13), transparent 70%),
+    radial-gradient(50% 40% at 85% 15%, rgba(233, 194, 88, 0.06), transparent 70%),
+    var(--color-night);
+}
+
+/* Yard lines. Faint enough to feel like texture, not a table. */
+.yard-lines {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(246, 239, 226, 0.045) 0 1px,
+    transparent 1px 88px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* The wallet-adapter modal ships its own light-ish chrome; drag it onto the
+   Pigskin palette so connecting does not look like a different product. */
+.wallet-adapter-modal-wrapper {
+  background: var(--color-night-2) !important;
+  font-family: var(--font-sans) !important;
+}
+.wallet-adapter-modal-title { color: var(--color-cream) !important; }
+.wallet-adapter-modal-list li,
+.wallet-adapter-modal-list-more { color: var(--color-cream) !important; }
+.wallet-adapter-button {
+  font-family: var(--font-sans) !important;
+  font-weight: 700 !important;
+}
+
+/* The connect button ships in wallet-adapter purple (#512da8), which is the one
+   colour on the page that belongs to no brand at all. Drag it onto leather.
+   Restyled rather than rebuilt from useWallet() because the adapter's button
+   already handles connect / connecting / connected / copy-address / disconnect
+   and the wallet-not-installed case, and reimplementing that is a day of work
+   to arrive back where you started. */
+.wallet-adapter-button-trigger {
+  background-color: var(--color-leather) !important;
+  color: var(--color-night) !important;
+  border-radius: 0.75rem !important;
+  height: 2.75rem !important;
+  padding: 0 1.25rem !important;
+  font-size: 0.875rem !important;
+  letter-spacing: 0.02em;
+}
+.wallet-adapter-button-trigger:not([disabled]):hover {
+  background-color: var(--color-leather-hi) !important;
+}
+.wallet-adapter-dropdown-list {
+  background: var(--color-night-2) !important;
+  border: 1px solid var(--color-night-3);
+}
+.wallet-adapter-dropdown-list-item:not([disabled]):hover {
+  background-color: var(--color-night-3) !important;
+}
+.wallet-adapter-modal-button-close {
+  background: var(--color-night-3) !important;
+}

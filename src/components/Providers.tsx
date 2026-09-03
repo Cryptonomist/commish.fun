@@ -1,0 +1,57 @@
+"use client";
+
+/* Every client-side provider the app needs, in one place, mounted once in the
+ * root layout.
+ *
+ * WALLETS: the `wallets` array is deliberately EMPTY. Phantom, Solflare,
+ * Backpack and the rest register themselves through the Wallet Standard, so
+ * wallet-adapter discovers them without us importing a 2MB adapter bundle and
+ * without us deciding which wallets a person is allowed to use. Only add an
+ * explicit adapter here for a wallet that does NOT implement the standard.
+ *
+ * RPC: NEXT_PUBLIC_RPC_URL is a Helius endpoint restricted to the commish.fun
+ * domain in the Helius dashboard. It is public by nature — it ships in the
+ * browser bundle — so the domain restriction is what protects it, not secrecy.
+ * Never put a server-side key in a NEXT_PUBLIC_ variable.
+ */
+
+import { useMemo, type ReactNode } from "react";
+import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { clusterApiUrl } from "@solana/web3.js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import "@solana/wallet-adapter-react-ui/styles.css";
+
+export function Providers({ children }: { children: ReactNode }) {
+  const endpoint = useMemo(
+    () => process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl("devnet"),
+    [],
+  );
+
+  // One client for the app's lifetime. Created in a ref-like memo so a re-render
+  // never throws away the cache.
+  const queryClient = useMemo(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 30_000,
+            refetchOnWindowFocus: false,
+            retry: 1,
+          },
+        },
+      }),
+    [],
+  );
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ConnectionProvider endpoint={endpoint}>
+        <WalletProvider wallets={[]} autoConnect>
+          <WalletModalProvider>{children}</WalletModalProvider>
+        </WalletProvider>
+      </ConnectionProvider>
+    </QueryClientProvider>
+  );
+}

@@ -1,0 +1,23 @@
+[package]
+name = "commish"
+version = "0.1.0"
+description = "Escrow for NFL Survivor pools and league dues"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "commish"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+# Swap the canonical USDC mint for the devnet one. Enabled by the devnet build.
+devnet = []
+
+[dependencies]
+anchor-lang = { version = "1.1.2", features = ["init-if-needed"] }
+anchor-spl = "1.1.2"
