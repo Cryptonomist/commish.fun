@@ -1117,7 +1117,7 @@ pub struct CreatePool<'info> {
         seeds = [SEED_POOL, commissioner.key().as_ref(), &nonce.to_le_bytes()],
         bump
     )]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(mut)]
     pub commissioner: Signer<'info>,
     pub usdc_mint: Account<'info, Mint>,
@@ -1139,7 +1139,7 @@ pub struct CreatePool<'info> {
 #[derive(Accounts)]
 pub struct JoinPool<'info> {
     #[account(mut)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(
         init,
         payer = wallet,
@@ -1162,7 +1162,7 @@ pub struct JoinPool<'info> {
 #[instruction(wallet: Pubkey)]
 pub struct SponsorJoin<'info> {
     #[account(mut, has_one = commissioner)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(
         init,
         payer = commissioner,
@@ -1183,7 +1183,7 @@ pub struct SponsorJoin<'info> {
 
 #[derive(Accounts)]
 pub struct SubmitPick<'info> {
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(
         mut,
         seeds = [SEED_MEMBER, pool.key().as_ref(), wallet.key().as_ref()],
@@ -1197,14 +1197,14 @@ pub struct SubmitPick<'info> {
 #[derive(Accounts)]
 pub struct PostResults<'info> {
     #[account(mut, has_one = commissioner)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     pub commissioner: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct VetoResults<'info> {
     #[account(mut)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(
         mut,
         seeds = [SEED_MEMBER, pool.key().as_ref(), wallet.key().as_ref()],
@@ -1220,13 +1220,13 @@ pub struct VetoResults<'info> {
 #[derive(Accounts)]
 pub struct CrankPool<'info> {
     #[account(mut)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
 }
 
 #[derive(Accounts)]
 pub struct SettleMember<'info> {
     #[account(mut)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(
         mut,
         seeds = [SEED_MEMBER, pool.key().as_ref(), member.wallet.as_ref()],
@@ -1239,7 +1239,7 @@ pub struct SettleMember<'info> {
 #[derive(Accounts)]
 pub struct AdvanceWeek<'info> {
     #[account(mut)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(address = pool.vault @ CommishError::BadVault)]
     pub vault: Account<'info, TokenAccount>,
 }
@@ -1247,7 +1247,7 @@ pub struct AdvanceWeek<'info> {
 #[derive(Accounts)]
 pub struct ClaimPot<'info> {
     #[account(mut)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(
         mut,
         seeds = [SEED_MEMBER, pool.key().as_ref(), wallet.key().as_ref()],
@@ -1270,7 +1270,7 @@ pub struct ClaimPot<'info> {
 #[derive(Accounts)]
 pub struct ReclaimDues<'info> {
     #[account(mut)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(
         mut,
         seeds = [SEED_MEMBER, pool.key().as_ref(), wallet.key().as_ref()],
@@ -1293,7 +1293,7 @@ pub struct ReclaimDues<'info> {
 #[derive(Accounts)]
 pub struct PostPayoutSheet<'info> {
     #[account(mut, has_one = commissioner)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     pub commissioner: Signer<'info>,
     // Assignee Member PDAs arrive as remaining_accounts, one per assignment.
 }
@@ -1301,7 +1301,7 @@ pub struct PostPayoutSheet<'info> {
 #[derive(Accounts)]
 pub struct ClaimPrize<'info> {
     #[account(mut)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     pub wallet: Signer<'info>,
     #[account(mut, address = pool.vault @ CommishError::BadVault)]
     pub vault: Account<'info, TokenAccount>,
@@ -1316,7 +1316,7 @@ pub struct ClaimPrize<'info> {
 
 #[derive(Accounts)]
 pub struct CloseMember<'info> {
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(
         mut,
         close = wallet,
