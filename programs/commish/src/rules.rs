@@ -58,6 +58,31 @@ pub fn survives(pool_type: u8, o: Outcome) -> Result<bool> {
     }
 }
 
+/// The platform's cut of a settled pool, capped.
+///
+/// Pulled out of `advance_week` because it is money arithmetic with a cap and
+/// an overflow path, and none of that should need a validator to check. The
+/// cast back to u64 is safe by construction: `bps <= BPS_DENOM`, so the product
+/// over BPS_DENOM can never exceed `vault_amount`.
+pub fn platform_fee(vault_amount: u64, fee_bps: u16, fee_cap: u64) -> Result<u64> {
+    if fee_bps == 0 {
+        return Ok(0);
+    }
+    let raw = (vault_amount as u128)
+        .checked_mul(fee_bps as u128)
+        .ok_or(CommishError::MathOverflow)?
+        / BPS_DENOM as u128;
+    Ok((raw as u64).min(fee_cap))
+}
+
+/// The shortest gap between two weekly locks that still leaves room to post
+/// results, wait out the dispute window, and finalize before the next lock.
+pub fn min_week_gap(dispute_window_secs: u32) -> Result<i64> {
+    MIN_POST_DELAY_SECS
+        .checked_add(dispute_window_secs as i64)
+        .ok_or(CommishError::MathOverflow.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -111,6 +136,43 @@ mod tests {
         for t in [POOL_PICKEM, POOL_CONFIDENCE, POOL_PICK3, POOL_TEAM_DRAFT, POOL_SQUARES, POOL_BRACKET] {
             assert!(survives(t, o(BUF, BUF, 0)).is_err(), "mode {t} must refuse");
         }
+    }
+
+    #[test]
+    fn season_one_takes_no_fee() {
+        assert_eq!(platform_fee(20_000_000, 0, 50_000_000).unwrap(), 0);
+    }
+
+    #[test]
+    fn the_fee_is_a_share_and_then_a_ceiling() {
+        // 250bps of 20 USDC, well under the cap.
+        assert_eq!(platform_fee(20_000_000, 250, 50_000_000).unwrap(), 500_000);
+        // 250bps of 40,000 USDC would be 1,000 USDC; the cap bites first.
+        assert_eq!(platform_fee(40_000_000_000, 250, 50_000_000).unwrap(), 50_000_000);
+    }
+
+    #[test]
+    fn the_fee_can_never_exceed_the_vault() {
+        // The cap is the whole point of the min(): a mis-set cap must not let
+        // the fee reach past what is actually in the vault.
+        for bps in [1u16, 250, 5_000, 10_000] {
+            let fee = platform_fee(1_000_000, bps, u64::MAX).unwrap();
+            assert!(fee <= 1_000_000, "bps {bps} produced {fee}");
+        }
+        assert_eq!(platform_fee(0, 10_000, u64::MAX).unwrap(), 0);
+    }
+
+    #[test]
+    fn a_week_must_outlast_its_own_dispute_window() {
+        // The default 48h window needs 51h between locks. A daily schedule
+        // cannot finalize a week before the next one locks.
+        assert_eq!(min_week_gap(48 * 60 * 60).unwrap(), 51 * 60 * 60);
+        assert!(min_week_gap(48 * 60 * 60).unwrap() > 24 * 60 * 60);
+
+        // And the 7-day maximum window needs longer than a real NFL week, so a
+        // pool asking for both is correctly refused rather than sold and stuck.
+        let seven_days = 7 * 24 * 60 * 60;
+        assert!(min_week_gap(seven_days as u32).unwrap() > seven_days);
     }
 
     #[test]

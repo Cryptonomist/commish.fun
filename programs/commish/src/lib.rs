@@ -186,8 +186,24 @@ pub mod commish {
             // Strictly increasing, and the first week this pool plays must not
             // have kicked off yet. A pool created after its own lock would take
             // buy-ins for a week nobody can pick.
+            /* Strictly increasing is not enough: a week has to leave room for
+             * its own result cycle. `post_results` cannot run until
+             * MIN_POST_DELAY_SECS after the lock, and `finalize_week` waits a
+             * further `dispute_window_secs` after that. If the next lock lands
+             * before finalization can happen, `advance_week` never runs, week
+             * N+1 opens already locked, every member misses a pick, and the
+             * pool is unplayable — after the buy-ins are collected.
+             *
+             * With the 7-day maximum dispute window this needs a gap longer
+             * than 171 hours, which is longer than a real NFL week. That is a
+             * true constraint, not an oversight: a pool wanting week-long
+             * disputes has to run a shorter schedule or a smaller window. */
+            let min_gap = rules::min_week_gap(dispute_window_secs)?;
             for w in 1..WEEKS {
-                require!(lock_ts[w] > lock_ts[w - 1], CommishError::BadSchedule);
+                let gap = lock_ts[w]
+                    .checked_sub(lock_ts[w - 1])
+                    .ok_or(CommishError::MathOverflow)?;
+                require!(gap > min_gap, CommishError::BadSchedule);
             }
             require!(
                 lock_ts[start_week as usize - 1] > now,
@@ -601,6 +617,8 @@ pub mod commish {
     /// Close the week: either the pool is decided, or it moves on.
     pub fn advance_week(ctx: Context<AdvanceWeek>) -> Result<()> {
         let vault_amount = ctx.accounts.vault.amount;
+        let (commissioner, nonce, bump) = ctx.accounts.pool.seed_parts();
+        let mut fee_to_pay: u64 = 0;
         let pool = &mut ctx.accounts.pool;
 
         require_eq!(pool.status, STATUS_FINALIZED, CommishError::NotFinalized);
@@ -630,18 +648,14 @@ pub mod commish {
             require!(winners_count > 0, CommishError::NotSettled);
             // The fee is computed once, here, off the vault as it stands, and
             // capped. Season 1 has fee_bps == 0, so this is zero.
-            let fee = if pool.fee_bps == 0 {
-                0u64
-            } else {
-                let raw = (vault_amount as u128)
-                    .checked_mul(pool.fee_bps as u128)
-                    .ok_or(CommishError::MathOverflow)?
-                    / BPS_DENOM as u128;
-                (raw as u64).min(pool.fee_cap)
-            };
+            let fee = rules::platform_fee(vault_amount, pool.fee_bps, pool.fee_cap)?;
             let payable = vault_amount
                 .checked_sub(fee)
                 .ok_or(CommishError::MathOverflow)?;
+            if fee > 0 && !pool.fee_paid {
+                fee_to_pay = fee;
+            }
+            pool.fee_paid = true;
             // Integer division. The dust stays in the vault rather than being
             // handed to whoever claims first.
             pool.pot_per_winner = payable / winners_count as u64;
@@ -665,6 +679,35 @@ pub mod commish {
                 week: pool.current_week,
                 alive_count: pool.alive_count,
             });
+        }
+
+        /* The fee moves here, and this is the fix to a real defect: every
+         * earlier version deducted it from the winners' pot and transferred it
+         * nowhere, leaving it as permanently unclaimable vault residue. It was
+         * invisible because season 1 runs at fee_bps == 0.
+         *
+         * `Pool::fee_paid` was declared from the first commit and never written
+         * by anything. A field that only ever holds its default is usually the
+         * fingerprint of an unwritten branch; this is what it was waiting for.
+         *
+         * Note this is the fee only. The division remainder in `pot_per_winner`
+         * still stays in the vault, deliberately — that is documented, bounded
+         * by `winners_count` micro-USDC, and not the same thing. */
+        if fee_to_pay > 0 {
+            let seeds: &[&[u8]] = &[SEED_POOL, commissioner.as_ref(), &nonce, &[bump]];
+            let signer: &[&[&[u8]]] = &[seeds];
+            transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.key(),
+                    Transfer {
+                        from: ctx.accounts.vault.to_account_info(),
+                        to: ctx.accounts.fee_treasury_ata.to_account_info(),
+                        authority: ctx.accounts.pool.to_account_info(),
+                    },
+                    signer,
+                ),
+                fee_to_pay,
+            )?;
         }
         Ok(())
     }
@@ -741,6 +784,28 @@ pub mod commish {
             require!(ctx.accounts.member.paid, CommishError::MemberNotPaid);
             require!(!ctx.accounts.member.claimed, CommishError::AlreadyClaimed);
             require!(pool.paid_members > 0, CommishError::NotAMember);
+
+            /* A finalized payout sheet leaves a league at STATUS_SHEET_FINALIZED,
+             * not STATUS_SETTLED — so the `!= STATUS_SETTLED` guard above lets
+             * this instruction run while prizes are still owed. Without this
+             * check the first member past the refund deadline splits the whole
+             * vault pro rata, and the assignee's `claim_prize` then pays
+             * `amount.min(vault.amount)` == 0 while still burning their slot.
+             *
+             * The deadman still has to work, or an assignee who never claims
+             * strands the vault forever. So the block expires: PRIZE_CLAIM_GRACE
+             * after the refund deadline the refund reopens and unclaimed prizes
+             * fall back into the pro-rata split. */
+            let outstanding = pool.prize_slots[..pool.slot_count as usize]
+                .iter()
+                .any(|s| s.state == SLOT_PENDING || s.state == SLOT_FINALIZED);
+            if outstanding {
+                let grace_ends = pool
+                    .refund_deadline_ts
+                    .checked_add(PRIZE_CLAIM_GRACE_SECS)
+                    .ok_or(CommishError::MathOverflow)?;
+                require!(now >= grace_ends, CommishError::RefundNotAvailable);
+            }
         }
 
         let pool = &mut ctx.accounts.pool;
@@ -1240,8 +1305,23 @@ pub struct SettleMember<'info> {
 pub struct AdvanceWeek<'info> {
     #[account(mut)]
     pub pool: Box<Account<'info, Pool>>,
-    #[account(address = pool.vault @ CommishError::BadVault)]
+    #[account(mut, address = pool.vault @ CommishError::BadVault)]
     pub vault: Account<'info, TokenAccount>,
+    /* The fee has a destination now. It is required on every call, including
+     * the ones that only roll the week forward and the ones where fee_bps is
+     * zero, because an Anchor account list is static — an account that is
+     * sometimes absent is an account that is sometimes unchecked.
+     *
+     * OPERATIONAL: this token account must exist before fees are switched on.
+     * With fee_bps == 0 nothing is transferred but the account is still
+     * deserialized, so a missing treasury ATA stops pools from settling. */
+    #[account(
+        mut,
+        constraint = fee_treasury_ata.owner == pool.fee_treasury @ CommishError::BadFeeTreasury,
+        constraint = fee_treasury_ata.mint == pool.usdc_mint @ CommishError::WrongMint
+    )]
+    pub fee_treasury_ata: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]

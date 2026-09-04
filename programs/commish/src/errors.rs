@@ -106,4 +106,6 @@ pub enum CommishError {
     MemberNotPaid,
     #[msg("The vault does not belong to this pool")]
     BadVault,
+    #[msg("That token account is not the pool's fee treasury")]
+    BadFeeTreasury,
 }

@@ -13,10 +13,19 @@ recipient:
 | `claim_pot` | a member who passes the winner test | pool is `Settled` |
 | `claim_prize` | the member assigned a finalized slot | slot state is `Finalized` |
 | `reclaim_dues` | any paid member, pro rata | past `refund_deadline_ts` |
-| platform fee | the treasury recorded at creation | computed once, capped, 0 in season 1 |
+| platform fee | the treasury recorded at creation | computed once at settlement, capped, 0 in season 1 |
 
 There is no admin withdrawal, no sweep, no "emergency" path. Grep for
-`Transfer {` — there are five call sites and every one is above.
+`Transfer {` — there are six call sites. Two move money *into* a vault
+(`join_pool`, `sponsor_join`); the other four are the table above.
+
+**This table was wrong until the fee transfer was written.** The fee was
+deducted from the winners' pot in `advance_week` and sent nowhere, so it sat in
+the vault as unclaimable residue and the fourth path did not exist. It was
+invisible because season 1 runs at `fee_bps == 0`. `Pool::fee_paid` had been
+declared since the first commit and never written by anything — that unused
+field was the fingerprint. Found by writing the LiteSVM suite at 250bps instead
+of at the default.
 
 ## Build and test
 
@@ -60,6 +69,44 @@ Adding Pick'em means: one arm in `rules`, one `PICK_CONTROLS` entry in the app,
 and a scoring line. It must not touch the vault, the veto, the refund or the
 claim path. If a mode seems to need that, it is a design error — stop.
 
+## Where the vault can be raced
+
+Two instructions can draw on the same vault without knowing about each other,
+and both cases are decided deliberately:
+
+**`claim_pot` vs `reclaim_dues` — cannot overlap.** `claim_pot` requires
+`Settled`; `reclaim_dues` refuses `Settled`. Mutually exclusive by construction,
+in every pick mode.
+
+**`claim_prize` vs `reclaim_dues` — could overlap, and did.** A finalized payout
+sheet leaves a league at `SheetFinalized`, not `Settled`, so the refund guard
+let it through. Past the refund deadline the first member to call
+`reclaim_dues` split the entire vault pro rata; the assignee's `claim_prize`
+then paid `amount.min(vault.amount)` == 0 and still burned the slot, and at
+10,000 claimed bps the pool flipped to `Settled`, closing the refund behind
+whoever moved first.
+
+`reclaim_dues` now refuses while any slot is `Pending` or `Finalized`. Because a
+winner who never claims would otherwise strand the vault forever, the block
+expires `PRIZE_CLAIM_GRACE_SECS` (30 days) after the refund deadline, at which
+point unclaimed prizes rejoin the pro-rata split. The deadman still always
+fires; it just waits its turn.
+
+## A week has to be long enough to play
+
+`post_results` cannot run until `MIN_POST_DELAY_SECS` (3h) after a lock, and
+`finalize_week` waits a further `dispute_window_secs`. If the next lock arrives
+before that finishes, `advance_week` never runs, the next week opens already
+locked, every member misses a pick and the pool is dead — after the buy-ins are
+collected. `create_pool` used to check only that locks were strictly increasing.
+
+It now requires `lock_ts[w] - lock_ts[w-1] > MIN_POST_DELAY_SECS +
+dispute_window_secs`. Note what that means at the extremes: the 7-day maximum
+dispute window needs more than 171 hours between locks, which is longer than a
+real NFL week. A pool wanting week-long disputes has to shorten its schedule or
+its window. That is a genuine constraint, and it is now refused at creation
+rather than sold and discovered in week two.
+
 ## Three decisions worth knowing
 
 **Pool is 1,614 bytes, not the 1,280 in the handoff.** The spec's own field list
@@ -86,7 +133,9 @@ path, atomic, no optional account.
   is refused, not repeated
 - one veto per member per posting; a **strict** majority clears it
 - `paused` blocks pool creation only, never a claim or a refund
-- integer division on splits; dust stays in the vault
+- integer division on splits; dust stays in the vault. This is deliberate and
+  is *not* the same as the fee bug above: dust is bounded by `winners_count`
+  micro-USDC — millionths of a dollar — while the fee scaled with the pot
 
 ## Before mainnet
 

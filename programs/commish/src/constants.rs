@@ -42,6 +42,14 @@ pub const BPS_DENOM: u16 = 10_000;
 /// floor that stops a commissioner posting a week's results before it starts.
 pub const MIN_POST_DELAY_SECS: i64 = 3 * 60 * 60;
 
+/// How long a finalized prize blocks the deadman refund.
+///
+/// `reclaim_dues` and `claim_prize` draw on the same vault and neither knows
+/// about the other, so a slow winner could have their prize refunded out from
+/// under them. Blocking the refund forever would strand the vault instead, so
+/// the block expires: after this, unclaimed prizes rejoin the pro-rata split.
+pub const PRIZE_CLAIM_GRACE_SECS: i64 = 30 * 24 * 60 * 60;
+
 /// How long members get to veto a posting when a pool does not choose. Two days
 /// is long enough for a working week to notice and short enough that a pot is
 /// not held hostage.
@@ -88,4 +96,9 @@ pub const SLOT_CLAIMED: u8 = 3;
 
 /// Sentinel for "this member has not been settled for any week yet". Week
 /// numbers are 1..=18, so 0 is free and means "never".
+///
+/// LOAD-BEARING: `claim_pot` distinguishes "one survivor left" from "everybody
+/// died in week N" by comparing `pool.winners_week` against this sentinel. That
+/// only works because a real week is never 0. If weeks ever become 0-indexed,
+/// the two branches collapse into each other and the wrong people get paid.
 pub const WEEK_NONE: u8 = 0;
