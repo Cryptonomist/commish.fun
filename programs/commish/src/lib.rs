@@ -203,7 +203,15 @@ pub mod commish {
                 let gap = lock_ts[w]
                     .checked_sub(lock_ts[w - 1])
                     .ok_or(CommishError::MathOverflow)?;
-                require!(gap > min_gap, CommishError::BadSchedule);
+                /* Two different mistakes, two different errors. A gap that is
+                 * simply out of order is a bad schedule; a gap that a real
+                 * weekly cadence could accommodate but this window cannot is a
+                 * bad *window*, and saying so points the caller at the field
+                 * they should change. At the 7-day maximum window nothing on a
+                 * weekly schedule can pass, which is worth being told plainly
+                 * rather than discovering as BadSchedule. */
+                require!(gap > 0, CommishError::BadSchedule);
+                require!(gap > min_gap, CommishError::BadDisputeWindow);
             }
             require!(
                 lock_ts[start_week as usize - 1] > now,
@@ -235,7 +243,12 @@ pub mod commish {
 
         // Fees are COPIED, not referenced. See the note on Config: the deal a
         // member joins is the deal that pays out. A $0 pool never pays a fee.
-        if buy_in == 0 {
+        /* A league settles through finalize_sheet and claim_prize and never
+         * reaches advance_week, which is the only place a fee is taken. So a
+         * league records no fee: carrying one would put a number in the account
+         * that no code path can ever charge, and account data that lies is
+         * worse than account data that says zero. */
+        if buy_in == 0 || pool_type == POOL_LEAGUE {
             pool.fee_bps = 0;
             pool.fee_cap = 0;
         } else {
@@ -421,6 +434,11 @@ pub mod commish {
         pool.pending_week = week;
         pool.pending_posted_ts = now;
         pool.veto_count = 0;
+        // A re-post is a new vote. See Pool::veto_epoch.
+        pool.veto_epoch = pool
+            .veto_epoch
+            .checked_add(1)
+            .ok_or(CommishError::MathOverflow)?;
         pool.status = STATUS_RESULTS_POSTED;
 
         emit!(ResultsPosted {
@@ -450,16 +468,19 @@ pub mod commish {
 
         // Who gets a vote: everyone still alive in a pick pool, every paid
         // member in a league.
-        let (electorate, marker) = if is_sheet {
+        let electorate = if is_sheet {
             require!(member.paid, CommishError::MemberNotPaid);
-            (pool.paid_members, u8::MAX)
+            pool.paid_members
         } else {
             require!(member.is_alive(), CommishError::MemberEliminated);
-            (pool.alive_count, pool.pending_week)
+            pool.alive_count
         };
-        require!(member.vetoed_week != marker, CommishError::AlreadyVetoed);
+        require!(
+            member.vetoed_epoch != pool.veto_epoch,
+            CommishError::AlreadyVetoed
+        );
 
-        member.vetoed_week = marker;
+        member.vetoed_epoch = pool.veto_epoch;
         pool.veto_count = pool
             .veto_count
             .checked_add(1)
@@ -922,6 +943,11 @@ pub mod commish {
 
         pool.pending_posted_ts = now;
         pool.veto_count = 0;
+        // A re-posted sheet is a new vote. See Pool::veto_epoch.
+        pool.veto_epoch = pool
+            .veto_epoch
+            .checked_add(1)
+            .ok_or(CommishError::MathOverflow)?;
         pool.status = STATUS_SHEET_POSTED;
 
         emit!(PayoutSheetPosted {
@@ -1116,7 +1142,7 @@ fn init_member(
     member.pick_week = WEEK_NONE;
     member.processed_week = WEEK_NONE;
     member.eliminated_week = WEEK_NONE;
-    member.vetoed_week = WEEK_NONE;
+    member.vetoed_epoch = 0;
     member.claimed = false;
     member.bump = bump;
     Ok(())

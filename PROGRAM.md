@@ -69,6 +69,25 @@ Adding Pick'em means: one arm in `rules`, one `PICK_CONTROLS` entry in the app,
 and a scoring line. It must not touch the vault, the veto, the refund or the
 claim path. If a mode seems to need that, it is a design error — stop.
 
+## The veto only worked once
+
+A member's "I already voted" marker lives on their own `Member` account, and
+`veto_results` has no list of members to walk, so clearing a posting cannot
+reset anybody's marker. The marker used to be the *week number* — which meant a
+commissioner who got vetoed could post the identical results again, and every
+member who struck them down the first time was refused with `AlreadyVetoed`.
+One abstainer in a four-member pool was enough to make a majority unreachable
+on the second attempt. In a league it was worse: the marker was the constant
+`u8::MAX`, so a member could veto exactly one sheet ever.
+
+The marker is now `Pool::veto_epoch`, which counts postings rather than weeks
+and increments on every `post_results` and `post_payout_sheet`. A re-post is a
+new vote. This is why `Pool` is 1,616 bytes and `Member` is 201 rather than the
+1,614 and 200 an earlier version of this document quoted.
+
+Found by writing a red test for the re-post path, which is a path no amount of
+reading the happy case would have surfaced.
+
 ## Where the vault can be raced
 
 Two instructions can draw on the same vault without knowing about each other,
@@ -109,10 +128,12 @@ rather than sold and discovered in week two.
 
 ## Three decisions worth knowing
 
-**Pool is 1,614 bytes, not the 1,280 in the handoff.** The spec's own field list
+**Pool is 1,616 bytes, not the 1,280 in the handoff.** The spec's own field list
 does not fit in 1,280 — `results_root: [[u8;32];18]` is 576 bytes alone — so a
 literal 1,280 would have failed on the first `create_pool`, after the rent was
-paid. Space is derived with `InitSpace` and pinned by a test.
+paid. Space is derived with `InitSpace` and pinned by a test. It was 1,614 until
+`veto_epoch` was added; the test is what makes a change like that a decision
+rather than a surprise.
 
 **Prizes are a share of `total_dues`, fixed at `lock_dues`, not of the live
 vault.** An interim payout would otherwise shrink the base and quietly change
@@ -131,7 +152,8 @@ path, atomic, no optional account.
 - checked arithmetic on every counter and every money calculation
 - `settle_member`, `claim_*` and `reclaim_dues` are idempotent — the second call
   is refused, not repeated
-- one veto per member per posting; a **strict** majority clears it
+- one veto per member per **posting** — keyed on `veto_epoch`, not the week, so
+  a re-post reopens the vote; a **strict** majority clears it
 - `paused` blocks pool creation only, never a claim or a refund
 - integer division on splits; dust stays in the vault. This is deliberate and
   is *not* the same as the fee bug above: dust is bounded by `winners_count`

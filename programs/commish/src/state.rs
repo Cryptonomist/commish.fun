@@ -83,6 +83,19 @@ pub struct Pool {
     pub pending_week: u8,
     pub pending_posted_ts: i64,
     pub veto_count: u16,
+    /* Which posting the current votes belong to.
+     *
+     * `veto_count` is reset when a posting is cleared, but a member's own
+     * "I already voted" marker lives on their Member account and cannot be
+     * reset from here — there is no list of members to walk. Marking the vote
+     * with the *week* therefore locked a member out of every later posting for
+     * that same week: veto a false result, watch the commissioner post it again
+     * unchanged, and the majority that struck it down is disenfranchised.
+     *
+     * This counts postings instead, so every re-post is a fresh vote. It starts
+     * at 0 and a member's default `vetoed_epoch` is 0, so the first posting
+     * increments to 1 before anyone can match it. */
+    pub veto_epoch: u16,
     pub finalized_week: u8,
 
     pub prize_slots: [PrizeSlot; MAX_PRIZE_SLOTS],
@@ -159,7 +172,8 @@ pub struct Member {
     pub processed_week: u8,
     /// 0 == still alive. Otherwise the week they went out.
     pub eliminated_week: u8,
-    pub vetoed_week: u8,
+    /// The `Pool::veto_epoch` this member last voted on. 0 == never voted.
+    pub vetoed_epoch: u16,
     pub claimed: bool,
     pub bump: u8,
 }
@@ -205,8 +219,8 @@ mod tests {
         let config = 8 + Config::INIT_SPACE;
         println!("Pool = {pool} bytes, Member = {member} bytes, Config = {config} bytes");
 
-        assert_eq!(pool, 1_614, "Pool size changed");
-        assert_eq!(member, 200, "Member size changed");
+        assert_eq!(pool, 1_616, "Pool size changed");
+        assert_eq!(member, 201, "Member size changed");
         assert_eq!(config, 92, "Config size changed");
 
         // System-program CreateAccount via CPI caps at 10,240 bytes. Comfortable,
