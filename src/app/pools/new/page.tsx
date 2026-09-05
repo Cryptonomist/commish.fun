@@ -404,9 +404,15 @@ function Created({
           </dd>
         </div>
       </dl>
+      <Link
+        href={`/p/${pool}`}
+        className="mt-2 flex h-12 items-center justify-center rounded-xl bg-leather text-sm font-bold tracking-wide text-night transition-colors hover:bg-leather-hi"
+      >
+        Open the pool and join
+      </Link>
       <p className="text-xs text-cream-dim">
-        Next: joining. You are not a member of this pool yet — the commissioner
-        joins like everyone else, and that screen is not built.
+        You are not a member yet. The commissioner joins like everyone else and
+        pays the same buy-in — that link is also the one you send the others.
       </p>
     </div>
   );

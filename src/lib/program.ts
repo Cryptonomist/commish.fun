@@ -180,6 +180,145 @@ export function buildCreatePool(args: CreatePoolArgs): CreatePoolPlan {
   return { instruction, pool, vault, config };
 }
 
+export const MAX_DISPLAY_NAME = 24;
+
+/* Pool status, as the program writes it. Only the ones the UI reads are named;
+ * the rest are league states this app does not surface yet. */
+export const STATUS_OPEN = 0;
+export const STATUS_LOCKED = 1;
+export const STATUS_SETTLED = 4;
+export const STATUS_ABANDONED = 5;
+
+/** A pool, decoded, with the raw account's snake_case flattened into something
+ *  a component can read without knowing Borsh. */
+export type PoolView = {
+  commissioner: PublicKey;
+  usdcMint: PublicKey;
+  vault: PublicKey;
+  name: string;
+  poolType: number;
+  buyIn: bigint;
+  maxMembers: number;
+  memberCount: number;
+  paidMembers: number;
+  aliveCount: number;
+  totalDues: bigint;
+  status: number;
+  currentWeek: number;
+  duesDeadlineTs: number;
+};
+
+/* Fixed-size name fields are zero-padded on chain. Trimming at the first NUL
+ * rather than trimming whitespace matters: a name can legitimately end in a
+ * space, and `String::from_utf8` on the padded bytes yields trailing NULs that
+ * render as boxes. */
+function fromFixedBytes(bytes: number[] | Uint8Array): string {
+  const arr = Array.from(bytes);
+  const end = arr.indexOf(0);
+  return new TextDecoder().decode(
+    Uint8Array.from(end === -1 ? arr : arr.slice(0, end)),
+  );
+}
+
+export function decodePool(data: Uint8Array): PoolView {
+  const raw = coder.accounts.decode("Pool", Buffer.from(data)) as Record<
+    string,
+    { toString(): string }
+  >;
+  const num = (k: string) => Number(raw[k]);
+  const big = (k: string) => BigInt(raw[k].toString());
+  return {
+    commissioner: raw.commissioner as unknown as PublicKey,
+    usdcMint: raw.usdc_mint as unknown as PublicKey,
+    vault: raw.vault as unknown as PublicKey,
+    name: fromFixedBytes(raw.name as unknown as number[]),
+    poolType: num("pool_type"),
+    buyIn: big("buy_in"),
+    maxMembers: num("max_members"),
+    memberCount: num("member_count"),
+    paidMembers: num("paid_members"),
+    aliveCount: num("alive_count"),
+    totalDues: big("total_dues"),
+    status: num("status"),
+    currentWeek: num("current_week"),
+    duesDeadlineTs: num("dues_deadline_ts"),
+  };
+}
+
+/* Create the caller's USDC account if they have never held USDC.
+ *
+ * `join_pool` takes `payer_ata` as a typed TokenAccount, so it must already
+ * exist — a first-time member would otherwise be refused by account
+ * deserialization before any of the program's own checks ran, with an error
+ * that says nothing about what to do. Prepending this makes joining work on the
+ * first try; `CreateIdempotent` (instruction 1) is a no-op when the account is
+ * already there, so it costs nothing for everybody else. */
+export function createAtaIdempotentIx(
+  payer: PublicKey,
+  owner: PublicKey,
+  mint: PublicKey,
+): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
+    keys: [
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: ataFor(owner, mint), isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from([1]),
+  });
+}
+
+export type JoinPoolArgs = {
+  pool: PublicKey;
+  wallet: PublicKey;
+  displayName: string;
+};
+
+export type JoinPoolPlan = {
+  instruction: TransactionInstruction;
+  member: PublicKey;
+  payerAta: PublicKey;
+  vault: PublicKey;
+};
+
+/* Joining is the only instruction a member calls that moves their own money in.
+ * Everything it touches is derived: the member account from the pool and the
+ * wallet, the payer's token account from the wallet and the mint, the vault
+ * from the pool. Nothing here is a value the page picked. */
+export function buildJoinPool(args: JoinPoolArgs): JoinPoolPlan {
+  if (enc.encode(args.displayName).length > MAX_DISPLAY_NAME) {
+    throw new Error(`Display name is longer than ${MAX_DISPLAY_NAME} bytes`);
+  }
+
+  const member = memberPda(args.pool, args.wallet);
+  const payerAta = ataFor(args.wallet, USDC_MINT);
+  const vault = ataFor(args.pool, USDC_MINT);
+
+  const data = coder.instruction.encode("join_pool", {
+    display_name: args.displayName,
+  });
+
+  const instruction = new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: args.pool, isSigner: false, isWritable: true },
+      { pubkey: member, isSigner: false, isWritable: true },
+      { pubkey: args.wallet, isSigner: true, isWritable: true },
+      { pubkey: payerAta, isSigner: false, isWritable: true },
+      { pubkey: vault, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+
+  return { instruction, member, payerAta, vault };
+}
+
 /* Anchor errors arrive as a log line, not as anything structured. Pulling the
  * program's own message out beats showing "custom program error: 0x1771" to
  * somebody who was trying to start a football pool. */
