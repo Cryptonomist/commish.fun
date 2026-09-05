@@ -22,7 +22,7 @@
 
 import fs from "fs";
 import path from "path";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Transaction } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import BN from "bn.js";
 import {
@@ -34,12 +34,19 @@ import {
 import type { Address } from "@solana/kit";
 
 import {
+  buildAdvanceWeek,
+  buildFinalizeWeek,
   buildPostResults,
+  buildSettleMember,
   buildVetoResults,
+  ataFor,
+  memberAccountFilters,
   memberPda,
   poolPda,
   maskWith,
   PROGRAM_ID,
+  SETTLES_PER_TX,
+  TOKEN_PROGRAM_ID,
 } from "@/lib/program";
 
 /* The reference coder reads `target/idl`, exactly as the tests do. The client
@@ -145,6 +152,45 @@ function refPostResults(opts: {
       pushes: opts.pushes,
       root: Array(32).fill(0),
     }),
+  };
+}
+
+/* workspace.ts: crankIx("finalize_week", pool) */
+function refFinalizeWeek(pool: Address): RefIx {
+  return {
+    programAddress,
+    accounts: [{ address: pool, role: AccountRole.WRITABLE }],
+    data: coder.instruction.encode("finalize_week", {}),
+  };
+}
+
+/* workspace.ts: settleMemberIx(pool, member) */
+function refSettleMember(pool: Address, member: Address): RefIx {
+  return {
+    programAddress,
+    accounts: [
+      { address: pool, role: AccountRole.WRITABLE },
+      { address: member, role: AccountRole.WRITABLE },
+    ],
+    data: coder.instruction.encode("settle_member", { _points: 0 }),
+  };
+}
+
+/* workspace.ts: advanceWeekIx(pool, vault) */
+function refAdvanceWeek(
+  pool: Address,
+  vault: Address,
+  treasuryAta: Address,
+): RefIx {
+  return {
+    programAddress,
+    accounts: [
+      { address: pool, role: AccountRole.WRITABLE },
+      { address: vault, role: AccountRole.WRITABLE },
+      { address: treasuryAta, role: AccountRole.WRITABLE },
+      { address: address(TOKEN_PROGRAM_ID.toBase58()), role: AccountRole.READONLY },
+    ],
+    data: coder.instruction.encode("advance_week", {}),
   };
 }
 
@@ -301,6 +347,98 @@ async function main() {
     }
   }
   ok("all 32 teams round-trip individually", allTeamsOk);
+
+  // ── The crank: finalize, settle, advance ───────────────────────────────────
+  const vault = ataFor(pool, new PublicKey(new Uint8Array(32).fill(13)));
+  const treasury = new PublicKey(new Uint8Array(32).fill(17));
+  const treasuryAta = ataFor(treasury, new PublicKey(new Uint8Array(32).fill(13)));
+
+  compare(
+    "finalize_week (workspace.ts crankIx)",
+    buildFinalizeWeek(pool),
+    refFinalizeWeek(poolAddr),
+  );
+
+  compare(
+    "settle_member (workspace.ts:506)",
+    buildSettleMember(pool, mineMember),
+    refSettleMember(poolAddr, address(mineMember.toBase58())),
+  );
+
+  compare(
+    "advance_week (workspace.ts:517)",
+    buildAdvanceWeek({ pool, vault, feeTreasuryAta: treasuryAta }),
+    refAdvanceWeek(
+      poolAddr,
+      address(vault.toBase58()),
+      address(treasuryAta.toBase58()),
+    ),
+  );
+
+  /* ── Finding members by memcmp ─────────────────────────────────────────────
+   *
+   * The filter matches the pool pubkey at byte 8, which is only correct while
+   * `pool` is the FIRST field of Member, immediately after the eight-byte
+   * discriminator. Reordering that struct would not break anything loudly: the
+   * filter would simply match nothing, `pendingSettles` would return an empty
+   * list, and the crank would report a week with nobody left to settle. */
+  console.log("\nMember lookup filters");
+  const memberFields = (
+    idl as { types: { name: string; type: { fields?: { name: string; type: unknown }[] } }[] }
+  ).types.find((t) => t.name === "Member")?.type.fields;
+  ok("Member has fields in the IDL", !!memberFields && memberFields.length > 0);
+  ok(
+    "offset 8 is Member.pool (a pubkey)",
+    memberFields?.[0]?.name === "pool" && memberFields?.[0]?.type === "pubkey",
+    `first field is ${JSON.stringify(memberFields?.[0])}`,
+  );
+
+  const filters = memberAccountFilters(pool);
+  ok("two filters: discriminator and pool", filters.length === 2);
+  ok("second filter matches the pool at offset 8",
+    filters[1].memcmp.offset === 8 && filters[1].memcmp.bytes === pool.toBase58());
+  const idlDisc = (idl as { accounts: { name: string; discriminator: number[] }[] }).accounts.find(
+    (a) => a.name === "Member",
+  )?.discriminator;
+  ok(
+    "first filter carries the IDL's Member discriminator at offset 0",
+    filters[0].memcmp.offset === 0 &&
+      !!idlDisc &&
+      filters[0].memcmp.bytes ===
+        anchor.utils.bytes.bs58.encode(Buffer.from(idlDisc)),
+  );
+
+  /* ── A full settle batch has to fit in one packet ──────────────────────────
+   *
+   * SETTLES_PER_TX is arithmetic in a comment until something serializes it.
+   * A batch one over the limit does not fail cleanly at the top of the crank;
+   * it fails when the wallet tries to send it, halfway through settling. */
+  console.log("\nSettle batching");
+  const PACKET = 1232;
+  const sizeOf = (n: number): number => {
+    const tx = new Transaction();
+    for (let i = 0; i < n; i++) {
+      tx.add(buildSettleMember(pool, memberPda(pool, new PublicKey(new Uint8Array(32).fill(i + 20)))));
+    }
+    tx.feePayer = commissioner;
+    tx.recentBlockhash = new PublicKey(new Uint8Array(32).fill(3)).toBase58();
+    return tx.serialize({ requireAllSignatures: false, verifySignatures: false })
+      .length;
+  };
+  const full = sizeOf(SETTLES_PER_TX);
+  ok(
+    `${SETTLES_PER_TX} settles serialize to ${full} bytes, under ${PACKET}`,
+    full < PACKET,
+  );
+  ok("one settle fits comfortably", sizeOf(1) < PACKET);
+  // The check discriminates: far past the limit it must actually fail.
+  let oversizeRejected = false;
+  try {
+    oversizeRejected = sizeOf(40) >= PACKET;
+  } catch {
+    oversizeRejected = true;
+  }
+  ok("a 40-settle batch would not fit, so the limit is real", oversizeRejected);
 
   /* ── Every key the decoders read must exist on the account ────────────────
    *
