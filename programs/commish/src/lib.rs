@@ -51,7 +51,7 @@ use errors::CommishError;
 use events::*;
 use state::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa");
 
 #[program]
 pub mod commish {

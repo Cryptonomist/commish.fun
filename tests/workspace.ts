@@ -26,7 +26,7 @@ describe("commish - LiteSVM", () => {
   const coder = new anchor.BorshCoder(idl);
   const addressCodec = getAddressCodec();
 
-  const programAddress = address("6tkTECTeN6GSwPPCh1SyNnkw3hZWhejXfaNcYX1Z3J2A");
+  const programAddress = address("Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa");
   const systemProgram = address("11111111111111111111111111111111");
   const tokenProgram = address("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
   const ataProgram = address("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
@@ -559,7 +559,7 @@ describe("commish - LiteSVM", () => {
       .withTransactionHistory(0n)
       .withLogBytesLimit(256n * 1024n);
 
-    svm.addProgramFromFile(programAddress, "target/deploy/workspace.so");
+    svm.addProgramFromFile(programAddress, "target/deploy/commish.so");
 
     now = Math.floor(Date.now() / 1000);
     const clock = svm.getClock();
