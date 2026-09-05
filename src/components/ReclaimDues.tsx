@@ -207,7 +207,7 @@ export function ReclaimDues({
           type="button"
           onClick={reclaim}
           disabled={busy}
-          className="mt-4 h-14 w-full rounded-xl bg-leather text-sm font-bold tracking-wide text-night transition-colors hover:bg-leather-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
+          className="mt-4 h-14 w-full rounded-xl bg-action text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
         >
           {status.at === "signing"
             ? "Confirm in your wallet…"

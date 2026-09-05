@@ -230,7 +230,7 @@ export default function NewPool() {
         {configReady === false ? (
           <p className="mt-6 rounded-xl border border-out/40 bg-out/10 p-4 text-sm text-cream">
             The program has not been initialised on <b>{CLUSTER}</b> yet. Run{" "}
-            <code className="text-leather">init_config</code> once — see
+            <code className="text-action">init_config</code> once — see
             SETUP.md — before any pool can be created.
           </p>
         ) : null}
@@ -253,7 +253,7 @@ export default function NewPool() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Sunday Regulars"
                 maxLength={MAX_NAME}
-                className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none placeholder:text-cream-dim/50 focus:border-leather"
+                className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none placeholder:text-cream-dim/50 focus:border-action"
               />
             </label>
 
@@ -265,7 +265,7 @@ export default function NewPool() {
                 value={buyIn}
                 onChange={(e) => setBuyIn(e.target.value.replace(/[^\d.]/g, ""))}
                 inputMode="decimal"
-                className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 font-bold text-gold outline-none focus:border-leather"
+                className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 font-bold text-gold outline-none focus:border-action"
               />
               <span className="text-xs text-cream-dim">
                 Every member pays this once. It is the only money that ever
@@ -284,7 +284,7 @@ export default function NewPool() {
                     setMaxMembers(e.target.value.replace(/[^\d]/g, ""))
                   }
                   inputMode="numeric"
-                  className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-leather"
+                  className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-action"
                 />
               </label>
 
@@ -298,7 +298,7 @@ export default function NewPool() {
                     setDisputeWindow(e.target.value.replace(/[^\d]/g, ""))
                   }
                   inputMode="numeric"
-                  className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-leather"
+                  className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-action"
                 />
                 <span className="text-xs text-cream-dim">
                   How long members have to vote down a bad result before it
@@ -309,7 +309,7 @@ export default function NewPool() {
 
             <div className="rounded-xl border border-night-3 bg-night-2/60 p-4 text-sm">
               <span className="flex items-center gap-2 font-bold text-cream">
-                <Laces size={12} className="text-leather" />
+                <Laces size={12} className="text-hide" />
                 Picks lock at first kickoff
               </span>
               <p className="mt-1.5 text-cream-dim">
@@ -344,7 +344,7 @@ export default function NewPool() {
             <button
               type="submit"
               disabled={!canSubmit}
-              className="h-14 rounded-xl bg-leather text-sm font-bold tracking-wide text-night transition-colors hover:bg-leather-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
+              className="h-14 rounded-xl bg-action text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
             >
               {!connected
                 ? "Connect a wallet to continue"
@@ -359,7 +359,7 @@ export default function NewPool() {
               <p className="text-center text-xs text-cream-dim">
                 Sent.{" "}
                 <a
-                  className="text-leather underline"
+                  className="text-action underline"
                   href={explorer("tx", status.signature)}
                   target="_blank"
                   rel="noreferrer"
@@ -403,7 +403,7 @@ function Created({
           <dt className="text-cream-dim">Pool</dt>
           <dd>
             <a
-              className="text-leather underline"
+              className="text-action underline"
               href={explorer("address", pool)}
               target="_blank"
               rel="noreferrer"
@@ -416,7 +416,7 @@ function Created({
           <dt className="text-cream-dim">Transaction</dt>
           <dd>
             <a
-              className="text-leather underline"
+              className="text-action underline"
               href={explorer("tx", signature)}
               target="_blank"
               rel="noreferrer"
@@ -428,7 +428,7 @@ function Created({
       </dl>
       <Link
         href={`/p/${pool}`}
-        className="mt-2 flex h-12 items-center justify-center rounded-xl bg-leather text-sm font-bold tracking-wide text-night transition-colors hover:bg-leather-hi"
+        className="mt-2 flex h-12 items-center justify-center rounded-xl bg-action text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
       >
         Open the pool and join
       </Link>

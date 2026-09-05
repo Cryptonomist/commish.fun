@@ -222,7 +222,7 @@ export default function PoolPage() {
           <>
             <h1 className="display text-4xl uppercase sm:text-5xl">{pool.name}</h1>
             <p className="mt-3 flex items-center gap-2 text-cream-dim">
-              <Laces size={12} className="text-leather" />
+              <Laces size={12} className="text-hide" />
               Survivor · week {pool.currentWeek}
             </p>
 
@@ -285,7 +285,7 @@ export default function PoolPage() {
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Julia"
                     maxLength={MAX_DISPLAY_NAME}
-                    className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none placeholder:text-cream-dim/50 focus:border-leather"
+                    className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none placeholder:text-cream-dim/50 focus:border-action"
                   />
                 </label>
 
@@ -304,7 +304,7 @@ export default function PoolPage() {
                 <button
                   type="submit"
                   disabled={!canJoin}
-                  className="h-14 rounded-xl bg-leather text-sm font-bold tracking-wide text-night transition-colors hover:bg-leather-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
+                  className="h-14 rounded-xl bg-action text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
                 >
                   {!connected
                     ? "Connect a wallet to join"

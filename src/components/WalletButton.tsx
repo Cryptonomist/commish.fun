@@ -99,7 +99,7 @@ export function WalletButton() {
         type="button"
         onClick={onClick}
         disabled={connecting}
-        className="inline-flex h-11 items-center rounded-xl bg-leather px-5 text-sm font-bold tracking-wide text-night transition-colors hover:bg-leather-hi disabled:cursor-wait disabled:opacity-70"
+        className="inline-flex h-11 items-center rounded-xl bg-action px-5 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi disabled:cursor-wait disabled:opacity-70"
       >
         {label}
       </button>

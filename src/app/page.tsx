@@ -70,7 +70,7 @@ export default function Home() {
       {/* ── Hero ────────────────────────────────────────────────────────── */}
       <section className="yard-lines flex flex-col items-start gap-7 py-14 sm:py-20">
         <span className="inline-flex items-center gap-2.5 rounded-full border border-night-3 bg-night-2/80 px-4 py-2 text-xs font-bold tracking-[0.18em]">
-          <Laces size={13} className="text-leather" />
+          <Laces size={13} className="text-hide" />
           <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
           <Countdown />
         </span>
@@ -79,7 +79,7 @@ export default function Home() {
           Your Survivor pool,
           <br />
           out of that one guy&rsquo;s{" "}
-          <span className="text-leather">Venmo</span>.
+          <span className="text-action">Venmo</span>.
         </h1>
 
         <p className="max-w-2xl text-lg leading-relaxed text-cream-dim sm:text-xl">
@@ -91,13 +91,13 @@ export default function Home() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Link
             href="/pools/new"
-            className="inline-flex h-13 items-center justify-center rounded-xl bg-leather px-7 py-4 text-sm font-bold tracking-wide text-night transition-colors hover:bg-leather-hi"
+            className="inline-flex h-13 items-center justify-center rounded-xl bg-action px-7 py-4 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
           >
             Start a pool
           </Link>
           <Link
             href="#how"
-            className="inline-flex items-center justify-center rounded-xl border border-night-3 px-7 py-4 text-sm font-bold tracking-wide text-cream transition-colors hover:border-leather/60"
+            className="inline-flex items-center justify-center rounded-xl border border-night-3 px-7 py-4 text-sm font-bold tracking-wide text-cream transition-colors hover:border-action/60"
           >
             See how it works
           </Link>
@@ -129,7 +129,7 @@ export default function Home() {
               key={s.n}
               className="rounded-2xl border border-night-3 bg-night-2/60 p-6"
             >
-              <span className="display text-2xl text-leather">{s.n}</span>
+              <span className="display text-2xl text-action">{s.n}</span>
               <h3 className="mt-3 text-lg font-bold text-cream">{s.h}</h3>
               <p className="mt-2 leading-relaxed text-cream-dim">{s.p}</p>
             </li>
@@ -169,7 +169,7 @@ export default function Home() {
       {/* ── Footer ──────────────────────────────────────────────────────── */}
       <footer className="mt-auto flex flex-col gap-4 border-t border-night-3 py-8 text-sm text-cream-dim sm:flex-row sm:items-center sm:justify-between">
         <span className="flex items-center gap-2.5">
-          <Laces size={14} className="text-leather" />
+          <Laces size={14} className="text-hide" />
           <span className="font-bold tracking-wide">COMMISH.FUN</span>
           <span>· Built on Solana</span>
         </span>

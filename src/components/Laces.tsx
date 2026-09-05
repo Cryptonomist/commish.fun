@@ -6,7 +6,10 @@
  * (surviving weeks).
  *
  * Rules: it is never set inside the wordmark, never stretched, and never given
- * a colour outside the palette — cream on an orange tile, orange on night black.
+ * a colour outside the palette — cut out of a hide tile in the ground colour,
+ * or hide on night. It does NOT wear the action orange. The mark and the
+ * buttons shared one token until the Turf palette, which left the brand with no
+ * colour of its own and made the lockup read as something to click.
  * The illustrated footballs are retired.
  */
 export function Laces({
@@ -40,19 +43,19 @@ export function Laces({
   );
 }
 
-/** The lockup: mark on an orange tile, wordmark beside it. Header and nav use
- *  this; social banners use the wordmark alone. */
+/** The lockup: the mark cut out of a hide tile, wordmark beside it. Header and
+ *  nav use this; social banners use the wordmark alone. */
 export function Wordmark({ size = 28 }: { size?: number }) {
   return (
     <span className="inline-flex items-center gap-3">
       <span
-        className="inline-flex items-center justify-center rounded-xl bg-leather text-cream"
+        className="inline-flex items-center justify-center rounded-xl bg-hide text-night"
         style={{ width: size * 1.5, height: size * 1.5 }}
       >
         <Laces size={size} title="Commish" />
       </span>
       <span className="display text-cream" style={{ fontSize: size * 1.35 }}>
-        COMMISH<span className="text-leather">.FUN</span>
+        COMMISH<span className="text-hide">.FUN</span>
       </span>
     </span>
   );

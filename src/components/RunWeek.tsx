@@ -258,7 +258,7 @@ export function RunWeek({
         type="button"
         onClick={run}
         disabled={!publicKey || busy}
-        className="mt-4 h-14 w-full rounded-xl bg-leather text-sm font-bold tracking-wide text-night transition-colors hover:bg-leather-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
+        className="mt-4 h-14 w-full rounded-xl bg-action text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
       >
         {!publicKey
           ? "Connect a wallet to run the week"

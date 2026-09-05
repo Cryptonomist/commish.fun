@@ -158,7 +158,7 @@ export function PickGrid({
           ) : lock ? (
             <>
               <span className="text-cream-dim">Locks in </span>
-              <span className="font-bold text-leather">
+              <span className="font-bold text-action">
                 {countdown(lock, now)}
               </span>
             </>
@@ -209,10 +209,10 @@ export function PickGrid({
                 className={[
                   "flex h-16 w-full flex-col items-center justify-center rounded-xl border text-center transition-colors",
                   picked
-                    ? "border-leather bg-leather text-night"
+                    ? "border-action bg-action text-night"
                     : spent
                       ? "border-night-3 bg-night-2/40 text-cream-dim/40"
-                      : "border-night-3 bg-night-2 text-cream hover:border-leather",
+                      : "border-night-3 bg-night-2 text-cream hover:border-action",
                   spent || locked || busy ? "cursor-not-allowed" : "",
                 ].join(" ")}
               >

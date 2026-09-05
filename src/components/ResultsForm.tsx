@@ -171,7 +171,7 @@ export function ResultsForm({
           ) : opensAt ? (
             <>
               <span className="text-cream-dim">Opens in </span>
-              <span className="font-bold text-leather">
+              <span className="font-bold text-action">
                 {countdown(opensAt, now)}
               </span>
             </>
@@ -208,7 +208,7 @@ export function ResultsForm({
                     ? "border-alive bg-alive text-night"
                     : mark === "push"
                       ? "border-cream-dim bg-cream-dim/15 text-cream"
-                      : "border-night-3 bg-night-2 text-cream hover:border-leather",
+                      : "border-night-3 bg-night-2 text-cream hover:border-action",
                   !open || busy ? "cursor-not-allowed opacity-70" : "",
                 ].join(" ")}
               >
@@ -241,7 +241,7 @@ export function ResultsForm({
         type="button"
         onClick={post}
         disabled={!open || busy || marked === 0}
-        className="mt-4 h-14 w-full rounded-xl bg-leather text-sm font-bold tracking-wide text-night transition-colors hover:bg-leather-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
+        className="mt-4 h-14 w-full rounded-xl bg-action text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
       >
         {status.at === "signing"
           ? "Confirm in your wallet…"

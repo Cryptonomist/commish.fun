@@ -1,23 +1,36 @@
 @import "tailwindcss";
 
 /* ── The Pigskin system ───────────────────────────────────────────────────────
-   Every colour Commish is allowed to use, and the one rule that governs them:
-   ORANGE is the brand. GOLD is the money — pot amounts, payouts, and nothing
-   else. Break that and the card stops meaning anything.
+   Every colour Commish is allowed to use, and the three rules that govern them:
 
-   Tailwind v4 reads these straight out of @theme, so `bg-night`, `text-leather`
+   HIDE is the mark. The Laces wear it and nothing else does. It used to share
+   a token with the buttons, which meant the brand had no colour of its own.
+   ACTION is interaction — links, CTAs, the countdown that is still running.
+   GOLD is the money: pot amounts, payouts, nothing else.
+
+   The surfaces are turf under floodlights, which is nearly black with a green
+   cast rather than a bright green. Green can be the environment or it can be
+   the survival signal, and it cannot be both, which is why --color-alive is
+   brighter and more yellow here than the green it replaced.
+
+   Tailwind v4 reads these straight out of @theme, so `bg-night`, `text-action`
    and `font-display` exist as utilities with no config file. */
 @theme {
-  --color-night: #120d0a;      /* ground */
-  --color-night-2: #1d1310;    /* raised surfaces, cards, inputs */
-  --color-night-3: #2a1c17;    /* hairlines, borders */
-  --color-cream: #f6efe2;      /* type */
-  --color-cream-dim: #a89a88;  /* secondary type */
-  --color-leather: #ff5c1b;    /* brand, links, CTAs */
-  --color-leather-hi: #ff7a45; /* hover */
+  --color-night: #0a100c;      /* ground */
+  --color-night-2: #121b15;    /* raised surfaces, cards, inputs */
+  --color-night-3: #1f2c24;    /* hairlines, borders */
+  --color-cream: #f0f2ec;      /* type */
+  --color-cream-dim: #98a69b;  /* secondary type */
+  --color-hide: #c08348;       /* THE MARK ONLY */
+  --color-action: #ff6a2b;     /* links, CTAs, live countdowns */
+  --color-action-hi: #ff8551;  /* hover */
   --color-gold: #e9c258;       /* MONEY ONLY */
-  --color-alive: #35c97a;      /* still in */
-  --color-out: #e5484d;        /* eliminated */
+  --color-alive: #57e08a;      /* still in */
+  /* Lifted from #e5484d, which measured 4.50:1 on --color-night-2 and so sat a
+     hair under AA. It passed on the old brown card because that card was
+     darker; the turf card is lighter, and "you are out" is not a state to read
+     marginally. */
+  --color-out: #ec565b;        /* eliminated */
 
   --font-display: var(--font-anton), "Arial Narrow", sans-serif;
   --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
@@ -43,12 +56,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* The stadium-at-night ground: a warm pool of light from above, the way a
-   field looks under floods. Flat #120D0A reads as unconsidered. */
+/* The stadium-at-night ground: a pool of light from above, the way a field
+   looks under floods. Flat #0A100C reads as unconsidered.
+
+   The warm light is carried by gold rather than by the action orange. Orange
+   laid over green mixes back toward brown, which is the one result this
+   palette exists to avoid, so the orange is a trace and the gold does the
+   work. */
 .field-ground {
   background:
-    radial-gradient(70% 55% at 50% -10%, rgba(255, 92, 27, 0.13), transparent 70%),
-    radial-gradient(50% 40% at 85% 15%, rgba(233, 194, 88, 0.06), transparent 70%),
+    radial-gradient(70% 55% at 50% -10%, rgba(233, 194, 88, 0.10), transparent 70%),
+    radial-gradient(50% 40% at 85% 15%, rgba(255, 106, 43, 0.05), transparent 70%),
     var(--color-night);
 }
 
@@ -56,7 +74,7 @@ body {
 .yard-lines {
   background-image: repeating-linear-gradient(
     90deg,
-    rgba(246, 239, 226, 0.045) 0 1px,
+    rgba(240, 242, 236, 0.045) 0 1px,
     transparent 1px 88px
   );
 }
@@ -81,13 +99,13 @@ body {
 }
 
 /* The connect button ships in wallet-adapter purple (#512da8), which is the one
-   colour on the page that belongs to no brand at all. Drag it onto leather.
+   colour on the page that belongs to no brand at all. Drag it onto action.
    Restyled rather than rebuilt from useWallet() because the adapter's button
    already handles connect / connecting / connected / copy-address / disconnect
    and the wallet-not-installed case, and reimplementing that is a day of work
    to arrive back where you started. */
 .wallet-adapter-button-trigger {
-  background-color: var(--color-leather) !important;
+  background-color: var(--color-action) !important;
   color: var(--color-night) !important;
   border-radius: 0.75rem !important;
   height: 2.75rem !important;
@@ -96,7 +114,7 @@ body {
   letter-spacing: 0.02em;
 }
 .wallet-adapter-button-trigger:not([disabled]):hover {
-  background-color: var(--color-leather-hi) !important;
+  background-color: var(--color-action-hi) !important;
 }
 .wallet-adapter-dropdown-list {
   background: var(--color-night-2) !important;

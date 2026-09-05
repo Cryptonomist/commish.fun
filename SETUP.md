@@ -102,10 +102,21 @@ program rather than from hand-written interfaces.
 | Mode rules as a tested pure function | `programs/commish/src/rules.rs` | done |
 | `anchor build` / `anchor test` | — | not run — needs the Solana toolchain |
 
-## 5. The one rule that is easy to break
+## 5. The three rules that are easy to break
 
-Orange is the brand. **Gold is the money** — pot amounts, payouts, and nothing
-else. A gold border on a button is a bug.
+**Hide is the mark.** `--color-hide` dresses the Laces and nothing else. It used
+to share a token with the buttons, which left the brand with no colour of its
+own and made the lockup read as something to click.
+
+**Action is interaction.** `--color-action` is links, CTAs and a countdown that
+is still running. An orange heading is a bug.
+
+**Gold is the money** — pot amounts, payouts, and nothing else. A gold border on
+a button is a bug.
+
+One more, particular to this palette: green is the environment *or* the survival
+signal, never both. The surfaces are turf under floodlights, so `--color-alive`
+is brighter and more yellow than a normal success green to keep it separable.
 
 ## 6. Order of work
 
