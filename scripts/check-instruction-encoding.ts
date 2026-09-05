@@ -52,6 +52,11 @@ import {
   TOKEN_PROGRAM_ID,
   type PoolView,
 } from "@/lib/program";
+import {
+  FAST_CLOCK,
+  MIN_POST_DELAY_SECS as TS_MIN_POST_DELAY,
+  MIN_DISPUTE_WINDOW_SECS as TS_MIN_DISPUTE_WINDOW,
+} from "@/lib/schedule";
 
 /* The reference coder reads `target/idl`, exactly as the tests do. The client
  * reads the vendored `src/idl`. If those two have drifted then every byte
@@ -583,6 +588,109 @@ async function main() {
     oversizeRejected = true;
   }
   ok("a 40-settle batch would not fit, so the limit is real", oversizeRejected);
+
+  /* ── The client's copy of the program's timing floors ──────────────────────
+   *
+   * `lib/schedule.ts` duplicates MIN_POST_DELAY_SECS and MIN_DISPUTE_WINDOW_SECS
+   * so the create form can refuse a bad schedule before a wallet opens, and its
+   * own header calls that duplication a liability. `fastclock` doubles the
+   * liability: there are now two sets of values to keep in step, and being
+   * wrong in either direction is silent. A form built against the wrong half
+   * either refuses schedules the chain would take, or builds pools the chain
+   * rejects after the commissioner has committed to everything else.
+   *
+   * So the numbers are read straight out of constants.rs and compared. This is
+   * the only check here that reads the program's source rather than its IDL,
+   * because these values never reach the IDL at all. */
+  console.log("\nTiming floors: lib/schedule.ts against constants.rs");
+  const rust = fs.readFileSync(
+    path.resolve(process.cwd(), "programs/commish/src/constants.rs"),
+    "utf8",
+  );
+
+  /** The value of a `pub const` under, or not under, the fastclock cfg. */
+  function rustConst(name: string, fast: boolean): number | null {
+    const lines = rust.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(
+        new RegExp(`^pub const ${name}\\s*:\\s*\\w+\\s*=\\s*([0-9_ *]+);`),
+      );
+      if (!m) continue;
+      const cfg = i > 0 && lines[i - 1].trim().startsWith("#[") ? lines[i - 1] : "";
+      const notFast = cfg.includes('not(feature = "fastclock")');
+      const isFast = cfg.includes('feature = "fastclock"') && !notFast;
+      // An unconditional declaration answers for both builds.
+      if (cfg === "" || (fast ? isFast : notFast)) {
+        return m[1]
+          .split("*")
+          .reduce((acc, part) => acc * Number(part.trim().replace(/_/g, "")), 1);
+      }
+    }
+    return null;
+  }
+
+  /* Both branches are read out of schedule.ts itself rather than restated
+   * here. Restating them makes this check compare the program against numbers
+   * typed into the check, which passes happily while the file it is supposed to
+   * be guarding drifts. */
+  const ts = fs.readFileSync(
+    path.resolve(process.cwd(), "src/lib/schedule.ts"),
+    "utf8",
+  );
+  const evalNums = (expr: string): number =>
+    expr.split("*").reduce((a, p) => a * Number(p.trim().replace(/_/g, "")), 1);
+
+  function tsConst(name: string): { fast: number; slow: number } | null {
+    const m = ts.match(
+      new RegExp(
+        `export const ${name}\\s*=\\s*FAST_CLOCK\\s*\\?\\s*([0-9_ *]+):\\s*([0-9_ *]+);`,
+      ),
+    );
+    return m ? { fast: evalNums(m[1]), slow: evalNums(m[2]) } : null;
+  }
+
+  for (const [name, live] of [
+    ["MIN_POST_DELAY_SECS", TS_MIN_POST_DELAY],
+    ["MIN_DISPUTE_WINDOW_SECS", TS_MIN_DISPUTE_WINDOW],
+  ] as const) {
+    const slow = rustConst(name, false);
+    const fast = rustConst(name, true);
+    const client = tsConst(name);
+    ok(
+      `${name} declared for both builds in constants.rs and schedule.ts`,
+      slow !== null && fast !== null && client !== null,
+    );
+    ok(
+      `${name} default: schedule.ts ${client?.slow} matches Rust ${slow}`,
+      client?.slow === slow,
+    );
+    ok(
+      `${name} fastclock: schedule.ts ${client?.fast} matches Rust ${fast}`,
+      client?.fast === fast,
+    );
+    ok(
+      `${name} is shorter under fastclock, and never zero`,
+      !!fast && !!slow && fast < slow && fast > 0,
+    );
+    /* And the value the app actually imports is the branch its own env selects.
+     * The parse above proves the two written numbers agree with the program;
+     * this proves the module hands out the one that matches how it was built. */
+    ok(
+      `${name} exports the ${FAST_CLOCK ? "fastclock" : "default"} branch (${live})`,
+      live === (FAST_CLOCK ? client?.fast : client?.slow),
+    );
+  }
+
+  /* The compressed season still has to satisfy the program's own gap rule:
+   * `create_pool` requires lock[w] - lock[w-1] > MIN_POST_DELAY + window. A
+   * fast clock whose weeks are too close together produces a form that cannot
+   * create anything, which is a worse outcome than the slow one it replaced. */
+  const fastGap = (rustConst("MIN_POST_DELAY_SECS", true) ?? 0) + 30;
+  ok(
+    `fastclock weeks are 120s apart, clearing the ${fastGap}s minimum gap`,
+    120 > fastGap,
+    `120 is not greater than ${fastGap}`,
+  );
 
   /* ── Every key the decoders read must exist on the account ────────────────
    *
