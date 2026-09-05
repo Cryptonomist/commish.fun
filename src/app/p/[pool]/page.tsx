@@ -21,11 +21,13 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
+import { PickGrid } from "@/components/PickGrid";
 import { formatUsdc, shortAddress } from "@/lib/format";
 import {
   buildJoinPool,
   createAtaIdempotentIx,
   decodePool,
+  decodeMember,
   memberPda,
   ataFor,
   readableProgramError,
@@ -33,6 +35,7 @@ import {
   MAX_DISPLAY_NAME,
   STATUS_OPEN,
   type PoolView,
+  type MemberView,
 } from "@/lib/program";
 
 type Status =
@@ -51,7 +54,7 @@ export default function PoolPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [vaultAmount, setVaultAmount] = useState<bigint | null>(null);
   const [usdcAmount, setUsdcAmount] = useState<bigint | null>(null);
-  const [alreadyMember, setAlreadyMember] = useState<boolean | null>(null);
+  const [member, setMember] = useState<MemberView | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [status, setStatus] = useState<Status>({ at: "idle" });
 
@@ -87,17 +90,17 @@ export default function PoolPage() {
       setVaultAmount(vault ? BigInt(vault.value.amount) : BigInt(0));
 
       if (publicKey) {
-        const member = await connection.getAccountInfo(
+        const mine = await connection.getAccountInfo(
           memberPda(poolKey, publicKey),
         );
-        setAlreadyMember(member !== null);
+        setMember(mine ? decodeMember(mine.data) : null);
 
-        const mine = await connection
+        const wallet = await connection
           .getTokenAccountBalance(ataFor(publicKey, USDC_MINT))
           .catch(() => null);
-        setUsdcAmount(mine ? BigInt(mine.value.amount) : BigInt(0));
+        setUsdcAmount(wallet ? BigInt(wallet.value.amount) : BigInt(0));
       } else {
-        setAlreadyMember(null);
+        setMember(null);
         setUsdcAmount(null);
       }
     } catch (e) {
@@ -128,7 +131,7 @@ export default function PoolPage() {
         ? "This pool is closed to new members."
         : pool.memberCount >= pool.maxMembers
           ? "This pool is full."
-          : alreadyMember
+          : member
             ? "You are already in this pool."
             : nameBytes === 0
               ? "Pick a name the others will see."
@@ -231,14 +234,13 @@ export default function PoolPage() {
               who paid.
             </p>
 
-            {status.at === "joined" ? (
-              <div className="mt-8 rounded-xl border border-alive/40 bg-alive/10 p-6">
-                <h2 className="display text-2xl uppercase">You are in</h2>
-                <p className="mt-2 text-sm text-cream-dim">
-                  {formatUsdc(pool.buyIn)} moved to the vault. Picks open when the
-                  commissioner posts the week.
-                </p>
-              </div>
+            {member && poolKey ? (
+              <PickGrid
+                poolKey={poolKey}
+                pool={pool}
+                member={member}
+                onPicked={refresh}
+              />
             ) : (
               <form className="mt-8 flex flex-col gap-4" onSubmit={onJoin}>
                 <label className="flex flex-col gap-2">

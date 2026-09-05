@@ -206,6 +206,8 @@ export type PoolView = {
   status: number;
   currentWeek: number;
   duesDeadlineTs: number;
+  /** Eighteen unix-second locks, as stored. Index 0 is week 1. */
+  lockTs: number[];
 };
 
 /* Fixed-size name fields are zero-padded on chain. Trimming at the first NUL
@@ -242,6 +244,9 @@ export function decodePool(data: Uint8Array): PoolView {
     status: num("status"),
     currentWeek: num("current_week"),
     duesDeadlineTs: num("dues_deadline_ts"),
+    lockTs: (raw.lock_ts as unknown as { toString(): string }[]).map((t) =>
+      Number(t.toString()),
+    ),
   };
 }
 
@@ -317,6 +322,79 @@ export function buildJoinPool(args: JoinPoolArgs): JoinPoolPlan {
   });
 
   return { instruction, member, payerAta, vault };
+}
+
+export const NO_PICK = 255;
+export const WEEK_NONE = 0;
+export const TEAM_COUNT = 32;
+export const MAX_NOTE = 24;
+
+/** A member, decoded. `usedMask` is the on-chain u32: bit N means team N is
+ *  spent for the season and can never be picked again. */
+export type MemberView = {
+  wallet: PublicKey;
+  displayName: string;
+  paid: boolean;
+  usedMask: number;
+  currentPick: number;
+  pickWeek: number;
+  eliminatedWeek: number;
+  claimed: boolean;
+};
+
+export function decodeMember(data: Uint8Array): MemberView {
+  const raw = coder.accounts.decode("Member", Buffer.from(data)) as Record<
+    string,
+    { toString(): string }
+  >;
+  return {
+    wallet: raw.wallet as unknown as PublicKey,
+    displayName: fromFixedBytes(raw.display_name as unknown as number[]),
+    paid: raw.paid as unknown as boolean,
+    usedMask: Number(raw.used_mask),
+    currentPick: Number(raw.current_pick),
+    pickWeek: Number(raw.pick_week),
+    eliminatedWeek: Number(raw.eliminated_week),
+    claimed: raw.claimed as unknown as boolean,
+  };
+}
+
+/** Is this member still in? 0 is the sentinel for "never eliminated". */
+export const isAlive = (m: MemberView) => m.eliminatedWeek === WEEK_NONE;
+
+/** Has this member already spent that team? Mirrors `Member::has_used`. */
+export const hasUsed = (usedMask: number, team: number) =>
+  (usedMask & (1 << team)) !== 0;
+
+export type SubmitPickArgs = {
+  pool: PublicKey;
+  wallet: PublicKey;
+  team: number;
+  note?: string;
+};
+
+/* A pick is the only instruction in the program that moves no money, and it is
+ * still the one that decides who gets it all. `pool` is read-only here — the
+ * pick lives entirely on the member's own account, which is why two people
+ * picking at the same moment never contend. */
+export function buildSubmitPick(args: SubmitPickArgs): TransactionInstruction {
+  if (!Number.isInteger(args.team) || args.team < 0 || args.team >= TEAM_COUNT) {
+    throw new Error(`Team ${args.team} is not 0..${TEAM_COUNT - 1}`);
+  }
+  const note = args.note ?? "";
+  if (enc.encode(note).length > MAX_NOTE) {
+    throw new Error(`Note is longer than ${MAX_NOTE} bytes`);
+  }
+
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: args.pool, isSigner: false, isWritable: false },
+      { pubkey: memberPda(args.pool, args.wallet), isSigner: false, isWritable: true },
+      { pubkey: args.wallet, isSigner: true, isWritable: false },
+    ],
+    data: coder.instruction.encode("submit_pick", { team: args.team, note }),
+  });
 }
 
 /* Anchor errors arrive as a log line, not as anything structured. Pulling the
