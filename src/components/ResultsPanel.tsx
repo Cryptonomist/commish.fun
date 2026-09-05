@@ -24,6 +24,7 @@ import { TEAMS } from "@/lib/nfl";
 import { countdown } from "@/lib/format";
 import { MIN_POST_DELAY_SECS } from "@/lib/schedule";
 import { ResultsForm } from "@/components/ResultsForm";
+import { RunWeek } from "@/components/RunWeek";
 import {
   buildVetoResults,
   hasVetoedPosting,
@@ -35,6 +36,7 @@ import {
   NO_PICK,
   STATUS_FINALIZED,
   STATUS_RESULTS_POSTED,
+  STATUS_SETTLED,
   TEAM_COUNT,
   type MemberView,
   type PoolView,
@@ -146,133 +148,129 @@ export function ResultsPanel({
         : null;
 
     return (
-      <section className="mt-8 rounded-xl border border-leather/40 bg-night-2/60 p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="display text-2xl uppercase">Week {week} posted</h2>
-          <p className="text-sm">
-            {closed ? (
-              <span className="font-bold text-cream-dim">WINDOW CLOSED</span>
-            ) : closesAt ? (
-              <>
-                <span className="text-cream-dim">Dispute closes in </span>
-                <span className="font-bold text-leather">
-                  {countdown(closesAt, now)}
-                </span>
-              </>
-            ) : null}
+      <>
+        <section className="mt-8 rounded-xl border border-leather/40 bg-night-2/60 p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="display text-2xl uppercase">Week {week} posted</h2>
+            <p className="text-sm">
+              {closed ? (
+                <span className="font-bold text-cream-dim">WINDOW CLOSED</span>
+              ) : closesAt ? (
+                <>
+                  <span className="text-cream-dim">Dispute closes in </span>
+                  <span className="font-bold text-leather">
+                    {countdown(closesAt, now)}
+                  </span>
+                </>
+              ) : null}
+            </p>
+          </div>
+
+          <p className="mt-2 text-sm text-cream-dim">
+            The commissioner claims the following. Check it against any scoreboard.
+            Nothing is committed and nobody is out until the week is finalized.
           </p>
-        </div>
 
-        <p className="mt-2 text-sm text-cream-dim">
-          The commissioner claims the following. Check it against any scoreboard.
-          Nothing is committed and nobody is out until the week is finalized.
-        </p>
-
-        <TeamRow label="WON" teams={winners} tone="alive" />
-        <TeamRow label="PUSH" teams={pushes} tone="cream" />
-        <p className="mt-3 text-xs text-cream-dim">
-          The other {TEAM_COUNT - winners.length - pushes.length} teams are
-          losses. Anyone who picked one of them, or who missed the week, is out.
-        </p>
-
-        {fate !== null ? (
-          <p
-            className={`mt-4 rounded-xl border p-4 text-sm ${
-              fate
-                ? "border-alive/40 bg-alive/10 text-cream"
-                : "border-out/40 bg-out/10 text-cream"
-            }`}
-          >
-            {myPick === NO_PICK ? (
-              <>You did not pick week {week}. As posted, you are out.</>
-            ) : fate ? (
-              <>
-                You picked{" "}
-                <span className="font-bold">
-                  {TEAMS[myPick].city} {TEAMS[myPick].name}
-                </span>
-                . As posted, you survive.
-              </>
-            ) : (
-              <>
-                You picked{" "}
-                <span className="font-bold">
-                  {TEAMS[myPick].city} {TEAMS[myPick].name}
-                </span>
-                . As posted, you are out.
-              </>
-            )}
+          <TeamRow label="WON" teams={winners} tone="alive" />
+          <TeamRow label="PUSH" teams={pushes} tone="cream" />
+          <p className="mt-3 text-xs text-cream-dim">
+            The other {TEAM_COUNT - winners.length - pushes.length} teams are
+            losses. Anyone who picked one of them, or who missed the week, is out.
           </p>
-        ) : null}
 
-        <p id="veto-tally" className="mt-5 text-sm text-cream-dim">
-          <span className="font-bold text-cream">
-            {pool.vetoCount} of {needed}
-          </span>{" "}
-          votes needed to strike this down, from the {pool.aliveCount} members
-          still alive. If it is struck down the commissioner posts again and
-          everyone votes again.
-        </p>
+          {fate !== null ? (
+            <p
+              className={`mt-4 rounded-xl border p-4 text-sm ${
+                fate
+                  ? "border-alive/40 bg-alive/10 text-cream"
+                  : "border-out/40 bg-out/10 text-cream"
+              }`}
+            >
+              {myPick === NO_PICK ? (
+                <>You did not pick week {week}. As posted, you are out.</>
+              ) : fate ? (
+                <>
+                  You picked{" "}
+                  <span className="font-bold">
+                    {TEAMS[myPick].city} {TEAMS[myPick].name}
+                  </span>
+                  . As posted, you survive.
+                </>
+              ) : (
+                <>
+                  You picked{" "}
+                  <span className="font-bold">
+                    {TEAMS[myPick].city} {TEAMS[myPick].name}
+                  </span>
+                  . As posted, you are out.
+                </>
+              )}
+            </p>
+          ) : null}
 
-        {status.at === "error" ? (
-          <p className="mt-4 rounded-xl border border-out/40 bg-out/10 p-4 text-sm text-cream">
-            {status.message}
+          <p id="veto-tally" className="mt-5 text-sm text-cream-dim">
+            <span className="font-bold text-cream">
+              {pool.vetoCount} of {needed}
+            </span>{" "}
+            votes needed to strike this down, from the {pool.aliveCount} members
+            still alive. If it is struck down the commissioner posts again and
+            everyone votes again.
           </p>
-        ) : null}
 
+          {status.at === "error" ? (
+            <p className="mt-4 rounded-xl border border-out/40 bg-out/10 p-4 text-sm text-cream">
+              {status.message}
+            </p>
+          ) : null}
+
+          {closed ? (
+            <p className="mt-4 rounded-xl border border-night-3 bg-night-2 p-4 text-sm text-cream-dim">
+              The window has closed, so this posting stands. A vote is still
+              accepted until the week is committed: the program checks that a
+              posting is pending and never looks at the clock. Late is a race
+              against whoever runs the week below, not a right.
+            </p>
+          ) : null}
+
+          {member ? (
+            <button
+              type="button"
+              onClick={veto}
+              disabled={!eligible || busy}
+              aria-describedby="veto-tally"
+              className="mt-4 h-14 w-full rounded-xl border border-out/50 text-sm font-bold tracking-wide text-out transition-colors hover:bg-out/10 disabled:cursor-not-allowed disabled:border-night-3 disabled:text-cream-dim disabled:hover:bg-transparent"
+            >
+              {status.at === "signing"
+                ? "Confirm in your wallet…"
+                : status.at === "confirming"
+                  ? "Waiting for the network…"
+                  : alreadyVoted
+                    ? "You have vetoed this posting"
+                    : !isAlive(member)
+                      ? "Only members still alive can vote"
+                      : `Veto week ${week}`}
+            </button>
+          ) : (
+            <p className="mt-4 text-sm text-cream-dim">
+              Only members of this pool can vote on a posting.
+            </p>
+          )}
+        </section>
+
+        {/* The vote and the crank are both live in this window, deliberately:
+            the posting can still be struck down right up until somebody commits
+            it, and either of those is the next thing that happens. */}
         {closed ? (
-          <p className="mt-4 rounded-xl border border-night-3 bg-night-2 p-4 text-sm text-cream-dim">
-            The window has closed, so this posting stands. A vote is still
-            accepted until the week is committed: the program checks that a
-            posting is pending and never looks at the clock, and{" "}
-            <code>finalize_week</code> is a crank anyone can fire. Late is a
-            race, not a right. That crank is the next piece of work and is not
-            wired up yet.
-          </p>
+          <RunWeek poolKey={poolKey} pool={pool} onChanged={onChanged} />
         ) : null}
-
-        {member ? (
-          <button
-            type="button"
-            onClick={veto}
-            disabled={!eligible || busy}
-            aria-describedby="veto-tally"
-            className="mt-4 h-14 w-full rounded-xl border border-out/50 text-sm font-bold tracking-wide text-out transition-colors hover:bg-out/10 disabled:cursor-not-allowed disabled:border-night-3 disabled:text-cream-dim disabled:hover:bg-transparent"
-          >
-            {status.at === "signing"
-              ? "Confirm in your wallet…"
-              : status.at === "confirming"
-                ? "Waiting for the network…"
-                : alreadyVoted
-                  ? "You have vetoed this posting"
-                  : !isAlive(member)
-                    ? "Only members still alive can vote"
-                    : `Veto week ${week}`}
-          </button>
-        ) : (
-          <p className="mt-4 text-sm text-cream-dim">
-            Only members of this pool can vote on a posting.
-          </p>
-        )}
-      </section>
+      </>
     );
   }
 
-  // ── The week is committed. Settling is the next piece. ─────────────────────
-  if (pool.status === STATUS_FINALIZED) {
-    return (
-      <section className="mt-8 rounded-xl border border-night-3 bg-night-2/60 p-5">
-        <h2 className="display text-2xl uppercase">
-          Week {pool.finalizedWeek} is final
-        </h2>
-        <p className="mt-2 text-sm text-cream-dim">
-          The dispute window closed without a majority and the week is committed.
-          Applying it to each member runs through `settle_member` and then
-          `advance_week`. That screen is the next piece of work and is not wired
-          up yet.
-        </p>
-      </section>
-    );
+  /* The week is committed, or the pool is decided. Both are the crank's
+   * business: settling every member and closing the week out. */
+  if (pool.status === STATUS_FINALIZED || pool.status === STATUS_SETTLED) {
+    return <RunWeek poolKey={poolKey} pool={pool} onChanged={onChanged} />;
   }
 
   // ── Nothing pending: the commissioner's form, or a note that they are late ──

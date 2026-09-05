@@ -21,7 +21,7 @@ import {
   SYSVAR_RENT_PUBKEY,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { BorshCoder, type Idl } from "@coral-xyz/anchor";
+import { BorshCoder, utils, type Idl } from "@coral-xyz/anchor";
 import BN from "bn.js";
 
 import idlJson from "@/idl/commish.json";
@@ -226,6 +226,18 @@ export type PoolView = {
   vetoEpoch: number;
   /** The last week committed by finalize_week, or WEEK_NONE. */
   finalizedWeek: number;
+  /** How many members were alive when the week was finalized, snapshotted
+   *  there because `aliveCount` falls as members are settled. `advance_week`
+   *  refuses until `processedThisWeek` reaches it. */
+  aliveAtWeekStart: number;
+  processedThisWeek: number;
+  /** Owner of the token account `advance_week` pays the platform fee to. */
+  feeTreasury: PublicKey;
+  /** Written once the pool settles. `winnersWeek` is WEEK_NONE when survivors
+   *  won outright, or the week everybody went out together. */
+  winnersWeek: number;
+  winnersCount: number;
+  potPerWinner: bigint;
 };
 
 /* Fixed-size name fields are zero-padded on chain. Trimming at the first NUL
@@ -273,6 +285,12 @@ export function decodePool(data: Uint8Array): PoolView {
     vetoCount: num("veto_count"),
     vetoEpoch: num("veto_epoch"),
     finalizedWeek: num("finalized_week"),
+    aliveAtWeekStart: num("alive_at_week_start"),
+    processedThisWeek: num("processed_this_week"),
+    feeTreasury: raw.fee_treasury as unknown as PublicKey,
+    winnersWeek: num("winners_week"),
+    winnersCount: num("winners_count"),
+    potPerWinner: big("pot_per_winner"),
   };
 }
 
@@ -364,6 +382,9 @@ export type MemberView = {
   usedMask: number;
   currentPick: number;
   pickWeek: number;
+  /** The last week `settle_member` applied to this member. A second call for
+   *  the same week is refused, which is what makes the crank re-runnable. */
+  processedWeek: number;
   eliminatedWeek: number;
   /** The Pool::veto_epoch this member last voted on. 0 == never voted. */
   vetoedEpoch: number;
@@ -382,6 +403,7 @@ export function decodeMember(data: Uint8Array): MemberView {
     usedMask: Number(raw.used_mask),
     currentPick: Number(raw.current_pick),
     pickWeek: Number(raw.pick_week),
+    processedWeek: Number(raw.processed_week),
     eliminatedWeek: Number(raw.eliminated_week),
     vetoedEpoch: Number(raw.vetoed_epoch),
     claimed: raw.claimed as unknown as boolean,
@@ -564,6 +586,119 @@ export const vetoThreshold = (electorate: number): number =>
  */
 export const hasVetoedPosting = (member: MemberView, pool: PoolView): boolean =>
   member.vetoedEpoch === pool.vetoEpoch;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Running the week: finalize → settle every member → advance
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* ALL THREE ARE PERMISSIONLESS, AND THAT IS THE POINT. None of them takes a
+ * signer: the transaction needs a fee payer and nothing else. A crank that
+ * required the commissioner would let a commissioner who lost interest freeze
+ * the pot after the buy-ins were collected, which is the exact failure the
+ * escrow exists to remove. Any wallet can run the week. */
+
+export function buildFinalizeWeek(pool: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [{ pubkey: pool, isSigner: false, isWritable: true }],
+    data: coder.instruction.encode("finalize_week", {}),
+  });
+}
+
+/* One member, one call, idempotent: a second call for the same week is refused
+ * rather than repeated. `_points` is reserved for the scored modes and ignored
+ * by Survivor and Loser, so it goes out as zero, as the tests send it. */
+export function buildSettleMember(
+  pool: PublicKey,
+  member: PublicKey,
+): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: pool, isSigner: false, isWritable: true },
+      { pubkey: member, isSigner: false, isWritable: true },
+    ],
+    data: coder.instruction.encode("settle_member", { _points: 0 }),
+  });
+}
+
+/* THE FEE TREASURY TOKEN ACCOUNT IS REQUIRED EVEN WHEN THE FEE IS ZERO.
+ *
+ * Anchor's account list is static, so `advance_week` names it on every call,
+ * including the ones that only roll the week forward. Season 1 runs at
+ * `fee_bps == 0` and transfers nothing, but the account is still deserialized:
+ * if it does not exist, the instruction fails before any of the program's own
+ * checks run, with an error that says nothing about treasuries. Callers should
+ * check it exists first and say so plainly. */
+export function buildAdvanceWeek(args: {
+  pool: PublicKey;
+  vault: PublicKey;
+  feeTreasuryAta: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: args.pool, isSigner: false, isWritable: true },
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: args.feeTreasuryAta, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: coder.instruction.encode("advance_week", {}),
+  });
+}
+
+/* Finding every member of a pool.
+ *
+ * The discriminator comes out of the IDL rather than being pasted in, and the
+ * pool is matched at offset 8 because `Member` opens with `pool: Pubkey` right
+ * after it. Filtering on a hardcoded account SIZE would have been the other
+ * option and is worse: `Member` grew from 200 bytes to 201 when `vetoed_epoch`
+ * was added, and a stale size filter does not error, it silently returns no
+ * members at all — which would look like a week with nobody left to settle. */
+const MEMBER_DISCRIMINATOR = (
+  idlJson as { accounts?: { name: string; discriminator: number[] }[] }
+).accounts?.find((a) => a.name === "Member")?.discriminator;
+
+export function memberAccountFilters(pool: PublicKey) {
+  if (!MEMBER_DISCRIMINATOR) {
+    throw new Error("The vendored IDL has no Member account discriminator");
+  }
+  return [
+    {
+      memcmp: {
+        offset: 0,
+        bytes: utils.bytes.bs58.encode(Buffer.from(MEMBER_DISCRIMINATOR)),
+      },
+    },
+    { memcmp: { offset: 8, bytes: pool.toBase58() } },
+  ];
+}
+
+/** A member account as `getProgramAccounts` returns it, decoded. */
+export type MemberEntry = { address: PublicKey; member: MemberView };
+
+/** Who still has to be settled for the finalized week.
+ *
+ * `settle_member` refuses an already-processed member and refuses a dead one,
+ * so this is exactly the set that will succeed. A member eliminated by THIS
+ * week's settling has `processedWeek === week` and drops out of the list on the
+ * next read, which is what makes re-running the crank safe. */
+export function pendingSettles(
+  entries: MemberEntry[],
+  finalizedWeek: number,
+): MemberEntry[] {
+  return entries.filter(
+    (e) => isAlive(e.member) && e.member.processedWeek !== finalizedWeek,
+  );
+}
+
+/* How many settles fit in one transaction.
+ *
+ * Each adds one writable account (32 bytes in the account table) and about 17
+ * bytes of instruction, against a 1232-byte packet: roughly `198 + 49n`, so
+ * twenty-one would fit. Twelve leaves room for a fee payer that is also a
+ * member, and for the day this arithmetic is wrong. */
+export const SETTLES_PER_TX = 12;
 
 /* Anchor errors arrive as a log line, not as anything structured. Pulling the
  * program's own message out beats showing "custom program error: 0x1771" to
