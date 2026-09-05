@@ -35,6 +35,7 @@ import {
   survivesPosting,
   vetoThreshold,
   NO_PICK,
+  STATUS_ABANDONED,
   STATUS_FINALIZED,
   STATUS_RESULTS_POSTED,
   STATUS_SETTLED,
@@ -116,6 +117,12 @@ export function ResultsPanel({
         : null,
     [pool.pendingPostedTs, pool.disputeWindowSecs],
   );
+
+  /* An abandoned pool has no week left to run. The refund panel above it says
+   * everything there is to say, and `post_results` refuses only a SETTLED pool
+   * — so without this the commissioner of a dead pool would still be shown a
+   * form for posting week nine of a season that stopped happening. */
+  if (pool.status === STATUS_ABANDONED) return null;
 
   // ── A week is posted and the clock is running ──────────────────────────────
   if (pool.status === STATUS_RESULTS_POSTED) {

@@ -208,6 +208,11 @@ export type PoolView = {
   status: number;
   currentWeek: number;
   duesDeadlineTs: number;
+  /** After this, a pool that has not settled can be refunded by anyone paid
+   *  into it. The deadman's date. */
+  refundDeadlineTs: number;
+  /** Fixed by the first member to reclaim, and zero until then. */
+  refundPerMember: bigint;
   /** Eighteen unix-second locks, as stored. Index 0 is week 1. */
   lockTs: number[];
 
@@ -274,6 +279,8 @@ export function decodePool(data: Uint8Array): PoolView {
     status: num("status"),
     currentWeek: num("current_week"),
     duesDeadlineTs: num("dues_deadline_ts"),
+    refundDeadlineTs: num("refund_deadline_ts"),
+    refundPerMember: big("refund_per_member"),
     lockTs: (raw.lock_ts as unknown as { toString(): string }[]).map((t) =>
       Number(t.toString()),
     ),
@@ -723,7 +730,7 @@ export const isPotWinner = (pool: PoolView, member: MemberView): boolean =>
     ? isAlive(member)
     : member.eliminatedWeek === pool.winnersWeek;
 
-export type ClaimPotArgs = {
+export type MemberPayoutArgs = {
   pool: PublicKey;
   wallet: PublicKey;
   vault: PublicKey;
@@ -733,21 +740,27 @@ export type ClaimPotArgs = {
   usdcMint: PublicKey;
 };
 
-export type ClaimPotPlan = {
+export type MemberPayoutPlan = {
   instruction: TransactionInstruction;
   member: PublicKey;
   memberAta: PublicKey;
 };
 
-/* Idempotent by construction: `member.claimed` is set here and refused on a
- * second call, so a double-click costs a failed transaction rather than a
- * second payout.
+/* The two ways a member is paid out of a vault take the same six accounts in
+ * the same order, and `ClaimPot` and `ReclaimDues` are byte-identical structs
+ * in the program. They differ in which one the pool's state allows: `claim_pot`
+ * requires Settled and `reclaim_dues` refuses it, so they can never both apply.
  *
- * `member_ata` must already exist, the same trap `join_pool` has. A member who
- * was brought in through `sponsor_join` may never have held USDC at all, which
- * makes the winner of a sponsored seat exactly the person most likely to hit
- * it. Callers prepend `createAtaIdempotentIx`. */
-export function buildClaimPot(args: ClaimPotArgs): ClaimPotPlan {
+ * `member.claimed` is the marker for both, which is what makes each idempotent
+ * and what stops a member taking a payout twice by either route.
+ *
+ * `member_ata` must already exist, the same trap `join_pool` has. A member
+ * brought in through `sponsor_join` may never have held USDC at all, so callers
+ * prepend `createAtaIdempotentIx`. */
+function memberPayoutIx(
+  name: "claim_pot" | "reclaim_dues",
+  args: MemberPayoutArgs,
+): MemberPayoutPlan {
   const member = memberPda(args.pool, args.wallet);
   const memberAta = ataFor(args.wallet, args.usdcMint);
 
@@ -761,11 +774,45 @@ export function buildClaimPot(args: ClaimPotArgs): ClaimPotPlan {
       { pubkey: memberAta, isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
-    data: coder.instruction.encode("claim_pot", {}),
+    data: coder.instruction.encode(name, {}),
   });
 
   return { instruction, member, memberAta };
 }
+
+/** A winner takes their share of a settled pool. */
+export const buildClaimPot = (args: MemberPayoutArgs): MemberPayoutPlan =>
+  memberPayoutIx("claim_pot", args);
+
+/* THE DEADMAN SWITCH. Every paid member takes their pro-rata share back from a
+ * pool that never settled: the commissioner vanished, the season fell apart,
+ * anything. It is the promise that makes the escrow worth more than a Venmo
+ * balance, and it is the one path that works when nobody is running the pool.
+ *
+ * The first caller fixes `refund_per_member` from the vault as it stands and
+ * flips the pool to Abandoned. Everybody after that reads the same number, so
+ * the last member out is not shortchanged by the ones who moved first. Before
+ * anyone has called it the number does not exist yet, and a client can only
+ * estimate it: see `estimatedRefund`. */
+export const buildReclaimDues = (args: MemberPayoutArgs): MemberPayoutPlan =>
+  memberPayoutIx("reclaim_dues", args);
+
+/** What one member gets back, in base units.
+ *
+ *  Once anybody has reclaimed, `refundPerMember` is the fixed, authoritative
+ *  number. Before that it is zero and this is the same integer division the
+ *  first caller will do, against the vault as it stands now. */
+export function estimatedRefund(pool: PoolView, vaultAmount: bigint): bigint {
+  if (pool.refundPerMember > BigInt(0)) return pool.refundPerMember;
+  if (pool.paidMembers === 0) return BigInt(0);
+  return vaultAmount / BigInt(pool.paidMembers);
+}
+
+/** Can this member still take the deadman refund? Mirrors the program's gates
+ *  other than the timing and the league prize-slot grace, which the caller
+ *  checks against the clock and which pick pools never hit. */
+export const canReclaim = (member: MemberView): boolean =>
+  member.paid && !member.claimed;
 
 /* Anchor errors arrive as a log line, not as anything structured. Pulling the
  * program's own message out beats showing "custom program error: 0x1771" to

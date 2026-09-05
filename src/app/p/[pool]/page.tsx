@@ -22,6 +22,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
 import { PickGrid } from "@/components/PickGrid";
+import { ReclaimDues } from "@/components/ReclaimDues";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { formatUsdc, shortAddress } from "@/lib/format";
 import {
@@ -35,6 +36,7 @@ import {
   USDC_MINT,
   MAX_DISPLAY_NAME,
   STATUS_OPEN,
+  STATUS_SETTLED,
   type PoolView,
   type MemberView,
 } from "@/lib/program";
@@ -121,6 +123,15 @@ export default function PoolPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  /* A pool that ran out of road: past the refund deadline and never settled.
+   * Checked once per render rather than on a ticking clock, because the
+   * deadline is months out and nobody is watching this page for the second it
+   * flips. */
+  const refundOpen =
+    !!pool &&
+    pool.status !== STATUS_SETTLED &&
+    Date.now() / 1000 >= pool.refundDeadlineTs;
 
   const nameBytes = new TextEncoder().encode(displayName).length;
   const short = usdcAmount !== null && pool !== null && usdcAmount < pool.buyIn;
@@ -234,6 +245,18 @@ export default function PoolPage() {
               winner&apos;s claim or, past the refund deadline, back to everyone
               who paid.
             </p>
+
+            {/* The deadman outranks the season. Once a pool is past its refund
+                deadline without settling, getting the money back is the only
+                thing on this page anybody needs, so it goes first. */}
+            {poolKey && refundOpen ? (
+              <ReclaimDues
+                poolKey={poolKey}
+                pool={pool}
+                member={member}
+                onChanged={refresh}
+              />
+            ) : null}
 
             {poolKey ? (
               <ResultsPanel
