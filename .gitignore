@@ -47,3 +47,5 @@ target/
 .anchor/
 test-ledger/
 **/*.rs.bk
+target/
+.anchor/
