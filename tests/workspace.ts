@@ -1404,7 +1404,7 @@ describe("commish - LiteSVM", () => {
     }
   });
 
-  it("a vetoed week can be re-posted and finalized", async () => {
+  it("a vetoed week can be re-posted", async () => {
     const commissioner = await generateKeyPairSigner();
     const alice = await generateKeyPairSigner();
     const bob = await generateKeyPairSigner();
@@ -1449,6 +1449,8 @@ describe("commish - LiteSVM", () => {
         }),
         commissioner
       );
+      const rp = fetchAccount<any>("Pool", pool);
+      expect(rp.status).to.equal(STATUS_RESULTS_POSTED);
     } finally {
       setClock(now);
     }
