@@ -38,9 +38,11 @@ import {
   buildClaimPot,
   buildFinalizeWeek,
   buildPostResults,
+  buildReclaimDues,
   buildSettleMember,
   buildVetoResults,
   ataFor,
+  estimatedRefund,
   memberAccountFilters,
   memberPda,
   poolPda,
@@ -48,6 +50,7 @@ import {
   PROGRAM_ID,
   SETTLES_PER_TX,
   TOKEN_PROGRAM_ID,
+  type PoolView,
 } from "@/lib/program";
 
 /* The reference coder reads `target/idl`, exactly as the tests do. The client
@@ -214,6 +217,30 @@ function refClaimPot(opts: {
       { address: address(TOKEN_PROGRAM_ID.toBase58()), role: AccountRole.READONLY },
     ],
     data: coder.instruction.encode("claim_pot", {}),
+  };
+}
+
+/* workspace.ts:310 reclaimDuesIx — the same six accounts as claimPotIx, which
+ * is why the client shares one builder between them. Transcribed separately
+ * anyway: a reference that reuses the thing it is checking proves nothing. */
+function refReclaimDues(opts: {
+  pool: Address;
+  member: Address;
+  wallet: Address;
+  vault: Address;
+  memberAta: Address;
+}): RefIx {
+  return {
+    programAddress,
+    accounts: [
+      { address: opts.pool, role: AccountRole.WRITABLE },
+      { address: opts.member, role: AccountRole.WRITABLE },
+      { address: opts.wallet, role: AccountRole.WRITABLE_SIGNER },
+      { address: opts.vault, role: AccountRole.WRITABLE },
+      { address: opts.memberAta, role: AccountRole.WRITABLE },
+      { address: address(TOKEN_PROGRAM_ID.toBase58()), role: AccountRole.READONLY },
+    ],
+    data: coder.instruction.encode("reclaim_dues", {}),
   };
 }
 
@@ -435,6 +462,61 @@ async function main() {
       vault: address(vault.toBase58()),
       memberAta: address(kitAta.toString()),
     }),
+  );
+
+  const reclaim = buildReclaimDues({ pool, wallet, vault, usdcMint: mint });
+  compare(
+    "reclaim_dues (workspace.ts:310)",
+    reclaim.instruction,
+    refReclaimDues({
+      pool: poolAddr,
+      member: address(mineMember.toBase58()),
+      wallet: walletAddr,
+      vault: address(vault.toBase58()),
+      memberAta: address(kitAta.toString()),
+    }),
+  );
+
+  /* claim_pot and reclaim_dues share one client builder because the program's
+   * two account structs are identical. That is exactly the refactor where a
+   * dropped argument stops mattering to the account comparison and starts
+   * mattering to which instruction actually runs: an ignored `name` would send
+   * a refund as a winner's claim, and every check above would still pass. */
+  console.log("\nThe two payout paths must not collapse into one");
+  ok(
+    "claim_pot and reclaim_dues carry different discriminators",
+    !Buffer.from(claim.instruction.data).equals(Buffer.from(reclaim.instruction.data)),
+    `both encode to ${Buffer.from(claim.instruction.data).toString("hex")}`,
+  );
+  ok(
+    "…and identical account lists, as the program declares them",
+    JSON.stringify(claim.instruction.keys) ===
+      JSON.stringify(reclaim.instruction.keys),
+  );
+
+  /* ── The refund arithmetic ─────────────────────────────────────────────────
+   *
+   * `refund_per_member` is fixed by the first caller and zero before that, so
+   * the screen shows an estimate or a fact depending on a single condition.
+   * Inverting it would quote an authoritative-sounding number that is wrong. */
+  console.log("\nRefund share");
+  const asPool = (over: Partial<PoolView>) =>
+    ({ refundPerMember: BigInt(0), paidMembers: 0, ...over }) as PoolView;
+  ok(
+    "before anyone reclaims, it is the vault split by paid members",
+    estimatedRefund(asPool({ paidMembers: 4 }), BigInt(1_000_000)) ===
+      BigInt(250_000),
+  );
+  ok(
+    "once fixed, the stored figure wins over the live vault",
+    estimatedRefund(
+      asPool({ paidMembers: 4, refundPerMember: BigInt(250_000) }),
+      BigInt(10),
+    ) === BigInt(250_000),
+  );
+  ok(
+    "no paid members is zero, not a division by zero",
+    estimatedRefund(asPool({ paidMembers: 0 }), BigInt(1_000_000)) === BigInt(0),
   );
 
   /* ── Finding members by memcmp ─────────────────────────────────────────────
