@@ -35,6 +35,7 @@ import type { Address } from "@solana/kit";
 
 import {
   buildAdvanceWeek,
+  buildClaimPot,
   buildFinalizeWeek,
   buildPostResults,
   buildSettleMember,
@@ -191,6 +192,28 @@ function refAdvanceWeek(
       { address: address(TOKEN_PROGRAM_ID.toBase58()), role: AccountRole.READONLY },
     ],
     data: coder.instruction.encode("advance_week", {}),
+  };
+}
+
+/* workspace.ts: claimPotIx({ pool, member, wallet, vault, memberAta }) */
+function refClaimPot(opts: {
+  pool: Address;
+  member: Address;
+  wallet: Address;
+  vault: Address;
+  memberAta: Address;
+}): RefIx {
+  return {
+    programAddress,
+    accounts: [
+      { address: opts.pool, role: AccountRole.WRITABLE },
+      { address: opts.member, role: AccountRole.WRITABLE },
+      { address: opts.wallet, role: AccountRole.WRITABLE_SIGNER },
+      { address: opts.vault, role: AccountRole.WRITABLE },
+      { address: opts.memberAta, role: AccountRole.WRITABLE },
+      { address: address(TOKEN_PROGRAM_ID.toBase58()), role: AccountRole.READONLY },
+    ],
+    data: coder.instruction.encode("claim_pot", {}),
   };
 }
 
@@ -373,6 +396,45 @@ async function main() {
       address(vault.toBase58()),
       address(treasuryAta.toBase58()),
     ),
+  );
+
+  /* ── The money path ────────────────────────────────────────────────────────
+   *
+   * The associated token account is derived by the client for both
+   * `advance_week` (the fee treasury's) and `claim_pot` (the winner's), and it
+   * is the account the money actually lands in. Deriving it the other library's
+   * way is worth the four lines. */
+  const mint = new PublicKey(new Uint8Array(32).fill(13));
+  const [kitAta] = await getProgramDerivedAddress({
+    programAddress: address("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+    seeds: [
+      addressCodec.encode(address(wallet.toBase58())),
+      addressCodec.encode(address(TOKEN_PROGRAM_ID.toBase58())),
+      addressCodec.encode(address(mint.toBase58())),
+    ],
+  });
+  console.log("\nAssociated token account derivation");
+  ok(
+    "ataFor matches @solana/kit",
+    ataFor(wallet, mint).toBase58() === kitAta.toString(),
+    `${ataFor(wallet, mint).toBase58()} vs ${kitAta}`,
+  );
+
+  const claim = buildClaimPot({ pool, wallet, vault, usdcMint: mint });
+  ok(
+    "claim_pot pays the wallet's own token account",
+    claim.memberAta.toBase58() === kitAta.toString(),
+  );
+  compare(
+    "claim_pot (workspace.ts claimPotIx)",
+    claim.instruction,
+    refClaimPot({
+      pool: poolAddr,
+      member: address(mineMember.toBase58()),
+      wallet: walletAddr,
+      vault: address(vault.toBase58()),
+      memberAta: address(kitAta.toString()),
+    }),
   );
 
   /* ── Finding members by memcmp ─────────────────────────────────────────────
