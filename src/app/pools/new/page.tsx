@@ -25,7 +25,6 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
-import { WEEK_1_KICKOFF } from "@/lib/nfl";
 import { shortAddress, toBaseUnits, formatUsdc } from "@/lib/format";
 import {
   buildCreatePool,
@@ -38,11 +37,20 @@ import {
   MAX_MEMBERS,
 } from "@/lib/program";
 import {
+  firstKickoffFor,
   seasonLockSchedule,
   refundDeadlineFor,
   validateSchedule,
   DEFAULT_DISPUTE_WINDOW_SECS,
+  FAST_CLOCK,
 } from "@/lib/schedule";
+
+/* The dispute window is entered in hours, and the field strips anything that
+ * is not a digit. On a fast clock the minimum is thirty SECONDS, which cannot
+ * be typed in hours at all, so the unit moves with the clock. A form whose
+ * smallest legal value is unreachable is a form that cannot create a pool. */
+const WINDOW_UNIT_SECS = FAST_CLOCK ? 1 : 3600;
+const WINDOW_UNIT_LABEL = FAST_CLOCK ? "SECONDS" : "HOURS";
 
 const CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet";
 const explorer = (kind: "tx" | "address", id: string) =>
@@ -62,8 +70,8 @@ export default function NewPool() {
   const [name, setName] = useState("");
   const [buyIn, setBuyIn] = useState("25");
   const [maxMembers, setMaxMembers] = useState("50");
-  const [disputeHours, setDisputeHours] = useState(
-    String(DEFAULT_DISPUTE_WINDOW_SECS / 3600),
+  const [disputeWindow, setDisputeWindow] = useState(
+    String(DEFAULT_DISPUTE_WINDOW_SECS / WINDOW_UNIT_SECS),
   );
   const [status, setStatus] = useState<Status>({ at: "idle" });
 
@@ -82,8 +90,22 @@ export default function NewPool() {
     };
   }, [connection]);
 
-  const locks = useMemo(() => seasonLockSchedule(WEEK_1_KICKOFF), []);
-  const disputeWindowSecs = Math.round(Number(disputeHours) * 3600);
+  /* On a fast clock the season starts two minutes from now, so the anchor has
+   * to keep moving: `create_pool` refuses a first lock already in the past, and
+   * a form left open while somebody thinks about a buy-in would propose a week
+   * that has already kicked off. On a real clock this is a fixed date and the
+   * interval never runs. */
+  const [firstKickoff, setFirstKickoff] = useState(() => firstKickoffFor());
+  useEffect(() => {
+    if (!FAST_CLOCK) return;
+    const t = setInterval(() => setFirstKickoff(firstKickoffFor()), 15_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const locks = useMemo(() => seasonLockSchedule(firstKickoff), [firstKickoff]);
+  const disputeWindowSecs = Math.round(
+    Number(disputeWindow) * WINDOW_UNIT_SECS,
+  );
 
   const problem = useMemo(
     () =>
@@ -268,12 +290,12 @@ export default function NewPool() {
 
               <label className="flex flex-col gap-2">
                 <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
-                  DISPUTE WINDOW (HOURS)
+                  DISPUTE WINDOW ({WINDOW_UNIT_LABEL})
                 </span>
                 <input
-                  value={disputeHours}
+                  value={disputeWindow}
                   onChange={(e) =>
-                    setDisputeHours(e.target.value.replace(/[^\d]/g, ""))
+                    setDisputeWindow(e.target.value.replace(/[^\d]/g, ""))
                   }
                   inputMode="numeric"
                   className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-leather"
@@ -291,7 +313,7 @@ export default function NewPool() {
                 Picks lock at first kickoff
               </span>
               <p className="mt-1.5 text-cream-dim">
-                {WEEK_1_KICKOFF.toLocaleString("en-US", {
+                {firstKickoff.toLocaleString("en-US", {
                   weekday: "long",
                   month: "long",
                   day: "numeric",

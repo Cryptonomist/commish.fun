@@ -37,10 +37,42 @@ pub const TEAM_COUNT: u8 = 32;
 /// Basis points are the only percentage unit in the program. 10000 == 100%.
 pub const BPS_DENOM: u16 = 10_000;
 
+/* THE TIMING FLOORS, AND THE ONE BUILD THAT SHORTENS THEM.
+ *
+ * A pool cannot be created with its first lock already past, `post_results`
+ * waits three hours after that lock, and `finalize_week` waits the dispute
+ * window on top. Against a validator whose clock is wall time that makes one
+ * trip round the results loop a matter of hours, which is how a screen ends up
+ * shipping unexercised.
+ *
+ * `fastclock` drops the two floors to a minute and thirty seconds so the whole
+ * loop can be walked while somebody watches. It is gated on `devnet` at compile
+ * time: a mainnet build that enables it does not produce a fast pool, it
+ * produces a compile error. A floor that stops a commissioner posting results
+ * before the games are played is not a thing to lose to a stray build flag,
+ * and the devnet feature is already the switch that says "this binary is not
+ * for real money".
+ *
+ * Neither value drops to zero. A floor of zero would let results be posted in
+ * the same slot as the kickoff, which is a different program rather than a
+ * faster one, and the point is to exercise the behaviour rather than skip it.
+ */
+#[cfg(all(feature = "fastclock", not(feature = "devnet")))]
+compile_error!(
+    "fastclock shortens the result-posting and dispute floors to seconds and is for \
+     a local validator only. Build it with --features devnet,fastclock. A mainnet \
+     build must never enable it."
+);
+
 /// Results may not be posted until the week's games could plausibly be over.
 /// Three hours after the FIRST kickoff is not "all games are final" — it is a
 /// floor that stops a commissioner posting a week's results before it starts.
+#[cfg(not(feature = "fastclock"))]
 pub const MIN_POST_DELAY_SECS: i64 = 3 * 60 * 60;
+/// Local builds only. Long enough to watch the countdown, short enough to sit
+/// through. See the note above.
+#[cfg(feature = "fastclock")]
+pub const MIN_POST_DELAY_SECS: i64 = 60;
 
 /// How long a finalized prize blocks the deadman refund.
 ///
@@ -54,7 +86,11 @@ pub const PRIZE_CLAIM_GRACE_SECS: i64 = 30 * 24 * 60 * 60;
 /// is long enough for a working week to notice and short enough that a pot is
 /// not held hostage.
 pub const DEFAULT_DISPUTE_WINDOW_SECS: u32 = 48 * 60 * 60;
+#[cfg(not(feature = "fastclock"))]
 pub const MIN_DISPUTE_WINDOW_SECS: u32 = 60 * 60;
+/// Local builds only, alongside the shortened `MIN_POST_DELAY_SECS`.
+#[cfg(feature = "fastclock")]
+pub const MIN_DISPUTE_WINDOW_SECS: u32 = 30;
 pub const MAX_DISPUTE_WINDOW_SECS: u32 = 7 * 24 * 60 * 60;
 
 /* Pool types. The mode kit: every mode shares one escrow, one veto, one deadman

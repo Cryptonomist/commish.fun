@@ -17,6 +17,12 @@ default = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 # Swap the canonical USDC mint for the devnet one. Enabled by the devnet build.
 devnet = []
+# Shorten the result-posting and dispute floors from hours to seconds so the
+# whole week loop can be walked against a local validator. Deliberately does NOT
+# imply `devnet`: it refuses to compile without it, which tells you to add it,
+# rather than quietly swapping the USDC mint underneath a build you thought was
+# for real money. Never deploy it anywhere real. See constants.rs.
+fastclock = []
 
 [dependencies]
 anchor-lang = { version = "1.1.2", features = ["init-if-needed"] }

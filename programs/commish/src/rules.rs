@@ -162,10 +162,33 @@ mod tests {
         assert_eq!(platform_fee(0, 10_000, u64::MAX).unwrap(), 0);
     }
 
+    /* The floors are load-bearing, and `fastclock` moves two of them. Both
+     * builds pin their own values so the flag cannot drift silently, and the
+     * fast build is checked for the one property that makes it a faster program
+     * rather than a different one: the floors still exist. */
+    #[test]
+    fn the_timing_floors_are_what_we_think() {
+        #[cfg(not(feature = "fastclock"))]
+        {
+            assert_eq!(MIN_POST_DELAY_SECS, 3 * 60 * 60);
+            assert_eq!(MIN_DISPUTE_WINDOW_SECS, 60 * 60);
+        }
+        #[cfg(feature = "fastclock")]
+        {
+            assert_eq!(MIN_POST_DELAY_SECS, 60);
+            assert_eq!(MIN_DISPUTE_WINDOW_SECS, 30);
+        }
+        // Zero would let results be posted in the kickoff's own slot.
+        assert!(MIN_POST_DELAY_SECS > 0);
+        assert!(MIN_DISPUTE_WINDOW_SECS > 0);
+        assert!(MIN_DISPUTE_WINDOW_SECS < MAX_DISPUTE_WINDOW_SECS);
+    }
+
     #[test]
     fn a_week_must_outlast_its_own_dispute_window() {
         // The default 48h window needs 51h between locks. A daily schedule
         // cannot finalize a week before the next one locks.
+        #[cfg(not(feature = "fastclock"))]
         assert_eq!(min_week_gap(48 * 60 * 60).unwrap(), 51 * 60 * 60);
         assert!(min_week_gap(48 * 60 * 60).unwrap() > 24 * 60 * 60);
 

@@ -13,14 +13,53 @@
  * not there.
  */
 
+import { WEEK_1_KICKOFF } from "@/lib/nfl";
+
 export const WEEKS = 18;
 
-/** Results cannot be posted until this long after a week's lock. */
-export const MIN_POST_DELAY_SECS = 3 * 60 * 60;
+/* THE FAST CLOCK, AND WHY IT LIVES ON BOTH SIDES.
+ *
+ * `--features devnet,fastclock` drops the program's posting and dispute floors
+ * from hours to seconds so a whole week can be played against a local validator
+ * while somebody watches. This file duplicates those numbers, and the header
+ * above already calls that duplication a liability: with a fastclock program
+ * and default values here, the form would refuse schedules the chain accepts
+ * and nothing would explain why.
+ *
+ * So the switch is mirrored, as a build-time env var read the same way
+ * `NEXT_PUBLIC_USDC_MINT` is. Set NEXT_PUBLIC_FAST_CLOCK=1 for, and only for, a
+ * deployment whose program was built with the feature. Getting the two out of
+ * step is a form that lies in one direction or the other, which is why the pair
+ * is documented in .env.example rather than left to be discovered.
+ *
+ * It also compresses the season. Shortening the floors alone would not make the
+ * loop testable: `create_pool` refuses a first lock already in the past, and
+ * the real schedule starts at the real week-1 kickoff, so a local pool would
+ * still sit and wait for September. Under the fast clock a season is eighteen
+ * weeks two minutes apart, starting two minutes from now.
+ */
+export const FAST_CLOCK = process.env.NEXT_PUBLIC_FAST_CLOCK === "1";
 
-export const MIN_DISPUTE_WINDOW_SECS = 60 * 60;
+/** Results cannot be posted until this long after a week's lock. */
+export const MIN_POST_DELAY_SECS = FAST_CLOCK ? 60 : 3 * 60 * 60;
+
+export const MIN_DISPUTE_WINDOW_SECS = FAST_CLOCK ? 30 : 60 * 60;
 export const MAX_DISPUTE_WINDOW_SECS = 7 * 24 * 60 * 60;
-export const DEFAULT_DISPUTE_WINDOW_SECS = 48 * 60 * 60;
+export const DEFAULT_DISPUTE_WINDOW_SECS = FAST_CLOCK ? 30 : 48 * 60 * 60;
+
+/** Seconds between weekly locks. Long enough to clear `minWeekGapSecs` at the
+ *  default window in either mode. */
+export const WEEK_SPACING_SECS = FAST_CLOCK ? 120 : 7 * 24 * 60 * 60;
+
+/** Where a new pool's season starts.
+ *
+ *  On a real clock this is the fixed week-1 kickoff. On a fast clock it has to
+ *  keep moving: `create_pool` refuses a first lock that is already past, so an
+ *  anchor fixed at page load would go stale in the time it takes to fill the
+ *  form in. Callers refresh it. */
+export function firstKickoffFor(now: Date = new Date()): Date {
+  return FAST_CLOCK ? new Date(now.getTime() + 120_000) : WEEK_1_KICKOFF;
+}
 
 /** The shortest gap between two locks that still leaves room to post results,
  *  wait out the dispute window, and finalize before the next week locks. */
@@ -31,13 +70,14 @@ export function minWeekGapSecs(disputeWindowSecs: number): number {
 /** Eighteen weekly locks, in unix seconds, starting from the first kickoff. */
 export function seasonLockSchedule(firstKickoff: Date): number[] {
   const start = Math.floor(firstKickoff.getTime() / 1000);
-  return Array.from({ length: WEEKS }, (_, i) => start + i * 7 * 24 * 60 * 60);
+  return Array.from({ length: WEEKS }, (_, i) => start + i * WEEK_SPACING_SECS);
 }
 
 /** After the last lock, with room for the season to finish. The program only
- *  requires it to be later than week 18; a fortnight is the deadman's grace. */
+ *  requires it to be later than week 18; a fortnight is the deadman's grace,
+ *  or a minute on a fast clock, where the point is to reach it. */
 export function refundDeadlineFor(locks: number[]): number {
-  return locks[WEEKS - 1] + 14 * 24 * 60 * 60;
+  return locks[WEEKS - 1] + (FAST_CLOCK ? 60 : 14 * 24 * 60 * 60);
 }
 
 export type ScheduleProblem = {
