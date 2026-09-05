@@ -3,19 +3,11 @@
 /* Every client-side provider the app needs, in one place, mounted once in the
  * root layout.
  *
- * NO `@solana/wallet-adapter-react-ui`. That package's <WalletModalProvider>
- * and <WalletMultiButton> are built for React 18 and fail silently under React
- * 19 — the button sticks on "Connecting", no modal mounts, nothing throws. The
- * adapter core below is unaffected; only the UI layer is. `WalletButton` talks
- * to `useWallet` directly instead.
- *
- * WALLETS: the array is deliberately EMPTY. Phantom, Solflare, Backpack and the
- * rest register themselves through the Wallet Standard, so wallet-adapter
- * discovers them without us importing megabytes of adapters and without us
- * deciding which wallets a person is allowed to use. Only add an explicit
- * adapter here for a wallet that does NOT implement the standard — and check
- * the console first, because a wallet registered twice is worse than one
- * registered not at all.
+ * WALLETS: the `wallets` array is deliberately EMPTY. Phantom, Solflare,
+ * Backpack and the rest register themselves through the Wallet Standard, so
+ * wallet-adapter discovers them without us importing a 2MB adapter bundle and
+ * without us deciding which wallets a person is allowed to use. Only add an
+ * explicit adapter here for a wallet that does NOT implement the standard.
  *
  * RPC: NEXT_PUBLIC_RPC_URL is a Helius endpoint restricted to the commish.fun
  * domain in the Helius dashboard. It is public by nature — it ships in the
@@ -25,8 +17,11 @@
 
 import { useMemo, type ReactNode } from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import "@solana/wallet-adapter-react-ui/styles.css";
 
 export function Providers({ children }: { children: ReactNode }) {
   const endpoint = useMemo(
@@ -53,10 +48,13 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ConnectionProvider endpoint={endpoint}>
-        <WalletProvider wallets={[]} autoConnect>
-          {children}
+        <WalletProvider wallets={[]} autoConnect={false}>
+          <WalletModalProvider>{children}</WalletModalProvider>
         </WalletProvider>
       </ConnectionProvider>
     </QueryClientProvider>
   );
 }
+x
+Exit
+

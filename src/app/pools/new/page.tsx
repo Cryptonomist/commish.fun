@@ -57,7 +57,7 @@ type Status =
 
 export default function NewPool() {
   const { connection } = useConnection();
-  const { publicKey, connected, sendTransaction } = useWallet();
+  const { publicKey, connected, signTransaction } = useWallet();
 
   const [name, setName] = useState("");
   const [buyIn, setBuyIn] = useState("25");
@@ -126,6 +126,10 @@ export default function NewPool() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!publicKey || !canSubmit || buyInUnits === null) return;
+    if (!signTransaction) {
+      setStatus({ at: "error", message: "This wallet cannot sign transactions." });
+      return;
+    }
 
     setStatus({ at: "sending" });
     try {
@@ -143,13 +147,33 @@ export default function NewPool() {
         disputeWindowSecs,
       });
 
-      const tx = new Transaction().add(instruction);
-      const signature = await sendTransaction(tx, connection);
+      /* SIGN HERE, SEND OURSELVES.
+       *
+       * `sendTransaction` from wallet-adapter asks the WALLET to broadcast,
+       * and the wallet uses whatever RPC it is configured for — not the one
+       * this app is talking to. Point the app at a local validator while the
+       * wallet is set to devnet and the transaction is built against one chain
+       * and submitted to another, which fails as an unhelpful "Unexpected
+       * error" from inside the extension.
+       *
+       * Asking only for a signature and broadcasting through `connection`
+       * makes the wallet's network setting irrelevant: the blockhash, the
+       * submission and the confirmation all come from the same cluster. */
+      const latest = await connection.getLatestBlockhash();
+      const tx = new Transaction({
+        feePayer: publicKey,
+        blockhash: latest.blockhash,
+        lastValidBlockHeight: latest.lastValidBlockHeight,
+      }).add(instruction);
+
+      const signed = await signTransaction(tx);
+      const signature = await connection.sendRawTransaction(signed.serialize(), {
+        preflightCommitment: "confirmed",
+      });
       setStatus({ at: "confirming", signature });
 
-      /* Confirm before claiming success. `sendTransaction` resolving means the
-       * cluster accepted the bytes, not that the pool exists. */
-      const latest = await connection.getLatestBlockhash();
+      /* Confirm before claiming success. A signature that has been accepted for
+       * processing is not a pool that exists. */
       const result = await connection.confirmTransaction(
         { signature, ...latest },
         "confirmed",
