@@ -22,6 +22,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
 import { PickGrid } from "@/components/PickGrid";
+import { ResultsPanel } from "@/components/ResultsPanel";
 import { formatUsdc, shortAddress } from "@/lib/format";
 import {
   buildJoinPool,
@@ -233,6 +234,15 @@ export default function PoolPage() {
               winner&apos;s claim or, past the refund deadline, back to everyone
               who paid.
             </p>
+
+            {poolKey ? (
+              <ResultsPanel
+                poolKey={poolKey}
+                pool={pool}
+                member={member}
+                onChanged={refresh}
+              />
+            ) : null}
 
             {member && poolKey ? (
               <PickGrid

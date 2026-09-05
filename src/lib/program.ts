@@ -186,6 +186,8 @@ export const MAX_DISPLAY_NAME = 24;
  * the rest are league states this app does not surface yet. */
 export const STATUS_OPEN = 0;
 export const STATUS_LOCKED = 1;
+export const STATUS_RESULTS_POSTED = 2;
+export const STATUS_FINALIZED = 3;
 export const STATUS_SETTLED = 4;
 export const STATUS_ABANDONED = 5;
 
@@ -208,6 +210,22 @@ export type PoolView = {
   duesDeadlineTs: number;
   /** Eighteen unix-second locks, as stored. Index 0 is week 1. */
   lockTs: number[];
+
+  /** How long members get to dispute a posting, in seconds. */
+  disputeWindowSecs: number;
+  /** The week awaiting a dispute window, or WEEK_NONE when nothing is pending. */
+  pendingWeek: number;
+  /** Proposed results, one bit per team. Only meaningful while a week pends. */
+  pendingWinners: number;
+  pendingPushes: number;
+  /** When the pending results were posted. The window runs from here. */
+  pendingPostedTs: number;
+  /** Votes against the pending posting. Reset to 0 when a posting is cleared. */
+  vetoCount: number;
+  /** Which posting the votes belong to. Counts postings, never weeks. */
+  vetoEpoch: number;
+  /** The last week committed by finalize_week, or WEEK_NONE. */
+  finalizedWeek: number;
 };
 
 /* Fixed-size name fields are zero-padded on chain. Trimming at the first NUL
@@ -247,6 +265,14 @@ export function decodePool(data: Uint8Array): PoolView {
     lockTs: (raw.lock_ts as unknown as { toString(): string }[]).map((t) =>
       Number(t.toString()),
     ),
+    disputeWindowSecs: num("dispute_window_secs"),
+    pendingWeek: num("pending_week"),
+    pendingWinners: num("pending_winners"),
+    pendingPushes: num("pending_pushes"),
+    pendingPostedTs: num("pending_posted_ts"),
+    vetoCount: num("veto_count"),
+    vetoEpoch: num("veto_epoch"),
+    finalizedWeek: num("finalized_week"),
   };
 }
 
@@ -339,6 +365,8 @@ export type MemberView = {
   currentPick: number;
   pickWeek: number;
   eliminatedWeek: number;
+  /** The Pool::veto_epoch this member last voted on. 0 == never voted. */
+  vetoedEpoch: number;
   claimed: boolean;
 };
 
@@ -355,6 +383,7 @@ export function decodeMember(data: Uint8Array): MemberView {
     currentPick: Number(raw.current_pick),
     pickWeek: Number(raw.pick_week),
     eliminatedWeek: Number(raw.eliminated_week),
+    vetoedEpoch: Number(raw.vetoed_epoch),
     claimed: raw.claimed as unknown as boolean,
   };
 }
@@ -396,6 +425,145 @@ export function buildSubmitPick(args: SubmitPickArgs): TransactionInstruction {
     data: coder.instruction.encode("submit_pick", { team: args.team, note }),
   });
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Results: post → dispute → finalize
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* TEAM MASKS ARE UNSIGNED, AND JAVASCRIPT'S BITWISE OPERATORS ARE NOT.
+ *
+ * `winners` and `pushes` are u32 on chain, one bit per team. Every bitwise
+ * operator in JS coerces to a SIGNED 32-bit integer first, so `1 << 31` — which
+ * is Washington, team 31 — is -2147483648, and Borsh will not encode a negative
+ * number as a u32. The bug only appears in weeks where WAS is involved, which
+ * is exactly the kind of thing that ships. Every mask leaves this module
+ * through `>>> 0`, the one operator that yields unsigned.
+ */
+export const teamBit = (team: number): number => (1 << team) >>> 0;
+
+export const maskHas = (mask: number, team: number): boolean =>
+  (mask & teamBit(team)) !== 0;
+
+export const maskWith = (mask: number, team: number): number =>
+  (mask | teamBit(team)) >>> 0;
+
+export const maskWithout = (mask: number, team: number): number =>
+  (mask & ~teamBit(team)) >>> 0;
+
+export function maskToTeams(mask: number): number[] {
+  const out: number[] = [];
+  for (let t = 0; t < TEAM_COUNT; t++) if (maskHas(mask, t)) out.push(t);
+  return out;
+}
+
+export const maskCount = (mask: number): number => maskToTeams(mask).length;
+
+export type PostResultsArgs = {
+  pool: PublicKey;
+  commissioner: PublicKey;
+  /** Must equal the pool's current week. The program refuses anything else. */
+  week: number;
+  winners: number;
+  pushes: number;
+};
+
+/* The commissioner proposes a week. Nothing settles here and no money moves —
+ * this only starts the dispute window, which is the point: the one piece of
+ * trust the design keeps is bounded by a vote the members can win.
+ *
+ * `root` is the reserved Merkle field. The program stores it and never reads
+ * it, so it goes out as 32 zero bytes exactly as the LiteSVM suite sends it.
+ */
+export function buildPostResults(args: PostResultsArgs): TransactionInstruction {
+  const winners = args.winners >>> 0;
+  const pushes = args.pushes >>> 0;
+  /* The program refuses this with OverlappingMasks, and it is worth refusing
+   * here too: a team that both won and pushed would make the survive test
+   * depend on which branch ran first. */
+  if ((winners & pushes) !== 0) {
+    throw new Error("A team cannot be both a winner and a push");
+  }
+
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: args.pool, isSigner: false, isWritable: true },
+      { pubkey: args.commissioner, isSigner: true, isWritable: true },
+    ],
+    data: coder.instruction.encode("post_results", {
+      week: args.week,
+      winners,
+      pushes,
+      root: Array(32).fill(0),
+    }),
+  });
+}
+
+/* One member strikes at the pending posting. A STRICT majority clears it and
+ * the commissioner has to post again. */
+export function buildVetoResults(args: {
+  pool: PublicKey;
+  wallet: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: args.pool, isSigner: false, isWritable: true },
+      { pubkey: memberPda(args.pool, args.wallet), isSigner: false, isWritable: true },
+      { pubkey: args.wallet, isSigner: true, isWritable: true },
+    ],
+    data: coder.instruction.encode("veto_results", {}),
+  });
+}
+
+/* DOES THIS POSTING CARRY THIS PICK? A mirror of `rules::survives`.
+ *
+ * The same liability as `lib/schedule.ts`: this duplicates a rule that lives in
+ * the program, and if `rules.rs` gains an arm this file is quietly wrong. It
+ * earns the risk because it is what makes the dispute window mean anything to a
+ * member. "Week 3 is posted" is a notification; "week 3 as posted puts you out"
+ * is the sentence that decides whether somebody checks the scoreboard.
+ *
+ * Nothing here gates a transaction. The program decides who is out in
+ * `settle_member`, and this only tells a member what to expect.
+ */
+export function survivesPosting(
+  poolType: number,
+  opts: { madeAPick: boolean; team: number; winners: number; pushes: number },
+): boolean | null {
+  // A missed pick is out in every pick mode. No exceptions and no grace.
+  if (!opts.madeAPick) return false;
+  const won = maskHas(opts.winners, opts.team);
+  const pushed = maskHas(opts.pushes, opts.team);
+  if (poolType === POOL_SURVIVOR) return won || pushed;
+  // Loser pool: your team has to NOT win. A push still carries you.
+  if (poolType === POOL_LOSER) return !won || pushed;
+  // A mode this client does not model. Say nothing rather than guess.
+  return null;
+}
+
+/** The smallest number of votes that clears a posting. The program tests
+ *  `2 * veto_count > electorate`, so this is a strict majority: three of five,
+ *  and three of four. */
+export const vetoThreshold = (electorate: number): number =>
+  Math.floor(electorate / 2) + 1;
+
+/* HAS THIS MEMBER ALREADY VOTED ON *THIS POSTING*?
+ *
+ * Keyed on the epoch, never on the week. The marker used to be the week number,
+ * which meant a commissioner who got vetoed could re-post the identical results
+ * and every member who struck them down the first time was refused with
+ * AlreadyVetoed — one abstainer in a four-member pool was enough to make the
+ * majority unreachable on the second attempt. `veto_epoch` counts postings, so
+ * a re-post is a fresh vote. Comparing `pendingWeek` here would put the bug
+ * back in the UI even though the program no longer has it.
+ *
+ * Only meaningful while a posting is pending: with nothing posted, a member who
+ * has never voted (`vetoedEpoch === 0`) matches a pool that has never posted
+ * (`vetoEpoch === 0`). Callers check the status first, as the program does.
+ */
+export const hasVetoedPosting = (member: MemberView, pool: PoolView): boolean =>
+  member.vetoedEpoch === pool.vetoEpoch;
 
 /* Anchor errors arrive as a log line, not as anything structured. Pulling the
  * program's own message out beats showing "custom program error: 0x1771" to
