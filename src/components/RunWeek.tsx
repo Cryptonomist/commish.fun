@@ -24,7 +24,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
-import { formatUsdc, shortAddress } from "@/lib/format";
+import { shortAddress } from "@/lib/format";
 import {
   ataFor,
   buildAdvanceWeek,
@@ -39,8 +39,6 @@ import {
   SETTLES_PER_TX,
   STATUS_FINALIZED,
   STATUS_RESULTS_POSTED,
-  STATUS_SETTLED,
-  WEEK_NONE,
   type MemberEntry,
   type PoolView,
 } from "@/lib/program";
@@ -220,38 +218,6 @@ export function RunWeek({
       await onChanged();
     }
   }, [publicKey, readPool, readMembers, send, connection, poolKey, onChanged]);
-
-  // ── The pool is decided ─────────────────────────────────────────────────────
-  if (pool.status === STATUS_SETTLED) {
-    const shared = pool.winnersCount > 1;
-    return (
-      <section className="mt-8 rounded-xl border border-gold/40 bg-night-2/60 p-5">
-        <h2 className="display text-2xl uppercase">This pool is settled</h2>
-        <p className="mt-2 text-sm text-cream-dim">
-          {pool.winnersWeek === WEEK_NONE ? (
-            <>
-              {shared ? `${pool.winnersCount} members are` : "One member is"} last
-              standing.
-            </>
-          ) : (
-            <>
-              Everybody went out in week {pool.winnersWeek}, so the pot belongs to
-              the {pool.winnersCount} who were alive when that week started.
-            </>
-          )}{" "}
-          Each takes{" "}
-          <span className="font-bold text-gold">
-            {formatUsdc(pool.potPerWinner)}
-          </span>
-          .
-        </p>
-        <p className="mt-3 text-xs text-cream-dim">
-          Claiming runs through `claim_pot`, which is the next piece of work and
-          is not wired up yet.
-        </p>
-      </section>
-    );
-  }
 
   const finalizing = pool.status === STATUS_RESULTS_POSTED;
   const busy = step.at === "working";

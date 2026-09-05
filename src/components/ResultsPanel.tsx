@@ -23,6 +23,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { TEAMS } from "@/lib/nfl";
 import { countdown } from "@/lib/format";
 import { MIN_POST_DELAY_SECS } from "@/lib/schedule";
+import { ClaimPot } from "@/components/ClaimPot";
 import { ResultsForm } from "@/components/ResultsForm";
 import { RunWeek } from "@/components/RunWeek";
 import {
@@ -267,9 +268,20 @@ export function ResultsPanel({
     );
   }
 
-  /* The week is committed, or the pool is decided. Both are the crank's
-   * business: settling every member and closing the week out. */
-  if (pool.status === STATUS_FINALIZED || pool.status === STATUS_SETTLED) {
+  /* The pool is decided: the outcome and, for a winner, the money. */
+  if (pool.status === STATUS_SETTLED) {
+    return (
+      <ClaimPot
+        poolKey={poolKey}
+        pool={pool}
+        member={member}
+        onChanged={onChanged}
+      />
+    );
+  }
+
+  // The week is committed and every member has to have it applied to them.
+  if (pool.status === STATUS_FINALIZED) {
     return <RunWeek poolKey={poolKey} pool={pool} onChanged={onChanged} />;
   }
 

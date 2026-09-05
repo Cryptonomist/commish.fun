@@ -700,6 +700,73 @@ export function pendingSettles(
  * member, and for the day this arithmetic is wrong. */
 export const SETTLES_PER_TX = 12;
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Money out: a winner takes their share
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* TWO SHAPES OF WINNER, AND THE SECOND ONE IS THE INTERESTING ONE. A mirror of
+ * the test inside `claim_pot`.
+ *
+ * `winnersWeek == WEEK_NONE` is the ordinary ending: somebody was still
+ * standing, and being alive is the whole qualification. Otherwise everybody
+ * went out in the same week, and the pot belongs to the people who were alive
+ * when THAT week started, which on their accounts reads as having been
+ * eliminated in exactly that week. Somebody knocked out in week four does not
+ * share in a week-nine wipeout.
+ *
+ * Same liability as `survivesPosting`: this duplicates a rule that lives in the
+ * program, and nothing here gates a transaction. The program decides; this only
+ * decides whether to offer somebody a button.
+ */
+export const isPotWinner = (pool: PoolView, member: MemberView): boolean =>
+  pool.winnersWeek === WEEK_NONE
+    ? isAlive(member)
+    : member.eliminatedWeek === pool.winnersWeek;
+
+export type ClaimPotArgs = {
+  pool: PublicKey;
+  wallet: PublicKey;
+  vault: PublicKey;
+  /* The pool's own mint rather than this module's constant: the program checks
+   * `member_ata.mint == pool.usdc_mint`, so the pool is the authority on which
+   * token account has to be paid. */
+  usdcMint: PublicKey;
+};
+
+export type ClaimPotPlan = {
+  instruction: TransactionInstruction;
+  member: PublicKey;
+  memberAta: PublicKey;
+};
+
+/* Idempotent by construction: `member.claimed` is set here and refused on a
+ * second call, so a double-click costs a failed transaction rather than a
+ * second payout.
+ *
+ * `member_ata` must already exist, the same trap `join_pool` has. A member who
+ * was brought in through `sponsor_join` may never have held USDC at all, which
+ * makes the winner of a sponsored seat exactly the person most likely to hit
+ * it. Callers prepend `createAtaIdempotentIx`. */
+export function buildClaimPot(args: ClaimPotArgs): ClaimPotPlan {
+  const member = memberPda(args.pool, args.wallet);
+  const memberAta = ataFor(args.wallet, args.usdcMint);
+
+  const instruction = new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: args.pool, isSigner: false, isWritable: true },
+      { pubkey: member, isSigner: false, isWritable: true },
+      { pubkey: args.wallet, isSigner: true, isWritable: true },
+      { pubkey: args.vault, isSigner: false, isWritable: true },
+      { pubkey: memberAta, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: coder.instruction.encode("claim_pot", {}),
+  });
+
+  return { instruction, member, memberAta };
+}
+
 /* Anchor errors arrive as a log line, not as anything structured. Pulling the
  * program's own message out beats showing "custom program error: 0x1771" to
  * somebody who was trying to start a football pool. */
