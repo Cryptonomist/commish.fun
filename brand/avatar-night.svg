@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Commish">
-  <rect width="512" height="512" fill="#FF6A2B"/>
-  <g transform="translate(256 256) scale(1.55)"><g transform="rotate(-14)" fill="#F0F2EC">
+  <rect width="512" height="512" fill="#0A100C"/>
+  <g transform="translate(256 256) scale(1.55)"><g transform="rotate(-14)" fill="#FF6A2B">
     <rect x="-9" y="-84" width="18" height="168" rx="9"/>
     <rect x="-49" y="-63" width="98" height="18" rx="9"/>
     <rect x="-49" y="-27" width="98" height="18" rx="9"/>

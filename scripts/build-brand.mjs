@@ -57,12 +57,25 @@ const markSvg = (fill) =>
 </svg>
 `;
 
-/** The mark on its own ground, square, for an avatar or an app icon. The
- *  corner radius is left to whoever is placing it: platforms mask their own. */
-const avatarSvg = () =>
+/* The mark on its own ground, square, for an avatar or an app icon. The corner
+ * radius is left to whoever is placing it: platforms mask their own.
+ *
+ * THE TILE IS FOR FRAMES SOMEBODY ELSE OWNS, and that is the whole reason it
+ * may be filled orange when the in-product lockup may not. A logo on this
+ * site's own night surfaces has contrast for free, and an orange slab sitting
+ * there reads as a button — orange is the interaction colour, so spending it on
+ * decoration teaches people that orange means nothing. An avatar gets no such
+ * luxury: it is 48px in somebody else's timeline and 16px in a tab strip, on a
+ * ground it does not choose. Night on night disappears, and night at 16px is a
+ * smudge whichever way you scale it. Orange survives both.
+ *
+ * So the ground is a parameter and the two callers are the two answers. This is
+ * the ordinary split between a containerised icon and a freestanding logo, not
+ * a compromise between them. */
+const tileSvg = (ground, fill) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Commish">
-  <rect width="512" height="512" fill="${C.night}"/>
-  <g transform="translate(256 256) scale(1.55)">${laces(C.action)}</g>
+  <rect width="512" height="512" fill="${ground}"/>
+  <g transform="translate(256 256) scale(1.55)">${laces(fill)}</g>
 </svg>
 `;
 
@@ -235,13 +248,22 @@ async function main() {
   const action = writeSvg("mark-action.svg", markSvg(C.action));
   const cream = writeSvg("mark-cream.svg", markSvg(C.cream));
   writeSvg("mark-night.svg", markSvg(C.night));
-  const avatar = writeSvg("avatar.svg", avatarSvg());
+  /* Cream laces, not white: pure white on this orange is harsher than the
+   * wordmark it sits six inches from on a profile, and every other light thing
+   * in the kit is cream. */
+  const avatar = writeSvg("avatar.svg", tileSvg(C.action, C.cream));
+  /* The inverse, kept because a dark tile is the right answer wherever the
+   * frame is already light and orange would shout — a press kit on white, a
+   * partner's logo wall. Emitted to brand/ only: nothing ships pointing at it,
+   * and an unused file in public/ is weight in the bundle for no one. */
+  const avatarNight = writeSvg("avatar-night.svg", tileSvg(C.night, C.action));
 
   await writePng(action, "mark-action.png", 512, null, true);
   await writePng(cream, "mark-cream.png", 512, null, true);
   await writePng(avatar, "avatar.png", 512, 512, true);
   await writePng(avatar, "appicon.png", 1024, 1024, true);
   await writePng(avatar, "favicon-180.png", 180, 180, true);
+  await writePng(avatarNight, "avatar-night.png", 512, 512);
 
   // Anything with the wordmark needs the installed font.
   // Wordmark only and centred: the avatar beside it is already the mark.
