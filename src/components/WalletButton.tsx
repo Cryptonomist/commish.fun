@@ -51,22 +51,42 @@ export function WalletButton() {
       w.readyState === WalletReadyState.Loadable,
   );
 
-  useEffect(() => {
-    if (!wantsConnect.current || !wallet || connected || connecting) return;
-    wantsConnect.current = false;
+  const tryConnect = useCallback(() => {
     connect().catch((e: unknown) => {
       setError(e instanceof Error ? e.message : "Could not connect.");
     });
-  }, [wallet, connected, connecting, connect]);
+  }, [connect]);
+
+  /* Only for the case where selecting actually moves the wallet. When it does
+   * not, `choose` connects directly — see the note there. */
+  useEffect(() => {
+    if (!wantsConnect.current || !wallet || connected || connecting) return;
+    wantsConnect.current = false;
+    tryConnect();
+  }, [wallet, connected, connecting, tryConnect]);
 
   const choose = useCallback(
     (name: WalletName) => {
       setError(null);
-      wantsConnect.current = true;
       setPicking(false);
+
+      /* ALREADY SELECTED IS THE COMMON CASE, not the rare one. `autoConnect`
+       * restores the last wallet from localStorage on mount, so by the time
+       * anybody clicks, `wallet` is usually already the one they are about to
+       * choose. `select()` is then a no-op: the wallet reference does not
+       * change, the effect below never re-runs, and the click does nothing at
+       * all — silently, with the button still reading "Connect".
+       *
+       * So connect straight away when the selection is not going to move. The
+       * effect is only for the case where it is. */
+      if (wallet?.adapter.name === name) {
+        tryConnect();
+        return;
+      }
+      wantsConnect.current = true;
       select(name);
     },
-    [select],
+    [wallet, select, tryConnect],
   );
 
   const onClick = useCallback(() => {
