@@ -70,15 +70,6 @@ body {
     var(--color-night);
 }
 
-/* Yard lines. Faint enough to feel like texture, not a table. */
-.yard-lines {
-  background-image: repeating-linear-gradient(
-    90deg,
-    rgba(240, 242, 236, 0.045) 0 1px,
-    transparent 1px 88px
-  );
-}
-
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

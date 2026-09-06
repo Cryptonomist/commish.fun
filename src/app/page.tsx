@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
 import { Countdown } from "@/components/Countdown";
+import { FieldMarkings } from "@/components/FieldMarkings";
 import { TryAWeek } from "@/components/TryAWeek";
 
 /* The front door.
@@ -94,7 +95,8 @@ export default function Home() {
       </header>
 
       {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <section className="yard-lines flex flex-col gap-7 pb-10 pt-10 sm:pt-14">
+      <section className="relative flex flex-col gap-7 pb-10 pt-10 sm:pt-14">
+        <FieldMarkings />
         <span className="inline-flex w-fit items-center gap-2.5 rounded-full border border-night-3 bg-night-2/80 px-4 py-2 text-xs font-bold tracking-[0.18em]">
           <Laces size={13} className="text-hide" />
           <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
