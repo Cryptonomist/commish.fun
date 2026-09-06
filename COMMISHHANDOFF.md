@@ -35,7 +35,7 @@ Why both: Survivor is the *story* (it demos in 90 seconds and it's novel), Leagu
 - **Survivor tagline:** "Your Survivor pool, out of that one guy's Venmo."
 - **League tagline:** "Your league dues, out of that one guy's Venmo."
 - **Trust line:** "The commissioner keeps the job, loses the custody."
-- **Brand:** COMMISH.FUN (display) / commish.fun (text). Launch at NoahAI Nitro 03 (Sept 3–10, 2026); NFL Week 1 kicks off Thu Sept 10, 8:20pm ET — the same week most leagues draft and collect dues.
+- **Brand:** COMMISH.FUN (display) / commish.fun (text). Launch at NoahAI Nitro 03 (Sept 3–10, 2026); **NFL Week 1 opens Wed Sept 9, 8:20pm ET (NE @ SEA)** — the same week most leagues draft and collect dues. This said "Thu Sept 10, 8:20pm" until it was checked against ESPN; that is the *second* game (SF v LAR, Thu Sept 10, 8:35pm). It matters more than a diary slip: week 1 picks lock at the FIRST kickoff, so the real deadline is Wednesday evening, a day earlier than the plan below assumes. `src/data/nfl-schedule-2026.json` had it right all along — `lockTs` 1788999600 matches ESPN to the second.
 - **Who:** commissioners running things for people they know; members on phones, mostly not crypto users.
 - **Private only**, link-to-join, no directory. **$0 pools allowed** everywhere. Pools can start any week; leagues can be created any time before their dues deadline.
 - **Language (FINAL):** "pool," "league," "dues," "buy-in," "pot," "prize," "pick." Never "bet," "wager," "odds," "book." This is legal posture, not style (§19).
