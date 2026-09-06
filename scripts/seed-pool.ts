@@ -282,20 +282,25 @@ async function main() {
     await send(ixs, [payer]);
   }
 
-  /** What the payer can actually afford, checked once before a run rather than
-   *  discovered three bots in with a half-joined pool on chain. */
-  async function assertPayerCanAfford(bots: number, duesEach: number) {
+  /** What the payer can actually afford, checked once before anything is signed
+   *  rather than discovered three wallets in with a half-joined pool on chain.
+   *  Both `fund` and `join` go through here, so the message counts wallets
+   *  rather than bots — one of the two callers is funding a person. */
+  async function assertPayerCanAfford(wallets: number, dollarsEach: number) {
     if (LOCAL) return;
+    const who = wallets === 1 ? "1 wallet" : `${wallets} wallets`;
+
     const sol = await connection.getBalance(payer.publicKey);
-    const needSol = bots * BOT_LAMPORTS + 10_000_000;
+    const needSol = wallets * BOT_LAMPORTS + 10_000_000;
     if (sol < needSol) {
       throw new Error(
         `${payer.publicKey.toBase58()} has ${(sol / 1e9).toFixed(4)} SOL; ` +
-          `${bots} bots need about ${(needSol / 1e9).toFixed(3)}. ` +
+          `${who} needs about ${(needSol / 1e9).toFixed(3)}. ` +
           `Devnet SOL: solana airdrop 2 --url devnet, or https://faucet.solana.com`,
       );
     }
-    const need = BigInt(Math.round(bots * duesEach * 1e6));
+
+    const need = BigInt(Math.round(wallets * dollarsEach * 1e6));
     const held = await connection
       .getTokenAccountBalance(P.ataFor(payer.publicKey, P.USDC_MINT))
       .then((b) => BigInt(b.value.amount))
@@ -303,7 +308,7 @@ async function main() {
     if (held < need) {
       throw new Error(
         `${payer.publicKey.toBase58()} holds ${fmtUsd(held)} of devnet USDC; ` +
-          `${bots} bots at ${fmtUsd(BigInt(Math.round(duesEach * 1e6)))} need ` +
+          `${who} at ${fmtUsd(BigInt(Math.round(dollarsEach * 1e6)))} needs ` +
           `${fmtUsd(need)}. Devnet USDC comes from https://faucet.circle.com ` +
           `(pick Solana Devnet). Nobody but Circle can mint it.`,
       );
@@ -314,7 +319,12 @@ async function main() {
     case "fund": {
       if (!arg) throw new Error("usage: fund <wallet> [dollars]");
       const who = new PublicKey(arg);
-      const dollars = Number(extra ?? 500);
+      const dollars = Number(extra ?? (LOCAL ? 500 : 25));
+      /* `join` has always checked this and `fund` did not, which is backwards:
+       * asking for more dollars than the treasury holds fails inside the token
+       * program as "Error: insufficient funds" under forty lines of transaction
+       * logs, and never says whose funds or how many were short. */
+      await assertPayerCanAfford(1, dollars);
       await fund(who, dollars);
       const bal = await connection.getTokenAccountBalance(
         P.ataFor(who, P.USDC_MINT),
@@ -322,7 +332,14 @@ async function main() {
       console.log(`funded ${who.toBase58()}`);
       console.log(`  SOL   ${(await connection.getBalance(who)) / 1e9}`);
       console.log(`  USDC  ${fmtUsd(BigInt(bal.value.amount))}`);
-      console.log(`\nNow create a pool at http://localhost:3000/pools/new`);
+      console.log(
+        `\nNow create a pool at ${
+          LOCAL
+            ? "http://localhost:3000/pools/new"
+            : (process.env.SITE_URL ?? "https://commishfun.vercel.app") +
+              "/pools/new"
+        }`,
+      );
       break;
     }
 
