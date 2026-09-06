@@ -234,8 +234,14 @@ async function main() {
     }
 
     case "veto": {
-      if (!arg) throw new Error("usage: veto <pool>");
+      if (!arg) throw new Error("usage: veto <pool> [votes]");
       const pool = new PublicKey(arg);
+      /* How many bots vote. Defaults to all of them, which clears a posting;
+       * pass a number below the threshold to watch one that does NOT — a
+       * minority vote is the half of the veto that protects the commissioner,
+       * and it is not a thing a person can stage by hand inside a thirty
+       * second window. */
+      const limit = Number(extra ?? 99);
       const decoded = P.decodePool(
         (await connection.getAccountInfo(pool))!.data,
       );
@@ -244,9 +250,10 @@ async function main() {
       }
       const needed = P.vetoThreshold(decoded.aliveCount);
       console.log(
-        `week ${decoded.pendingWeek} posted · ${decoded.vetoCount} of ${needed} votes so far\n`,
+        `week ${decoded.pendingWeek} posted · ${decoded.vetoCount} of ${needed} votes so far · ${decoded.aliveCount} alive\n`,
       );
-      for (let i = 0; i < 8; i++) {
+      let cast = 0;
+      for (let i = 0; i < 8 && cast < limit; i++) {
         const bot = botFor(pool.toBase58(), i);
         const member = await connection.getAccountInfo(
           P.memberPda(pool, bot.publicKey),
@@ -258,8 +265,10 @@ async function main() {
           [P.buildVetoResults({ pool, wallet: bot.publicKey })],
           [bot],
         );
+        cast++;
         console.log(`  Bot ${i + 1} voted to strike it down`);
       }
+      if (cast === 0) console.log("  Nobody left who can vote on this posting.");
       const after = P.decodePool((await connection.getAccountInfo(pool))!.data);
       console.log(
         after.status === P.STATUS_RESULTS_POSTED
