@@ -21,6 +21,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
+import { LeaguePanel } from "@/components/LeaguePanel";
 import { PickGrid } from "@/components/PickGrid";
 import { ReclaimDues } from "@/components/ReclaimDues";
 import { ResultsPanel } from "@/components/ResultsPanel";
@@ -30,11 +31,13 @@ import {
   createAtaIdempotentIx,
   decodePool,
   decodeMember,
+  isLeague,
   memberPda,
   ataFor,
   readableProgramError,
   USDC_MINT,
   MAX_DISPLAY_NAME,
+  POOL_LOSER,
   STATUS_OPEN,
   STATUS_SETTLED,
   type PoolView,
@@ -221,9 +224,14 @@ export default function PoolPage() {
         ) : (
           <>
             <h1 className="display text-4xl uppercase sm:text-5xl">{pool.name}</h1>
+            {/* A league has no weeks. Saying "week 1" on one is not a cosmetic
+                slip — it tells a member to expect a pick screen that will
+                never appear. */}
             <p className="mt-3 flex items-center gap-2 text-cream-dim">
               <Laces size={12} className="text-action" />
-              Survivor · week {pool.currentWeek}
+              {isLeague(pool)
+                ? "League · dues held in escrow"
+                : `${pool.poolType === POOL_LOSER ? "Loser" : "Survivor"} · week ${pool.currentWeek}`}
             </p>
 
             <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-night-3 bg-night-3 sm:grid-cols-3">
@@ -258,7 +266,19 @@ export default function PoolPage() {
               />
             ) : null}
 
-            {poolKey ? (
+            {/* Two products, one page. A league has no picks, no weeks and no
+                eliminations — it collects dues and pays a sheet — so it gets
+                its own panel rather than a pick pool's with the parts that do
+                not apply hidden. */}
+            {poolKey && isLeague(pool) ? (
+              <LeaguePanel
+                poolKey={poolKey}
+                pool={pool}
+                member={member}
+                vaultAmount={vaultAmount}
+                onChanged={refresh}
+              />
+            ) : poolKey ? (
               <ResultsPanel
                 poolKey={poolKey}
                 pool={pool}
@@ -267,14 +287,14 @@ export default function PoolPage() {
               />
             ) : null}
 
-            {member && poolKey ? (
+            {member && poolKey && !isLeague(pool) ? (
               <PickGrid
                 poolKey={poolKey}
                 pool={pool}
                 member={member}
                 onPicked={refresh}
               />
-            ) : (
+            ) : member ? null : (
               <form className="mt-8 flex flex-col gap-4" onSubmit={onJoin}>
                 <label className="flex flex-col gap-2">
                   <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
