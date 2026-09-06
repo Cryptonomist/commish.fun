@@ -28,6 +28,8 @@ import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react
 import { clusterApiUrl } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import { ConfigGuard } from "./ConfigGuard";
+
 export function Providers({ children }: { children: ReactNode }) {
   const endpoint = useMemo(
     () => process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl("devnet"),
@@ -54,6 +56,9 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ConnectionProvider endpoint={endpoint}>
         <WalletProvider wallets={[]} autoConnect>
+          {/* Above everything, because a build pointed at the wrong cluster
+              renders the rest of the app perfectly and fails only at signing. */}
+          <ConfigGuard />
           {children}
         </WalletProvider>
       </ConnectionProvider>
