@@ -56,18 +56,6 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 
-const RPC = process.env.RPC_URL ?? "http://localhost:8899";
-
-/** Which cluster, and therefore whether money can be conjured. */
-const LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)/.test(RPC);
-const DEVNET = /devnet/.test(RPC);
-
-/* What a bot needs to exist: rent for its member account and its token account,
- * plus signatures. A local faucet hands out 2 SOL a wallet because it costs
- * nothing; on devnet this comes out of a balance that has to last the run, and
- * the measured cost is under a hundredth of this. */
-const BOT_LAMPORTS = 20_000_000;
-
 /* The app reads NEXT_PUBLIC_* at module scope, and nothing loads .env.local
  * outside Next. Set it before importing anything from src/, which is why the
  * app imports below are dynamic: static ones are hoisted above this. */
@@ -81,6 +69,28 @@ function loadEnvLocal() {
     }
   }
 }
+
+/* BEFORE `RPC`, NOT INSIDE main(). This used to run after the constant below
+ * had already been evaluated, so an RPC_URL set in .env.local was read too
+ * late and silently ignored — the script announced localhost and ran there
+ * while you believed you were pointed at devnet. Every guard in this file keys
+ * off that string, so getting it from the wrong place is not a small bug: it
+ * is the difference between minting counterfeit dollars on a validator and
+ * thinking you did. An explicit RPC_URL in the environment still wins, because
+ * loadEnvLocal never overwrites what is already set. */
+loadEnvLocal();
+
+const RPC = process.env.RPC_URL ?? "http://localhost:8899";
+
+/** Which cluster, and therefore whether money can be conjured. */
+const LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)/.test(RPC);
+const DEVNET = /devnet/.test(RPC);
+
+/* What a bot needs to exist: rent for its member account and its token account,
+ * plus signatures. A local faucet hands out 2 SOL a wallet because it costs
+ * nothing; on devnet this comes out of a balance that has to last the run, and
+ * the measured cost is under a hundredth of this. */
+const BOT_LAMPORTS = 20_000_000;
 
 /** Members are derived from the pool address, so `join` and `veto` agree on who
  *  they are without a state file to lose. */
@@ -163,7 +173,6 @@ const inWords = (secs: number) => {
 
 async function main() {
   const [cmd, arg, extra, extra2] = process.argv.slice(2);
-  loadEnvLocal();
 
   if (!LOCAL && !DEVNET) {
     throw new Error(
