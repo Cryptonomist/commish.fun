@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PublicKey, Transaction, type TransactionInstruction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
+import { SleeperFill } from "@/components/SleeperFill";
 import { countdown, formatUsdc, shortAddress } from "@/lib/format";
 import {
   buildClaimPrize,
@@ -246,6 +247,18 @@ export function LeaguePanel({
               Members get {Math.round(pool.disputeWindowSecs / 3600)} hours to
               throw this out once you post it. You can post it again if they do.
             </p>
+
+            {/* The season was played somewhere else. Reading the final table
+                from there beats retyping it, and the wrong name on a prize is
+                the one mistake this product cannot shrug off. */}
+            <SleeperFill
+              members={roster.map((r) => ({
+                wallet: r.wallet.toBase58(),
+                name: r.name,
+              }))}
+              slotCount={pool.slotCount}
+              onFill={(filled) => setDraft(filled)}
+            />
 
             <div className="mt-4 flex flex-col gap-3">
               {pool.prizeSlots.map((slot) => (
