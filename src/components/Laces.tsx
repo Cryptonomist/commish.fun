@@ -6,10 +6,9 @@
  * (surviving weeks).
  *
  * Rules: it is never set inside the wordmark, never stretched, and never given
- * a colour outside the palette — cut out of a hide tile in the ground colour,
- * or hide on night. It does NOT wear the action orange. The mark and the
- * buttons shared one token until the Turf palette, which left the brand with no
- * colour of its own and made the lockup read as something to click.
+ * a colour outside the palette — orange on night, or cream on a dark surface.
+ * It wears the action orange, and the reason the lockup does not therefore read
+ * as a button is that it carries no filled tile. See Wordmark below.
  * The illustrated footballs are retired.
  */
 export function Laces({
@@ -43,19 +42,19 @@ export function Laces({
   );
 }
 
-/** The lockup: the mark cut out of a hide tile, wordmark beside it. Header and
- *  nav use this; social banners use the wordmark alone. */
+/** The lockup: orange laces set straight on the ground, wordmark beside them.
+ *  Header and nav use this; social banners use the wordmark alone.
+ *
+ *  NO TILE. The mark used to sit in a filled orange square, which is the same
+ *  shape and the same colour as every button on the site, so the logo read as
+ *  something to click. Setting the laces directly on night fixes that without
+ *  needing a second brand colour to do it. */
 export function Wordmark({ size = 28 }: { size?: number }) {
   return (
-    <span className="inline-flex items-center gap-3">
-      <span
-        className="inline-flex items-center justify-center rounded-xl bg-hide text-night"
-        style={{ width: size * 1.5, height: size * 1.5 }}
-      >
-        <Laces size={size} title="Commish" />
-      </span>
+    <span className="inline-flex items-center gap-2.5">
+      <Laces size={size * 1.2} title="Commish" className="text-action" />
       <span className="display text-cream" style={{ fontSize: size * 1.35 }}>
-        COMMISH<span className="text-hide">.FUN</span>
+        COMMISH<span className="text-action">.FUN</span>
       </span>
     </span>
   );

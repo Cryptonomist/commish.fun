@@ -9,10 +9,15 @@ import { fetchScoreboard } from "@/lib/scores";
 
 /* The front door.
  *
- * One job: a commissioner who runs a pool on Venmo reads this and understands,
- * in about eight seconds, that they keep their job and lose the custody. The
- * pitch is not "blockchain" — it is "you stop holding four thousand dollars of
- * your friends' money for eighteen weeks".
+ * One job: a commissioner reads this and understands, in about eight seconds,
+ * what the product is, which formats it runs, and that they keep the job and
+ * lose the custody.
+ *
+ * IT STATES THINGS RATHER THAN SELLING THEM. An earlier version opened on the
+ * pot living in one friend's Venmo, which was vivid and read like an
+ * advertisement rather than a product. The page names what is offered, says
+ * which of it you can actually use today, and lets the mechanism argue for
+ * itself — which it can, because the mechanism is the interesting part.
  *
  * THE HERO IS THE GAME, NOT A PICTURE OF IT. Everything below the fold argues
  * that the escrow is trustworthy, and none of that argument lands on somebody
@@ -50,6 +55,33 @@ const DRIVE = [
     yard: "NEXT",
     h: "Settle and advance",
     p: "The result is applied to every member, and the week either opens the next one or decides the pool and pays out.",
+  },
+];
+
+/* What the product actually offers, and honestly which of it you can use.
+ *
+ * Survivor is the only type `/pools/new` can create today — the form passes
+ * POOL_SURVIVOR and nothing else. Loser and League are enabled on chain and
+ * covered by the LiteSVM suite, but League has no screens at all: no create,
+ * no dues lock, no payout sheet, no claim. Listing it without saying so would
+ * be selling a page that does not exist, which is a strange thing to do on a
+ * site whose whole argument is that it does not ask for trust. */
+const FORMATS = [
+  {
+    status: "AVAILABLE NOW",
+    live: true,
+    h: "Survivor",
+    p: "One team a week to win, each team once a season. Your team loses or ties and you are out. Last member standing takes the pot.",
+    detail:
+      "Picks lock at the week's first kickoff and are recorded on chain, so nobody can claim on Monday that they definitely picked the Bills.",
+  },
+  {
+    status: "ON CHAIN · SCREENS TO COME",
+    live: false,
+    h: "League dues",
+    p: "A season buy-in for a fantasy league, held in the same escrow and paid out against a prize sheet rather than a last-one-standing rule.",
+    detail:
+      "The commissioner posts who finished where, members get the same dispute window they get on a weekly result, and each winner claims their own slot.",
   },
 ];
 
@@ -104,40 +136,44 @@ export default async function Home() {
         </header>
 
         {/* ── Hero ────────────────────────────────────────────────────────── */}
-        <section className="relative flex flex-col gap-7 pb-10 pt-10 sm:pt-14">
-          <FieldMarkings />
-          <span className="inline-flex w-fit items-center gap-2.5 rounded-full border border-night-3 bg-night-2/80 px-4 py-2 text-xs font-bold tracking-[0.18em]">
-            <Laces size={13} className="text-hide" />
-            <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
-            <Countdown />
-          </span>
+        <section className="flex flex-col gap-8 pb-10">
+          {/* The field is scoped to the copy rather than the whole section, so
+              both rows of yard numbers land inside it and neither ends up
+              behind the demo card below. */}
+          <div className="relative flex flex-col gap-7 py-14 sm:py-16">
+            <FieldMarkings />
+            <span className="inline-flex w-fit items-center gap-2.5 rounded-full border border-night-3 bg-night-2/80 px-4 py-2 text-xs font-bold tracking-[0.18em]">
+              <Laces size={13} className="text-action" />
+              <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
+              <Countdown />
+            </span>
 
-          <h1 className="display max-w-4xl text-[clamp(2.6rem,8vw,5.5rem)] uppercase">
-            Your Survivor pool,
-            <br />
-            out of that one guy&rsquo;s{" "}
-            <span className="text-action">Venmo</span>.
-          </h1>
+            <h1 className="display max-w-4xl text-[clamp(2.4rem,7vw,5rem)] uppercase">
+              Football pools,
+              <br />
+              <span className="text-action">escrowed</span> on-chain.
+            </h1>
 
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <p className="max-w-2xl text-lg leading-relaxed text-cream-dim sm:text-xl">
-              Buy-ins escrowed on-chain. Picks locked at kickoff. Last one standing
-              takes the pot. You keep being the commissioner — you just stop
-              holding everyone&rsquo;s money.
-            </p>
-            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
-              <Link
-                href="/pools/new"
-                className="inline-flex h-13 items-center justify-center rounded-xl bg-action px-7 py-4 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
-              >
-                Start a pool
-              </Link>
-              <Link
-                href="#drive"
-                className="inline-flex items-center justify-center rounded-xl border border-night-3 px-7 py-4 text-sm font-bold tracking-wide text-cream transition-colors hover:border-action/60"
-              >
-                How a week works
-              </Link>
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <p className="max-w-2xl text-lg leading-relaxed text-cream-dim sm:text-xl">
+                Members pay their buy-in into a vault that is the pool&rsquo;s own
+                account. Picks, results and payouts are recorded on chain. The
+                commissioner runs the pool and never holds the money.
+              </p>
+              <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
+                <Link
+                  href="/pools/new"
+                  className="inline-flex h-13 items-center justify-center rounded-xl bg-action px-7 py-4 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
+                >
+                  Start a pool
+                </Link>
+                <Link
+                  href="#drive"
+                  className="inline-flex items-center justify-center rounded-xl border border-night-3 px-7 py-4 text-sm font-bold tracking-wide text-cream transition-colors hover:border-action/60"
+                >
+                  How a week works
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -145,18 +181,31 @@ export default async function Home() {
           <TryAWeek />
         </section>
 
-        {/* ── The problem ─────────────────────────────────────────────────── */}
+        {/* ── What you can run ────────────────────────────────────────────── */}
         <section className="border-t border-night-3 py-14">
-          <p className="max-w-3xl text-xl leading-relaxed text-cream sm:text-2xl">
-            Every Survivor pool works the same way: ten to a hundred people send
-            their buy-in to one guy&rsquo;s Venmo, and then everyone trusts that
-            guy for eighteen weeks.{" "}
-            <span className="text-cream-dim">
-              He holds the pot. He tracks the picks. He decides disputes. He pays
-              out, eventually, if nothing goes wrong. Pools move thousands of
-              dollars a season this way, secured by nothing but friendship.
-            </span>
-          </p>
+          <h2 className="display text-3xl uppercase sm:text-4xl">
+            What you can run
+          </h2>
+          <div className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-night-3 bg-night-3 md:grid-cols-2">
+            {FORMATS.map((f) => (
+              <div key={f.h} className="flex flex-col bg-night-2/60 p-6">
+                <span
+                  className={`w-fit rounded-full border px-3 py-1 text-xs font-bold tracking-[0.14em] ${
+                    f.live
+                      ? "border-alive/40 bg-alive/10 text-alive"
+                      : "border-night-3 bg-night-2 text-cream-dim"
+                  }`}
+                >
+                  {f.status}
+                </span>
+                <h3 className="display mt-4 text-2xl uppercase">{f.h}</h3>
+                <p className="mt-2 leading-relaxed text-cream-dim">{f.p}</p>
+                <p className="mt-3 text-sm leading-relaxed text-cream-dim/80">
+                  {f.detail}
+                </p>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* ── The drive ───────────────────────────────────────────────────── */}
@@ -173,7 +222,7 @@ export default async function Home() {
           <ol className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-night-3 bg-night-3 sm:grid-cols-2 lg:grid-cols-5">
             {DRIVE.map((d) => (
               <li key={d.yard} className="flex flex-col bg-night-2/60 p-5">
-                <span className="display text-xl tracking-widest text-hide">
+                <span className="display text-xl tracking-widest text-action">
                   {d.yard}
                 </span>
                 <h3 className="mt-3 font-bold text-cream">{d.h}</h3>
@@ -218,7 +267,7 @@ export default async function Home() {
             {SETUP.map((s) => (
               <div key={s.h}>
                 <h3 className="flex items-baseline gap-3 text-lg font-bold text-cream">
-                  <Laces size={11} className="shrink-0 text-hide" />
+                  <Laces size={11} className="shrink-0 text-action" />
                   {s.h}
                 </h3>
                 <p className="mt-2 leading-relaxed text-cream-dim">{s.p}</p>
@@ -236,7 +285,7 @@ export default async function Home() {
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <footer className="mt-auto flex flex-col gap-4 border-t border-night-3 py-8 text-sm text-cream-dim sm:flex-row sm:items-center sm:justify-between">
           <span className="flex items-center gap-2.5">
-            <Laces size={14} className="text-hide" />
+            <Laces size={14} className="text-action" />
             <span className="font-bold tracking-wide">COMMISH.FUN</span>
             <span>· Built on Solana</span>
           </span>

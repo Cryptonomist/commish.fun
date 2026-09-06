@@ -62,8 +62,8 @@ The commissioner keeps the job, loses the custody.
 
 ## Brand
 
-Hide `#C08348` (the mark only) · Action `#FF6A2B` (links and buttons) · Night `#0A100C` · Cream `#F0F2EC` · Pot Gold `#E9C258` (money only) · Alive `#57E08A`
-Mark: the laces, nothing else, cut out of a hide tile. Assets in [`brand/`](brand/).
+Action `#FF6A2B` (the brand, links and buttons) · Night `#0A100C` · Cream `#F0F2EC` · Pot Gold `#E9C258` (money only) · Alive `#57E08A` · Out `#EC565B`
+Mark: the laces, nothing else, orange on night and never on a filled tile. Assets in [`brand/`](brand/).
 
 ## Disclaimer
 

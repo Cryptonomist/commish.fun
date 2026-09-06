@@ -309,7 +309,7 @@ export default function NewPool() {
 
             <div className="rounded-xl border border-night-3 bg-night-2/60 p-4 text-sm">
               <span className="flex items-center gap-2 font-bold text-cream">
-                <Laces size={12} className="text-hide" />
+                <Laces size={12} className="text-action" />
                 Picks lock at first kickoff
               </span>
               <p className="mt-1.5 text-cream-dim">

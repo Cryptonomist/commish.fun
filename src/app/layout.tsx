@@ -26,27 +26,29 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://commish.fun";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
   title: {
-    default: "Commish — Survivor pools, escrowed on-chain",
+    default: "Commish — Football pools, escrowed on-chain",
     template: "%s · Commish",
   },
+  /* The one line that shows up in a search result and a pasted link, so it
+     says what the product is rather than telling a joke about it. */
   description:
-    "Your Survivor pool, out of that one guy's Venmo. Buy-ins escrowed on-chain, picks locked at kickoff, last one standing takes the pot.",
+    "Escrow for football pools. Members pay into a vault that is the pool's own account, picks and results are recorded on chain, and the commissioner never holds the money.",
   applicationName: "Commish",
   openGraph: {
     type: "website",
     url: SITE,
     siteName: "Commish",
-    title: "Commish — Survivor pools, escrowed on-chain",
+    title: "Commish — Football pools, escrowed on-chain",
     description:
-      "Buy-ins escrowed on-chain. Picks locked at kickoff. Last one standing takes the pot.",
+      "Survivor pools now, league dues next. The commissioner runs the pool and never holds the money.",
     images: [{ url: "/brand/launch.png", width: 1200, height: 675 }],
   },
   twitter: {
     card: "summary_large_image",
     site: "@Commishfun",
-    title: "Commish — Survivor pools, escrowed on-chain",
+    title: "Commish — Football pools, escrowed on-chain",
     description:
-      "Buy-ins escrowed on-chain. Picks locked at kickoff. Last one standing takes the pot.",
+      "Survivor pools now, league dues next. The commissioner runs the pool and never holds the money.",
     images: ["/brand/launch.png"],
   },
   icons: { icon: "/brand/appicon.png", apple: "/brand/appicon.png" },

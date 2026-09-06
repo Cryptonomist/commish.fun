@@ -48,7 +48,7 @@ export function FieldMarkings() {
         <span
           key={at}
           className={`absolute inset-y-0 w-px ${
-            at % 10 === 0 ? "bg-cream/[0.055]" : "bg-cream/[0.028]"
+            at % 10 === 0 ? "bg-cream/[0.10]" : "bg-cream/[0.05]"
           }`}
           style={{ left: `${at}%` }}
         />
@@ -60,27 +60,39 @@ export function FieldMarkings() {
         LINES.map((at) => (
           <span
             key={`${top}-${at}`}
-            className="absolute h-px w-2.5 bg-cream/[0.05]"
+            className="absolute h-px w-2.5 bg-cream/[0.08]"
             style={{ left: `calc(${at}% - 5px)`, top: `${top}%` }}
           />
         )),
       )}
 
-      {NUMBERS.map(({ at, yards, phone }) => (
-        <span
-          key={at}
-          className={[
-            "display absolute bottom-5 -translate-x-1/2 whitespace-nowrap",
-            "text-cream/[0.07] text-[clamp(1.5rem,4vw,3rem)] tracking-[0.1em]",
-            phone ? "" : "hidden sm:inline",
-          ].join(" ")}
-          style={{ left: `${at}%` }}
-        >
-          {at < 50 ? <span className="mr-1.5 align-middle text-[0.5em]">◄</span> : null}
-          {yards}
-          {at > 50 ? <span className="ml-1.5 align-middle text-[0.5em]">►</span> : null}
-        </span>
-      ))}
+      {/* Both rows, the way a field carries them: one set in from each
+          sideline. Both are set upright rather than mirrored — on grass the
+          far row is upside down from where you are standing, and reproducing
+          that on a web page reads as a rendering fault rather than as a
+          field. */}
+      {(["top", "bottom"] as const).map((side) =>
+        NUMBERS.map(({ at, yards, phone }) => (
+          <span
+            key={`${side}-${at}`}
+            className={[
+              "display absolute -translate-x-1/2 whitespace-nowrap",
+              "text-cream/[0.13] text-[clamp(1.75rem,5.5vw,4rem)] tracking-[0.08em]",
+              side === "top" ? "top-3" : "bottom-3",
+              phone ? "" : "hidden sm:inline",
+            ].join(" ")}
+            style={{ left: `${at}%` }}
+          >
+            {at < 50 ? (
+              <span className="mr-1.5 align-middle text-[0.45em]">◄</span>
+            ) : null}
+            {yards}
+            {at > 50 ? (
+              <span className="ml-1.5 align-middle text-[0.45em]">►</span>
+            ) : null}
+          </span>
+        )),
+      )}
     </div>
   );
 }

@@ -1,11 +1,14 @@
 @import "tailwindcss";
 
 /* ── The Pigskin system ───────────────────────────────────────────────────────
-   Every colour Commish is allowed to use, and the three rules that govern them:
+   Every colour Commish is allowed to use, and the two rules that govern them:
 
-   HIDE is the mark. The Laces wear it and nothing else does. It used to share
-   a token with the buttons, which meant the brand had no colour of its own.
-   ACTION is interaction — links, CTAs, the countdown that is still running.
+   ACTION is the orange, and it is both the brand and the interaction. There
+   was briefly a separate tan for the mark so the lockup would stop reading as
+   a button; it solved that and left the palette with a second brand colour
+   that was, of all things, brown. The lockup is fixed by dropping the filled
+   tile instead: orange laces on night are a mark, an orange square with
+   something cut out of it is a button.
    GOLD is the money: pot amounts, payouts, nothing else.
 
    The surfaces are turf under floodlights, which is nearly black with a green
@@ -21,7 +24,6 @@
   --color-night-3: #1f2c24;    /* hairlines, borders */
   --color-cream: #f0f2ec;      /* type */
   --color-cream-dim: #98a69b;  /* secondary type */
-  --color-hide: #c08348;       /* THE MARK ONLY */
   --color-action: #ff6a2b;     /* links, CTAs, live countdowns */
   --color-action-hi: #ff8551;  /* hover */
   --color-gold: #e9c258;       /* MONEY ONLY */

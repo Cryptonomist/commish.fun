@@ -222,7 +222,7 @@ export default function PoolPage() {
           <>
             <h1 className="display text-4xl uppercase sm:text-5xl">{pool.name}</h1>
             <p className="mt-3 flex items-center gap-2 text-cream-dim">
-              <Laces size={12} className="text-hide" />
+              <Laces size={12} className="text-action" />
               Survivor · week {pool.currentWeek}
             </p>
 

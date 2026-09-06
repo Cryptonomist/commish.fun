@@ -102,14 +102,14 @@ program rather than from hand-written interfaces.
 | Mode rules as a tested pure function | `programs/commish/src/rules.rs` | done |
 | `anchor build` / `anchor test` | — | not run — needs the Solana toolchain |
 
-## 5. The three rules that are easy to break
+## 5. The two rules that are easy to break
 
-**Hide is the mark.** `--color-hide` dresses the Laces and nothing else. It used
-to share a token with the buttons, which left the brand with no colour of its
-own and made the lockup read as something to click.
-
-**Action is interaction.** `--color-action` is links, CTAs and a countdown that
-is still running. An orange heading is a bug.
+**Action is the orange, and it is the brand.** `--color-action` dresses the
+Laces, the links and the CTAs. There was briefly a separate tan for the mark so
+the lockup would stop reading as a button; it solved that and left the palette
+with a second brand colour that was, of all things, brown. The lockup is fixed
+by carrying no filled tile instead — orange laces on night are a mark, an orange
+square with something cut out of it is a button.
 
 **Gold is the money** — pot amounts, payouts, and nothing else. A gold border on
 a button is a bug.
