@@ -6,14 +6,15 @@
  * picks in before a lock. This does that part so the browser only has to do the
  * part that has never been seen.
  *
- * YOU ARE THE COMMISSIONER, so you create the pool. The commissioner screen
- * only appears for the wallet that created the pool, and this script cannot
- * sign for your browser wallet, so pool creation stays in the browser where it
- * already works. Everything else here can be done from the command line.
+ * ON A LOCAL VALIDATOR YOU ARE THE COMMISSIONER. The commissioner screen only
+ * appears for the wallet that created the pool, and this script cannot sign for
+ * your browser wallet, so pool creation stays in the browser where it already
+ * works. Everything else here can be done from the command line.
  *
  *   npx tsx scripts/seed-pool.ts fund <your-wallet> [dollars]
+ *   npx tsx scripts/seed-pool.ts create [dues] [disputeMins]
  *   npx tsx scripts/seed-pool.ts join <pool> [members]
- *   npx tsx scripts/seed-pool.ts veto <pool>
+ *   npx tsx scripts/seed-pool.ts veto <pool> [votes]
  *   npx tsx scripts/seed-pool.ts status <pool>
  *
  * A full run, on a fastclock build:
@@ -30,9 +31,16 @@
  * `status` prints what the chain actually holds at any point, which is the
  * thing to trust when a screen looks wrong.
  *
- * LOCALNET ONLY, and it refuses anything else: it mints a counterfeit of a real
- * stablecoin and airdrops SOL, neither of which means anything off a local
- * validator.
+ * DEVNET WORKS TOO, AND DIFFERENTLY. There the money is not conjured: SOL comes
+ * from a rate-limited faucet and USDC is Circle's, which nobody else can mint.
+ * So `fund` transfers out of your own balance rather than creating anything,
+ * and running out means running out — which is the point, because that is what
+ * a real deployment does. `create` exists for the same reason: a devnet run
+ * wants a commissioner the script can sign for, so it can be left alone for the
+ * four hours a production-timing week actually takes.
+ *
+ * NEVER MAINNET, and it refuses: it funds wallets it holds the keys to and
+ * signs on their behalf, which is a thing to do with test money only.
  */
 
 import crypto from "node:crypto";
@@ -42,12 +50,23 @@ import {
   Connection,
   Keypair,
   PublicKey,
+  SystemProgram,
   Transaction,
   TransactionInstruction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 
 const RPC = process.env.RPC_URL ?? "http://localhost:8899";
+
+/** Which cluster, and therefore whether money can be conjured. */
+const LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)/.test(RPC);
+const DEVNET = /devnet/.test(RPC);
+
+/* What a bot needs to exist: rent for its member account and its token account,
+ * plus signatures. A local faucet hands out 2 SOL a wallet because it costs
+ * nothing; on devnet this comes out of a balance that has to last the run, and
+ * the measured cost is under a hundredth of this. */
+const BOT_LAMPORTS = 20_000_000;
 
 /* The app reads NEXT_PUBLIC_* at module scope, and nothing loads .env.local
  * outside Next. Set it before importing anything from src/, which is why the
@@ -97,6 +116,34 @@ function mintToIx(
   });
 }
 
+/** SPL TransferChecked, for the devnet path where dollars are moved rather than
+ *  minted. Plain `Transfer` would also work and is one account shorter, but it
+ *  verifies neither the mint nor the decimals — and an amount sent at the wrong
+ *  decimal place is off by a factor of a million in whichever direction hurts.
+ *  Real dollars are worth the extra account. */
+function transferCheckedIx(
+  source: PublicKey,
+  mint: PublicKey,
+  dest: PublicKey,
+  owner: PublicKey,
+  amount: bigint,
+): TransactionInstruction {
+  const data = Buffer.alloc(10);
+  data.writeUInt8(12, 0);
+  data.writeBigUInt64LE(amount, 1);
+  data.writeUInt8(6, 9); // USDC decimals, and the program checks them
+  return new TransactionInstruction({
+    programId: SPL_TOKEN,
+    keys: [
+      { pubkey: source, isSigner: false, isWritable: true },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: dest, isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: true, isWritable: false },
+    ],
+    data,
+  });
+}
+
 function loadCliKeypair(): Keypair {
   const file =
     process.env.KEYPAIR ??
@@ -115,19 +162,25 @@ const inWords = (secs: number) => {
 };
 
 async function main() {
-  const [cmd, arg, extra] = process.argv.slice(2);
+  const [cmd, arg, extra, extra2] = process.argv.slice(2);
   loadEnvLocal();
 
-  if (!/^https?:\/\/(localhost|127\.0\.0\.1)/.test(RPC)) {
+  if (!LOCAL && !DEVNET) {
     throw new Error(
-      `Refusing to run against ${RPC}. This mints counterfeit dollars and ` +
-        `airdrops SOL; it is for a local validator only.`,
+      `Refusing to run against ${RPC}. This holds the keys to the wallets it ` +
+        `funds and signs on their behalf; it belongs on a local validator or ` +
+        `devnet, never on anything holding real money.`,
     );
   }
 
   const P = await import("@/lib/program");
   const { TEAMS } = await import("@/lib/nfl");
-  const { MIN_POST_DELAY_SECS } = await import("@/lib/schedule");
+  const {
+    MIN_POST_DELAY_SECS,
+    MIN_DISPUTE_WINDOW_SECS,
+    minWeekGapSecs,
+    validateSchedule,
+  } = await import("@/lib/schedule");
   const { isOnBye, weekOf } = await import("@/lib/season");
 
   const connection = new Connection(RPC, "confirmed");
@@ -142,26 +195,90 @@ async function main() {
       { commitment: "confirmed" },
     );
 
-  /** SOL to pay rent and fees, and test dollars to join with. */
+  /** SOL to pay rent and fees, and dollars to join with.
+   *
+   * The two clusters do this by opposite means. Locally both are conjured —
+   * SOL from the validator's faucet, USDC from a mint whose authority is your
+   * own key. On devnet neither can be: the faucet is rate-limited to a couple
+   * of SOL and its USDC is Circle's, whose mint authority is Circle. So there
+   * the money moves out of the payer's balance, which is finite, and a run that
+   * asks for more than there is fails saying so. */
   async function fund(who: PublicKey, dollars: number) {
-    const sol = await connection.getBalance(who);
-    if (sol < 2e9) {
-      await connection.confirmTransaction(
-        {
-          signature: await connection.requestAirdrop(who, 2e9),
-          ...(await connection.getLatestBlockhash()),
-        },
-        "confirmed",
+    const ata = P.ataFor(who, P.USDC_MINT);
+    const base = BigInt(Math.round(dollars * 1e6));
+
+    if (LOCAL) {
+      if ((await connection.getBalance(who)) < 2e9) {
+        await connection.confirmTransaction(
+          {
+            signature: await connection.requestAirdrop(who, 2e9),
+            ...(await connection.getLatestBlockhash()),
+          },
+          "confirmed",
+        );
+      }
+      await send(
+        [
+          P.createAtaIdempotentIx(payer.publicKey, who, P.USDC_MINT),
+          mintToIx(P.USDC_MINT, ata, payer.publicKey, base),
+        ],
+        [payer],
+      );
+      return;
+    }
+
+    const ixs: TransactionInstruction[] = [];
+    const have = await connection.getBalance(who);
+    if (have < BOT_LAMPORTS) {
+      ixs.push(
+        SystemProgram.transfer({
+          fromPubkey: payer.publicKey,
+          toPubkey: who,
+          lamports: BOT_LAMPORTS - have,
+        }),
       );
     }
-    const ata = P.ataFor(who, P.USDC_MINT);
-    await send(
-      [
-        P.createAtaIdempotentIx(payer.publicKey, who, P.USDC_MINT),
-        mintToIx(P.USDC_MINT, ata, payer.publicKey, BigInt(dollars) * BigInt(1_000_000)),
-      ],
-      [payer],
-    );
+    ixs.push(P.createAtaIdempotentIx(payer.publicKey, who, P.USDC_MINT));
+    if (base > BigInt(0)) {
+      ixs.push(
+        transferCheckedIx(
+          P.ataFor(payer.publicKey, P.USDC_MINT),
+          P.USDC_MINT,
+          ata,
+          payer.publicKey,
+          base,
+        ),
+      );
+    }
+    await send(ixs, [payer]);
+  }
+
+  /** What the payer can actually afford, checked once before a run rather than
+   *  discovered three bots in with a half-joined pool on chain. */
+  async function assertPayerCanAfford(bots: number, duesEach: number) {
+    if (LOCAL) return;
+    const sol = await connection.getBalance(payer.publicKey);
+    const needSol = bots * BOT_LAMPORTS + 10_000_000;
+    if (sol < needSol) {
+      throw new Error(
+        `${payer.publicKey.toBase58()} has ${(sol / 1e9).toFixed(4)} SOL; ` +
+          `${bots} bots need about ${(needSol / 1e9).toFixed(3)}. ` +
+          `Devnet SOL: solana airdrop 2 --url devnet, or https://faucet.solana.com`,
+      );
+    }
+    const need = BigInt(Math.round(bots * duesEach * 1e6));
+    const held = await connection
+      .getTokenAccountBalance(P.ataFor(payer.publicKey, P.USDC_MINT))
+      .then((b) => BigInt(b.value.amount))
+      .catch(() => BigInt(0));
+    if (held < need) {
+      throw new Error(
+        `${payer.publicKey.toBase58()} holds ${fmtUsd(held)} of devnet USDC; ` +
+          `${bots} bots at ${fmtUsd(BigInt(Math.round(duesEach * 1e6)))} need ` +
+          `${fmtUsd(need)}. Devnet USDC comes from https://faucet.circle.com ` +
+          `(pick Solana Devnet). Nobody but Circle can mint it.`,
+      );
+    }
   }
 
   switch (cmd) {
@@ -177,6 +294,84 @@ async function main() {
       console.log(`  SOL   ${(await connection.getBalance(who)) / 1e9}`);
       console.log(`  USDC  ${fmtUsd(BigInt(bal.value.amount))}`);
       console.log(`\nNow create a pool at http://localhost:3000/pools/new`);
+      break;
+    }
+
+    case "create": {
+      /* A commissioner the script can sign for.
+       *
+       * On a local validator the pool is made in the browser, because there the
+       * screen IS the thing being tested. A devnet run is the opposite: what is
+       * being tested is four hours of real timing floors against a real
+       * cluster's clock, and nobody should have to sit in front of a browser
+       * for them. */
+      const dues = Number(arg ?? (LOCAL ? 25 : 1));
+      const disputeWindowSecs = extra
+        ? Math.round(Number(extra) * 60)
+        : MIN_DISPUTE_WINDOW_SECS;
+      const startWeek = Number(extra2 ?? 1);
+
+      /* Strictly greater than the program's floor, not equal to it: the check
+       * is `gap > min_week_gap`, so a schedule built to land exactly on the
+       * boundary is rejected. The slack also absorbs the clock moving while the
+       * transaction is in flight. */
+      const gap = minWeekGapSecs(disputeWindowSecs) + 300;
+      const lead = 600;
+
+      /* Starting at week 18 back-dates the other seventeen locks, which
+       * `create_pool` allows — it requires only that the week this pool
+       * actually plays has not kicked off yet. That is the one way to reach a
+       * refund deadline in minutes instead of days: the deadline must be later
+       * than the LAST lock, and on production timing eighteen locks more than
+       * four hours apart are three days wide no matter when they start. It is
+       * what makes `reclaim_dues` reachable without waiting out a season. */
+      const first = now() + lead - (startWeek - 1) * gap;
+      const locks = Array.from({ length: 18 }, (_, i) => first + i * gap);
+      const refundDeadlineTs =
+        locks[17] + (startWeek === 18 ? 300 : 14 * 24 * 60 * 60);
+
+      // Everything create_pool checks about time, checked before signing.
+      const problem = validateSchedule({
+        locks,
+        disputeWindowSecs,
+        startWeek,
+        nowSecs: now(),
+      });
+      if (problem) throw new Error(`${problem.field}: ${problem.message}`);
+
+      const plan = P.buildCreatePool({
+        commissioner: payer.publicKey,
+        nonce: P.randomNonce(),
+        name: `Bots ${new Date().toISOString().slice(5, 16).replace("T", " ")}`,
+        poolType: P.POOL_SURVIVOR,
+        buyIn: BigInt(Math.round(dues * 1e6)),
+        maxMembers: 16,
+        startWeek,
+        lockTs: locks,
+        refundDeadlineTs,
+        disputeWindowSecs,
+      });
+      await send([plan.instruction], [payer]);
+
+      const lock = locks[startWeek - 1];
+      console.log(`pool          ${plan.pool.toBase58()}`);
+      console.log(`commissioner  ${payer.publicKey.toBase58()}`);
+      console.log(`buy-in        ${fmtUsd(BigInt(Math.round(dues * 1e6)))}`);
+      console.log(`start week    ${startWeek}`);
+      console.log(`locks         ${inWords(lock - now())}  (joining closes then)`);
+      console.log(
+        `posting opens ${inWords(lock + MIN_POST_DELAY_SECS - now())}`,
+      );
+      console.log(
+        `dispute       ${disputeWindowSecs}s after posting`,
+      );
+      console.log(
+        `refund due    ${inWords(refundDeadlineTs - now())}  (reclaim_dues opens)`,
+      );
+      console.log(
+        `\nJoin the bots now — they cannot join after the lock:\n` +
+          `  npx tsx scripts/seed-pool.ts join ${plan.pool.toBase58()} 3`,
+      );
       break;
     }
 
@@ -201,12 +396,19 @@ async function main() {
       console.log(`week    ${week}${byes.length ? ` · on a bye: ${byes.join(" ")}` : ""}`);
       console.log(`lock    ${inWords(decoded.lockTs[week - 1] - now())}\n`);
 
+      /* Locally a bot is handed the buy-in plus a hundred dollars of slack,
+       * because the dollars are counterfeit and slack costs nothing. On devnet
+       * it gets the buy-in and not a cent more: that comes out of a faucet
+       * allowance, and overfunding three bots is how a fourth cannot join. */
+      const dues = Number(decoded.buyIn) / 1e6;
+      await assertPayerCanAfford(count, dues);
+
       for (let i = 0; i < count; i++) {
         const bot = botFor(pool.toBase58(), i);
         // Each on a different team, so posting results can take some of them
         // out and leave others standing. That is the case worth seeing.
         const team = pickable[i % pickable.length];
-        await fund(bot.publicKey, Number(decoded.buyIn / BigInt(1_000_000)) + 100);
+        await fund(bot.publicKey, LOCAL ? dues + 100 : dues);
         await send(
           [
             P.createAtaIdempotentIx(bot.publicKey, bot.publicKey, P.USDC_MINT),
@@ -337,10 +539,13 @@ async function main() {
     default:
       console.log(
         [
+          `cluster: ${RPC}${LOCAL ? " (local)" : " (devnet)"}`,
+          "",
           "usage:",
           "  npx tsx scripts/seed-pool.ts fund <wallet> [dollars]",
+          "  npx tsx scripts/seed-pool.ts create [dues] [disputeMins] [startWeek]",
           "  npx tsx scripts/seed-pool.ts join <pool> [members]",
-          "  npx tsx scripts/seed-pool.ts veto <pool>",
+          "  npx tsx scripts/seed-pool.ts veto <pool> [votes]",
           "  npx tsx scripts/seed-pool.ts status <pool>",
         ].join("\n"),
       );
