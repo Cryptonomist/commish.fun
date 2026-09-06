@@ -101,6 +101,13 @@ export const availableTeams = (mask: number): Team[] =>
 export const SEASON = 2026;
 export const WEEK_1_KICKOFF = new Date("2026-09-10T00:20:00Z");
 
+/* ESPN calls Washington WSH. The on-chain team index calls it WAS, and that
+ * index is a contract that cannot move. One alias, in one place. */
+const FEED_ALIASES: Record<string, string> = { WSH: "WAS" };
+
+/** Normalize a feed's abbreviation to the one the program uses. */
+export const abbrFromFeed = (abbr: string): string =>
+  FEED_ALIASES[abbr.toUpperCase()] ?? abbr.toUpperCase();
 
 /** Weeks are 7 days from week 1's kickoff. Good enough for the countdown and
  *  the UI; the on-chain lock time is whatever the pool was created with. */

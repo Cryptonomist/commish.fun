@@ -3,7 +3,9 @@ import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
 import { Countdown } from "@/components/Countdown";
 import { FieldMarkings } from "@/components/FieldMarkings";
+import { ScoreTicker } from "@/components/ScoreTicker";
 import { TryAWeek } from "@/components/TryAWeek";
+import { fetchScoreboard } from "@/lib/scores";
 
 /* The front door.
  *
@@ -74,170 +76,178 @@ const CANNOT = [
   ["Strand the money", "Past the refund deadline every paid member takes their share back"],
 ];
 
-export default function Home() {
+export default async function Home() {
+  /* Fetched here rather than in the browser so the bar is full on first paint.
+     The upstream call is cached for a minute, so this costs one request a
+     minute for the whole site rather than one per visitor. */
+  const board = await fetchScoreboard();
+
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 sm:px-8">
-      {/* ── Nav ─────────────────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between py-6">
-        {/* the lockup scales down on a phone so it never crowds the connect button */}
-        <Link href="/" aria-label="Commish home" className="origin-left scale-[0.82] sm:scale-100">
-          <Wordmark size={22} />
-        </Link>
-        <div className="flex items-center gap-3">
-          <Link
-            href="#drive"
-            className="hidden text-sm font-semibold text-cream-dim transition-colors hover:text-cream sm:block"
-          >
-            How a week works
+    <>
+      <ScoreTicker initial={board} />
+      <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 sm:px-8">
+        {/* ── Nav ─────────────────────────────────────────────────────────── */}
+        <header className="flex items-center justify-between py-6">
+          {/* the lockup scales down on a phone so it never crowds the connect button */}
+          <Link href="/" aria-label="Commish home" className="origin-left scale-[0.82] sm:scale-100">
+            <Wordmark size={22} />
           </Link>
-          <WalletButton />
-        </div>
-      </header>
-
-      {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <section className="relative flex flex-col gap-7 pb-10 pt-10 sm:pt-14">
-        <FieldMarkings />
-        <span className="inline-flex w-fit items-center gap-2.5 rounded-full border border-night-3 bg-night-2/80 px-4 py-2 text-xs font-bold tracking-[0.18em]">
-          <Laces size={13} className="text-hide" />
-          <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
-          <Countdown />
-        </span>
-
-        <h1 className="display max-w-4xl text-[clamp(2.6rem,8vw,5.5rem)] uppercase">
-          Your Survivor pool,
-          <br />
-          out of that one guy&rsquo;s{" "}
-          <span className="text-action">Venmo</span>.
-        </h1>
-
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <p className="max-w-2xl text-lg leading-relaxed text-cream-dim sm:text-xl">
-            Buy-ins escrowed on-chain. Picks locked at kickoff. Last one standing
-            takes the pot. You keep being the commissioner — you just stop
-            holding everyone&rsquo;s money.
-          </p>
-          <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
-            <Link
-              href="/pools/new"
-              className="inline-flex h-13 items-center justify-center rounded-xl bg-action px-7 py-4 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
-            >
-              Start a pool
-            </Link>
+          <div className="flex items-center gap-3">
             <Link
               href="#drive"
-              className="inline-flex items-center justify-center rounded-xl border border-night-3 px-7 py-4 text-sm font-bold tracking-wide text-cream transition-colors hover:border-action/60"
+              className="hidden text-sm font-semibold text-cream-dim transition-colors hover:text-cream sm:block"
             >
               How a week works
             </Link>
+            <WalletButton />
           </div>
-        </div>
+        </header>
 
-        {/* Never played Survivor? You have now. */}
-        <TryAWeek />
-      </section>
-
-      {/* ── The problem ─────────────────────────────────────────────────── */}
-      <section className="border-t border-night-3 py-14">
-        <p className="max-w-3xl text-xl leading-relaxed text-cream sm:text-2xl">
-          Every Survivor pool works the same way: ten to a hundred people send
-          their buy-in to one guy&rsquo;s Venmo, and then everyone trusts that
-          guy for eighteen weeks.{" "}
-          <span className="text-cream-dim">
-            He holds the pot. He tracks the picks. He decides disputes. He pays
-            out, eventually, if nothing goes wrong. Pools move thousands of
-            dollars a season this way, secured by nothing but friendship.
+        {/* ── Hero ────────────────────────────────────────────────────────── */}
+        <section className="relative flex flex-col gap-7 pb-10 pt-10 sm:pt-14">
+          <FieldMarkings />
+          <span className="inline-flex w-fit items-center gap-2.5 rounded-full border border-night-3 bg-night-2/80 px-4 py-2 text-xs font-bold tracking-[0.18em]">
+            <Laces size={13} className="text-hide" />
+            <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
+            <Countdown />
           </span>
-        </p>
-      </section>
 
-      {/* ── The drive ───────────────────────────────────────────────────── */}
-      <section id="drive" className="scroll-mt-8 border-t border-night-3 py-14">
-        <h2 className="display text-3xl uppercase sm:text-4xl">
-          How a week actually works
-        </h2>
-        <p className="mt-3 max-w-2xl leading-relaxed text-cream-dim">
-          Results enter through the commissioner, checked against public scores.
-          There is no oracle pretense. What the program does is put a clock and a
-          vote around that one human step, in this order, every week.
-        </p>
+          <h1 className="display max-w-4xl text-[clamp(2.6rem,8vw,5.5rem)] uppercase">
+            Your Survivor pool,
+            <br />
+            out of that one guy&rsquo;s{" "}
+            <span className="text-action">Venmo</span>.
+          </h1>
 
-        <ol className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-night-3 bg-night-3 sm:grid-cols-2 lg:grid-cols-5">
-          {DRIVE.map((d) => (
-            <li key={d.yard} className="flex flex-col bg-night-2/60 p-5">
-              <span className="display text-xl tracking-widest text-hide">
-                {d.yard}
-              </span>
-              <h3 className="mt-3 font-bold text-cream">{d.h}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-cream-dim">
-                {d.p}
-              </p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* ── The trust model ─────────────────────────────────────────────── */}
-      <section className="border-t border-night-3 py-14">
-        <h2 className="display text-3xl uppercase sm:text-4xl">
-          The commissioner cannot
-        </h2>
-        <ul className="mt-8 divide-y divide-night-3 border-y border-night-3">
-          {CANNOT.map(([cannot, because]) => (
-            <li
-              key={cannot}
-              className="flex flex-col gap-1 py-4 sm:flex-row sm:items-baseline sm:gap-6"
-            >
-              <span className="flex items-baseline gap-3 font-bold text-cream sm:w-72 sm:shrink-0">
-                <Laces size={11} className="shrink-0 text-out" />
-                {cannot}
-              </span>
-              <span className="leading-relaxed text-cream-dim">{because}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-8 text-lg font-bold text-alive">
-          The commissioner keeps the job, loses the custody.
-        </p>
-      </section>
-
-      {/* ── Getting started ─────────────────────────────────────────────── */}
-      <section className="border-t border-night-3 py-14">
-        <h2 className="display text-3xl uppercase sm:text-4xl">
-          Running one
-        </h2>
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
-          {SETUP.map((s) => (
-            <div key={s.h}>
-              <h3 className="flex items-baseline gap-3 text-lg font-bold text-cream">
-                <Laces size={11} className="shrink-0 text-hide" />
-                {s.h}
-              </h3>
-              <p className="mt-2 leading-relaxed text-cream-dim">{s.p}</p>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <p className="max-w-2xl text-lg leading-relaxed text-cream-dim sm:text-xl">
+              Buy-ins escrowed on-chain. Picks locked at kickoff. Last one standing
+              takes the pot. You keep being the commissioner — you just stop
+              holding everyone&rsquo;s money.
+            </p>
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
+              <Link
+                href="/pools/new"
+                className="inline-flex h-13 items-center justify-center rounded-xl bg-action px-7 py-4 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
+              >
+                Start a pool
+              </Link>
+              <Link
+                href="#drive"
+                className="inline-flex items-center justify-center rounded-xl border border-night-3 px-7 py-4 text-sm font-bold tracking-wide text-cream transition-colors hover:border-action/60"
+              >
+                How a week works
+              </Link>
             </div>
-          ))}
-        </div>
-        <Link
-          href="/pools/new"
-          className="mt-9 inline-flex h-13 items-center justify-center rounded-xl bg-action px-7 py-4 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
-        >
-          Start a pool
-        </Link>
-      </section>
+          </div>
 
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="mt-auto flex flex-col gap-4 border-t border-night-3 py-8 text-sm text-cream-dim sm:flex-row sm:items-center sm:justify-between">
-        <span className="flex items-center gap-2.5">
-          <Laces size={14} className="text-hide" />
-          <span className="font-bold tracking-wide">COMMISH.FUN</span>
-          <span>· Built on Solana</span>
-        </span>
-        <span className="max-w-md text-xs leading-relaxed">
-          Escrow infrastructure for private pools among people who know each
-          other. Not financial, gambling, or legal advice. Team names are used to
-          identify clubs and imply no affiliation or endorsement. Know the rules
-          where you live before running a pool.
-        </span>
-      </footer>
-    </div>
+          {/* Never played Survivor? You have now. */}
+          <TryAWeek />
+        </section>
+
+        {/* ── The problem ─────────────────────────────────────────────────── */}
+        <section className="border-t border-night-3 py-14">
+          <p className="max-w-3xl text-xl leading-relaxed text-cream sm:text-2xl">
+            Every Survivor pool works the same way: ten to a hundred people send
+            their buy-in to one guy&rsquo;s Venmo, and then everyone trusts that
+            guy for eighteen weeks.{" "}
+            <span className="text-cream-dim">
+              He holds the pot. He tracks the picks. He decides disputes. He pays
+              out, eventually, if nothing goes wrong. Pools move thousands of
+              dollars a season this way, secured by nothing but friendship.
+            </span>
+          </p>
+        </section>
+
+        {/* ── The drive ───────────────────────────────────────────────────── */}
+        <section id="drive" className="scroll-mt-8 border-t border-night-3 py-14">
+          <h2 className="display text-3xl uppercase sm:text-4xl">
+            How a week actually works
+          </h2>
+          <p className="mt-3 max-w-2xl leading-relaxed text-cream-dim">
+            Results enter through the commissioner, checked against public scores.
+            There is no oracle pretense. What the program does is put a clock and a
+            vote around that one human step, in this order, every week.
+          </p>
+
+          <ol className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-night-3 bg-night-3 sm:grid-cols-2 lg:grid-cols-5">
+            {DRIVE.map((d) => (
+              <li key={d.yard} className="flex flex-col bg-night-2/60 p-5">
+                <span className="display text-xl tracking-widest text-hide">
+                  {d.yard}
+                </span>
+                <h3 className="mt-3 font-bold text-cream">{d.h}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-cream-dim">
+                  {d.p}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* ── The trust model ─────────────────────────────────────────────── */}
+        <section className="border-t border-night-3 py-14">
+          <h2 className="display text-3xl uppercase sm:text-4xl">
+            The commissioner cannot
+          </h2>
+          <ul className="mt-8 divide-y divide-night-3 border-y border-night-3">
+            {CANNOT.map(([cannot, because]) => (
+              <li
+                key={cannot}
+                className="flex flex-col gap-1 py-4 sm:flex-row sm:items-baseline sm:gap-6"
+              >
+                <span className="flex items-baseline gap-3 font-bold text-cream sm:w-72 sm:shrink-0">
+                  <Laces size={11} className="shrink-0 text-out" />
+                  {cannot}
+                </span>
+                <span className="leading-relaxed text-cream-dim">{because}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-8 text-lg font-bold text-alive">
+            The commissioner keeps the job, loses the custody.
+          </p>
+        </section>
+
+        {/* ── Getting started ─────────────────────────────────────────────── */}
+        <section className="border-t border-night-3 py-14">
+          <h2 className="display text-3xl uppercase sm:text-4xl">
+            Running one
+          </h2>
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            {SETUP.map((s) => (
+              <div key={s.h}>
+                <h3 className="flex items-baseline gap-3 text-lg font-bold text-cream">
+                  <Laces size={11} className="shrink-0 text-hide" />
+                  {s.h}
+                </h3>
+                <p className="mt-2 leading-relaxed text-cream-dim">{s.p}</p>
+              </div>
+            ))}
+          </div>
+          <Link
+            href="/pools/new"
+            className="mt-9 inline-flex h-13 items-center justify-center rounded-xl bg-action px-7 py-4 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
+          >
+            Start a pool
+          </Link>
+        </section>
+
+        {/* ── Footer ──────────────────────────────────────────────────────── */}
+        <footer className="mt-auto flex flex-col gap-4 border-t border-night-3 py-8 text-sm text-cream-dim sm:flex-row sm:items-center sm:justify-between">
+          <span className="flex items-center gap-2.5">
+            <Laces size={14} className="text-hide" />
+            <span className="font-bold tracking-wide">COMMISH.FUN</span>
+            <span>· Built on Solana</span>
+          </span>
+          <span className="max-w-md text-xs leading-relaxed">
+            Escrow infrastructure for private pools among people who know each
+            other. Not financial, gambling, or legal advice. Team names are used to
+            identify clubs and imply no affiliation or endorsement. Know the rules
+            where you live before running a pool.
+          </span>
+        </footer>
+      </div>
+    </>
   );
 }

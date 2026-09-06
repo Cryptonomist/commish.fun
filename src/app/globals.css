@@ -70,9 +70,26 @@ body {
     var(--color-night);
 }
 
+/* The scoreboard marquee. The track holds two identical copies of the slate
+   and travels exactly half its width, which is what makes the loop seamless
+   rather than snapping back. Slow on purpose: it is ambient, not something
+   anybody should feel obliged to read at speed. */
+.ticker-track {
+  animation: ticker 90s linear infinite;
+}
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+
+  /* The blanket rule above would finish the marquee instantly and park it on
+     the duplicate half. Drop the animation outright instead and let the row be
+     an ordinary scroller. */
+  .ticker-track { animation: none !important; }
 }
 
 /* The wallet-adapter modal ships its own light-ish chrome; drag it onto the
