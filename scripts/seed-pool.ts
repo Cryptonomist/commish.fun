@@ -182,6 +182,23 @@ async function main() {
     );
   }
 
+  /* The client's copies of the program's timing floors come from this flag, and
+   * a devnet deploy never has fastclock compiled in — it refuses to build
+   * without `devnet`, and nobody deploys that pair anywhere but a validator. So
+   * this combination is always a stale .env.local, and it fails in a way that
+   * wastes an afternoon: `create` builds a schedule ninety seconds wide, the
+   * chain wants four hours, and the rejection names BadDisputeWindow rather
+   * than the environment variable that caused it. */
+  if (DEVNET && process.env.NEXT_PUBLIC_FAST_CLOCK === "1") {
+    throw new Error(
+      `NEXT_PUBLIC_FAST_CLOCK=1 with a devnet RPC. That flag shortens this ` +
+        `script's copy of the posting floor to 60s and the dispute window to ` +
+        `30s, but a devnet build compiles the real ones in — so every schedule ` +
+        `built here would be rejected on chain. Unset it, or pass ` +
+        `NEXT_PUBLIC_FAST_CLOCK=0 for this run.`,
+    );
+  }
+
   const P = await import("@/lib/program");
   const { TEAMS } = await import("@/lib/nfl");
   const {
@@ -489,6 +506,207 @@ async function main() {
       break;
     }
 
+    case "post": {
+      /* The commissioner's half of the week. Named teams won; everything else
+       * lost. Pushes are not exposed here — a push is a real outcome but it
+       * takes a game the schedule says was played and calls it neither way,
+       * which is a browser decision, not a scripted one. */
+      if (!arg) throw new Error("usage: post <pool> ARI,BAL,…");
+      const pool = new PublicKey(arg);
+      const p = P.decodePool((await connection.getAccountInfo(pool))!.data);
+
+      const opens = p.lockTs[p.currentWeek - 1] + MIN_POST_DELAY_SECS;
+      if (now() < opens) {
+        throw new Error(
+          `post_results opens in ${inWords(opens - now())}. The floor is ` +
+            `${MIN_POST_DELAY_SECS / 3600}h after the lock, and it exists so a ` +
+            `week cannot be called before it is played.`,
+        );
+      }
+
+      const abbrs = (extra ?? "")
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+      let winners = 0;
+      for (const a of abbrs) {
+        const t = TEAMS.find((x) => x.abbr === a);
+        if (!t) throw new Error(`No team called ${a}`);
+        winners = (winners | P.teamBit(t.i)) >>> 0;
+      }
+
+      await send(
+        [
+          P.buildPostResults({
+            pool,
+            commissioner: payer.publicKey,
+            week: p.currentWeek,
+            winners,
+            pushes: 0,
+          }),
+        ],
+        [payer],
+      );
+
+      const after = P.decodePool((await connection.getAccountInfo(pool))!.data);
+      console.log(
+        `week ${after.pendingWeek} posted · won: ${abbrs.join(" ") || "nobody"}`,
+      );
+      console.log(
+        `dispute closes in ${inWords(after.pendingPostedTs + after.disputeWindowSecs - now())} ` +
+          `· ${P.vetoThreshold(after.aliveCount)} of ${after.aliveCount} votes would strike it down`,
+      );
+      break;
+    }
+
+    case "run": {
+      /* finalize → settle → advance, the same three steps RunWeek.tsx takes in
+       * the browser and in the same order. Re-running it is safe: each step
+       * checks the pool's status first, and `pendingSettles` drops members the
+       * previous attempt already processed. */
+      if (!arg) throw new Error("usage: run <pool>");
+      const pool = new PublicKey(arg);
+      let p = P.decodePool((await connection.getAccountInfo(pool))!.data);
+
+      /* Checked before anything is signed. advance_week names this account
+       * whether or not a fee is charged, and Anchor deserializes it before any
+       * of the program's own checks run — so a missing one fails with an error
+       * that says nothing about treasuries, after the settling is done. */
+      const treasuryAta = P.ataFor(p.feeTreasury, p.usdcMint);
+      if (!(await connection.getAccountInfo(treasuryAta))) {
+        throw new Error(
+          `The fee treasury has no USDC account, so the week cannot close. ` +
+            `Create the associated token account for ${p.feeTreasury.toBase58()}.`,
+        );
+      }
+
+      if (p.status === P.STATUS_RESULTS_POSTED) {
+        const closes = p.pendingPostedTs + p.disputeWindowSecs;
+        if (now() < closes) {
+          throw new Error(
+            `The dispute window closes in ${inWords(closes - now())}. ` +
+              `finalize_week refuses until members have had their say.`,
+          );
+        }
+        console.log(`committing week ${p.pendingWeek}…`);
+        await send([P.buildFinalizeWeek(pool)], [payer]);
+        p = P.decodePool((await connection.getAccountInfo(pool))!.data);
+      }
+      if (p.status !== P.STATUS_FINALIZED) {
+        throw new Error(`Nothing to run: pool status is ${p.status}.`);
+      }
+
+      const week = p.finalizedWeek;
+      const entries = (
+        await connection.getProgramAccounts(P.PROGRAM_ID, {
+          filters: P.memberAccountFilters(pool),
+        })
+      ).map((g) => ({
+        address: g.pubkey,
+        member: P.decodeMember(g.account.data),
+      }));
+      const pending = P.pendingSettles(entries, week);
+
+      if (pending.length > 0) {
+        console.log(`settling ${pending.length} for week ${week}…`);
+        for (let i = 0; i < pending.length; i += P.SETTLES_PER_TX) {
+          await send(
+            pending
+              .slice(i, i + P.SETTLES_PER_TX)
+              .map((e) => P.buildSettleMember(pool, e.address)),
+            [payer],
+          );
+        }
+      }
+
+      console.log(`closing week ${week}…`);
+      await send(
+        [P.buildAdvanceWeek({ pool, vault: p.vault, feeTreasuryAta: treasuryAta })],
+        [payer],
+      );
+
+      const after = P.decodePool((await connection.getAccountInfo(pool))!.data);
+      console.log(
+        `\nweek ${week} closed · ${after.aliveCount} alive · now on week ${after.currentWeek}`,
+      );
+      if (after.status === P.STATUS_SETTLED) {
+        console.log(
+          `pool SETTLED · ${after.winnersCount} winner(s) at ${fmtUsd(after.potPerWinner)} each`,
+        );
+      }
+      break;
+    }
+
+    case "claim": {
+      if (!arg) throw new Error("usage: claim <pool>");
+      const pool = new PublicKey(arg);
+      const p = P.decodePool((await connection.getAccountInfo(pool))!.data);
+      if (p.status !== P.STATUS_SETTLED) {
+        throw new Error(
+          `claim_pot needs a settled pool; this one is status ${p.status}. ` +
+            `A pool that never settled pays through reclaim_dues instead.`,
+        );
+      }
+
+      const vaultBefore = BigInt(
+        (await connection.getTokenAccountBalance(p.vault)).value.amount,
+      );
+      console.log(
+        `vault ${fmtUsd(vaultBefore)} · ${p.winnersCount} winner(s) at ${fmtUsd(p.potPerWinner)}\n`,
+      );
+
+      let paid = 0;
+      for (let i = 0; i < 8; i++) {
+        const bot = botFor(pool.toBase58(), i);
+        const info = await connection.getAccountInfo(
+          P.memberPda(pool, bot.publicKey),
+        );
+        if (!info) continue;
+        const m = P.decodeMember(info.data);
+        if (m.claimed || !P.isAlive(m)) continue;
+
+        const plan = P.buildClaimPot({
+          pool,
+          wallet: bot.publicKey,
+          vault: p.vault,
+          usdcMint: p.usdcMint,
+        });
+        const held = async () =>
+          BigInt(
+            (
+              await connection
+                .getTokenAccountBalance(plan.memberAta)
+                .catch(() => ({ value: { amount: "0" } }))
+            ).value.amount,
+          );
+        const was = await held();
+        await send(
+          [
+            P.createAtaIdempotentIx(bot.publicKey, bot.publicKey, p.usdcMint),
+            plan.instruction,
+          ],
+          [bot],
+        );
+        console.log(`  Bot ${i + 1}  ${fmtUsd(was)} -> ${fmtUsd(await held())}`);
+        paid++;
+      }
+
+      const vaultAfter = BigInt(
+        (await connection.getTokenAccountBalance(p.vault)).value.amount,
+      );
+      console.log(
+        `\n${paid} paid · vault ${fmtUsd(vaultBefore)} -> ${fmtUsd(vaultAfter)}`,
+      );
+      if (vaultBefore - vaultAfter !== BigInt(paid) * p.potPerWinner) {
+        console.log(
+          `\nMISMATCH: the vault moved ${fmtUsd(vaultBefore - vaultAfter)} but ` +
+            `${paid} payouts at ${fmtUsd(p.potPerWinner)} is ` +
+            `${fmtUsd(BigInt(paid) * p.potPerWinner)}.`,
+        );
+      }
+      break;
+    }
+
     case "reclaim": {
       /* THE DEADMAN SWITCH, exercised.
        *
@@ -651,7 +869,10 @@ async function main() {
           "  npx tsx scripts/seed-pool.ts fund <wallet> [dollars]",
           "  npx tsx scripts/seed-pool.ts create [dues] [disputeMins] [startWeek]",
           "  npx tsx scripts/seed-pool.ts join <pool> [members]",
+          "  npx tsx scripts/seed-pool.ts post <pool> ARI,BAL",
           "  npx tsx scripts/seed-pool.ts veto <pool> [votes]",
+          "  npx tsx scripts/seed-pool.ts run <pool>",
+          "  npx tsx scripts/seed-pool.ts claim <pool>",
           "  npx tsx scripts/seed-pool.ts reclaim <pool>",
           "  npx tsx scripts/seed-pool.ts status <pool>",
           "",
