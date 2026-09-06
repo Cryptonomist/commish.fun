@@ -1,0 +1,1534 @@
+{
+  "season": 2026,
+  "generated": "2026-09-06T01:59:16.000Z",
+  "source": "espn",
+  "weeks": [
+    {
+      "week": 1,
+      "lockTs": 1788999600,
+      "byes": [],
+      "games": [
+        {
+          "away": "NE",
+          "home": "SEA",
+          "kickoff": 1788999600
+        },
+        {
+          "away": "SF",
+          "home": "LAR",
+          "kickoff": 1789086900
+        },
+        {
+          "away": "TB",
+          "home": "CIN",
+          "kickoff": 1789318800
+        },
+        {
+          "away": "NO",
+          "home": "DET",
+          "kickoff": 1789318800
+        },
+        {
+          "away": "NYJ",
+          "home": "TEN",
+          "kickoff": 1789318800
+        },
+        {
+          "away": "BAL",
+          "home": "IND",
+          "kickoff": 1789318800
+        },
+        {
+          "away": "ATL",
+          "home": "PIT",
+          "kickoff": 1789318800
+        },
+        {
+          "away": "CHI",
+          "home": "CAR",
+          "kickoff": 1789318800
+        },
+        {
+          "away": "CLE",
+          "home": "JAX",
+          "kickoff": 1789318800
+        },
+        {
+          "away": "BUF",
+          "home": "HOU",
+          "kickoff": 1789318800
+        },
+        {
+          "away": "MIA",
+          "home": "LV",
+          "kickoff": 1789331100
+        },
+        {
+          "away": "GB",
+          "home": "MIN",
+          "kickoff": 1789331100
+        },
+        {
+          "away": "WAS",
+          "home": "PHI",
+          "kickoff": 1789331100
+        },
+        {
+          "away": "ARI",
+          "home": "LAC",
+          "kickoff": 1789331100
+        },
+        {
+          "away": "DAL",
+          "home": "NYG",
+          "kickoff": 1789345200
+        },
+        {
+          "away": "DEN",
+          "home": "KC",
+          "kickoff": 1789431300
+        }
+      ]
+    },
+    {
+      "week": 2,
+      "lockTs": 1789690500,
+      "byes": [],
+      "games": [
+        {
+          "away": "DET",
+          "home": "BUF",
+          "kickoff": 1789690500
+        },
+        {
+          "away": "CAR",
+          "home": "ATL",
+          "kickoff": 1789923600
+        },
+        {
+          "away": "MIN",
+          "home": "CHI",
+          "kickoff": 1789923600
+        },
+        {
+          "away": "PHI",
+          "home": "TEN",
+          "kickoff": 1789923600
+        },
+        {
+          "away": "PIT",
+          "home": "NE",
+          "kickoff": 1789923600
+        },
+        {
+          "away": "GB",
+          "home": "NYJ",
+          "kickoff": 1789923600
+        },
+        {
+          "away": "CLE",
+          "home": "TB",
+          "kickoff": 1789923600
+        },
+        {
+          "away": "NO",
+          "home": "BAL",
+          "kickoff": 1789923600
+        },
+        {
+          "away": "CIN",
+          "home": "HOU",
+          "kickoff": 1789923600
+        },
+        {
+          "away": "JAX",
+          "home": "DEN",
+          "kickoff": 1789934700
+        },
+        {
+          "away": "LV",
+          "home": "LAC",
+          "kickoff": 1789934700
+        },
+        {
+          "away": "WAS",
+          "home": "DAL",
+          "kickoff": 1789935900
+        },
+        {
+          "away": "SEA",
+          "home": "ARI",
+          "kickoff": 1789935900
+        },
+        {
+          "away": "MIA",
+          "home": "SF",
+          "kickoff": 1789935900
+        },
+        {
+          "away": "IND",
+          "home": "KC",
+          "kickoff": 1789950000
+        },
+        {
+          "away": "NYG",
+          "home": "LAR",
+          "kickoff": 1790036100
+        }
+      ]
+    },
+    {
+      "week": 3,
+      "lockTs": 1790295300,
+      "byes": [],
+      "games": [
+        {
+          "away": "ATL",
+          "home": "GB",
+          "kickoff": 1790295300
+        },
+        {
+          "away": "LAC",
+          "home": "BUF",
+          "kickoff": 1790528400
+        },
+        {
+          "away": "CAR",
+          "home": "CLE",
+          "kickoff": 1790528400
+        },
+        {
+          "away": "NYJ",
+          "home": "DET",
+          "kickoff": 1790528400
+        },
+        {
+          "away": "HOU",
+          "home": "IND",
+          "kickoff": 1790528400
+        },
+        {
+          "away": "KC",
+          "home": "MIA",
+          "kickoff": 1790528400
+        },
+        {
+          "away": "TEN",
+          "home": "NYG",
+          "kickoff": 1790528400
+        },
+        {
+          "away": "CIN",
+          "home": "PIT",
+          "kickoff": 1790528400
+        },
+        {
+          "away": "SEA",
+          "home": "WAS",
+          "kickoff": 1790528400
+        },
+        {
+          "away": "NE",
+          "home": "JAX",
+          "kickoff": 1790528400
+        },
+        {
+          "away": "ARI",
+          "home": "SF",
+          "kickoff": 1790539500
+        },
+        {
+          "away": "MIN",
+          "home": "TB",
+          "kickoff": 1790539500
+        },
+        {
+          "away": "BAL",
+          "home": "DAL",
+          "kickoff": 1790540700
+        },
+        {
+          "away": "LV",
+          "home": "NO",
+          "kickoff": 1790540700
+        },
+        {
+          "away": "LAR",
+          "home": "DEN",
+          "kickoff": 1790554800
+        },
+        {
+          "away": "PHI",
+          "home": "CHI",
+          "kickoff": 1790640900
+        }
+      ]
+    },
+    {
+      "week": 4,
+      "lockTs": 1790900100,
+      "byes": [],
+      "games": [
+        {
+          "away": "PIT",
+          "home": "CLE",
+          "kickoff": 1790900100
+        },
+        {
+          "away": "IND",
+          "home": "WAS",
+          "kickoff": 1791120600
+        },
+        {
+          "away": "NE",
+          "home": "BUF",
+          "kickoff": 1791133200
+        },
+        {
+          "away": "NYJ",
+          "home": "CHI",
+          "kickoff": 1791133200
+        },
+        {
+          "away": "JAX",
+          "home": "CIN",
+          "kickoff": 1791133200
+        },
+        {
+          "away": "ARI",
+          "home": "NYG",
+          "kickoff": 1791133200
+        },
+        {
+          "away": "LAR",
+          "home": "PHI",
+          "kickoff": 1791133200
+        },
+        {
+          "away": "GB",
+          "home": "TB",
+          "kickoff": 1791133200
+        },
+        {
+          "away": "TEN",
+          "home": "BAL",
+          "kickoff": 1791133200
+        },
+        {
+          "away": "DAL",
+          "home": "HOU",
+          "kickoff": 1791133200
+        },
+        {
+          "away": "MIA",
+          "home": "MIN",
+          "kickoff": 1791144300
+        },
+        {
+          "away": "KC",
+          "home": "LV",
+          "kickoff": 1791145500
+        },
+        {
+          "away": "DEN",
+          "home": "SF",
+          "kickoff": 1791145500
+        },
+        {
+          "away": "LAC",
+          "home": "SEA",
+          "kickoff": 1791145500
+        },
+        {
+          "away": "DET",
+          "home": "CAR",
+          "kickoff": 1791159600
+        },
+        {
+          "away": "ATL",
+          "home": "NO",
+          "kickoff": 1791245700
+        }
+      ]
+    },
+    {
+      "week": 5,
+      "lockTs": 1791504900,
+      "byes": [
+        "CAR",
+        "KC"
+      ],
+      "games": [
+        {
+          "away": "TB",
+          "home": "DAL",
+          "kickoff": 1791504900
+        },
+        {
+          "away": "PHI",
+          "home": "JAX",
+          "kickoff": 1791725400
+        },
+        {
+          "away": "HOU",
+          "home": "TEN",
+          "kickoff": 1791738000
+        },
+        {
+          "away": "CIN",
+          "home": "MIA",
+          "kickoff": 1791738000
+        },
+        {
+          "away": "LV",
+          "home": "NE",
+          "kickoff": 1791738000
+        },
+        {
+          "away": "MIN",
+          "home": "NO",
+          "kickoff": 1791738000
+        },
+        {
+          "away": "CLE",
+          "home": "NYJ",
+          "kickoff": 1791738000
+        },
+        {
+          "away": "IND",
+          "home": "PIT",
+          "kickoff": 1791738000
+        },
+        {
+          "away": "NYG",
+          "home": "WAS",
+          "kickoff": 1791738000
+        },
+        {
+          "away": "DEN",
+          "home": "LAC",
+          "kickoff": 1791749100
+        },
+        {
+          "away": "CHI",
+          "home": "GB",
+          "kickoff": 1791750300
+        },
+        {
+          "away": "DET",
+          "home": "ARI",
+          "kickoff": 1791750300
+        },
+        {
+          "away": "SF",
+          "home": "SEA",
+          "kickoff": 1791750300
+        },
+        {
+          "away": "BAL",
+          "home": "ATL",
+          "kickoff": 1791764400
+        },
+        {
+          "away": "BUF",
+          "home": "LAR",
+          "kickoff": 1791850500
+        }
+      ]
+    },
+    {
+      "week": 6,
+      "lockTs": 1792109700,
+      "byes": [
+        "CIN",
+        "DET",
+        "MIA",
+        "MIN"
+      ],
+      "games": [
+        {
+          "away": "SEA",
+          "home": "DEN",
+          "kickoff": 1792109700
+        },
+        {
+          "away": "HOU",
+          "home": "JAX",
+          "kickoff": 1792330200
+        },
+        {
+          "away": "CHI",
+          "home": "ATL",
+          "kickoff": 1792342800
+        },
+        {
+          "away": "BAL",
+          "home": "CLE",
+          "kickoff": 1792342800
+        },
+        {
+          "away": "TEN",
+          "home": "IND",
+          "kickoff": 1792342800
+        },
+        {
+          "away": "NYJ",
+          "home": "NE",
+          "kickoff": 1792342800
+        },
+        {
+          "away": "NO",
+          "home": "NYG",
+          "kickoff": 1792342800
+        },
+        {
+          "away": "CAR",
+          "home": "PHI",
+          "kickoff": 1792342800
+        },
+        {
+          "away": "PIT",
+          "home": "TB",
+          "kickoff": 1792342800
+        },
+        {
+          "away": "ARI",
+          "home": "LAR",
+          "kickoff": 1792353900
+        },
+        {
+          "away": "LAC",
+          "home": "KC",
+          "kickoff": 1792355100
+        },
+        {
+          "away": "BUF",
+          "home": "LV",
+          "kickoff": 1792355100
+        },
+        {
+          "away": "DAL",
+          "home": "GB",
+          "kickoff": 1792369200
+        },
+        {
+          "away": "WAS",
+          "home": "SF",
+          "kickoff": 1792455300
+        }
+      ]
+    },
+    {
+      "week": 7,
+      "lockTs": 1792714500,
+      "byes": [
+        "BUF",
+        "JAX",
+        "LAC",
+        "WAS"
+      ],
+      "games": [
+        {
+          "away": "NE",
+          "home": "CHI",
+          "kickoff": 1792714500
+        },
+        {
+          "away": "PIT",
+          "home": "NO",
+          "kickoff": 1792935000
+        },
+        {
+          "away": "SF",
+          "home": "ATL",
+          "kickoff": 1792947600
+        },
+        {
+          "away": "CLE",
+          "home": "TEN",
+          "kickoff": 1792947600
+        },
+        {
+          "away": "IND",
+          "home": "MIN",
+          "kickoff": 1792947600
+        },
+        {
+          "away": "MIA",
+          "home": "NYJ",
+          "kickoff": 1792947600
+        },
+        {
+          "away": "TB",
+          "home": "CAR",
+          "kickoff": 1792947600
+        },
+        {
+          "away": "CIN",
+          "home": "BAL",
+          "kickoff": 1792947600
+        },
+        {
+          "away": "NYG",
+          "home": "HOU",
+          "kickoff": 1792947600
+        },
+        {
+          "away": "DEN",
+          "home": "ARI",
+          "kickoff": 1792958700
+        },
+        {
+          "away": "GB",
+          "home": "DET",
+          "kickoff": 1792959900
+        },
+        {
+          "away": "LAR",
+          "home": "LV",
+          "kickoff": 1792959900
+        },
+        {
+          "away": "KC",
+          "home": "SEA",
+          "kickoff": 1792974000
+        },
+        {
+          "away": "DAL",
+          "home": "PHI",
+          "kickoff": 1793060100
+        }
+      ]
+    },
+    {
+      "week": 8,
+      "lockTs": 1793319300,
+      "byes": [
+        "HOU",
+        "NO",
+        "NYG",
+        "SF"
+      ],
+      "games": [
+        {
+          "away": "CAR",
+          "home": "GB",
+          "kickoff": 1793319300
+        },
+        {
+          "away": "BAL",
+          "home": "BUF",
+          "kickoff": 1793556000
+        },
+        {
+          "away": "TEN",
+          "home": "CIN",
+          "kickoff": 1793556000
+        },
+        {
+          "away": "ARI",
+          "home": "DAL",
+          "kickoff": 1793556000
+        },
+        {
+          "away": "MIN",
+          "home": "DET",
+          "kickoff": 1793556000
+        },
+        {
+          "away": "LV",
+          "home": "NYJ",
+          "kickoff": 1793556000
+        },
+        {
+          "away": "CLE",
+          "home": "PIT",
+          "kickoff": 1793556000
+        },
+        {
+          "away": "ATL",
+          "home": "TB",
+          "kickoff": 1793556000
+        },
+        {
+          "away": "IND",
+          "home": "JAX",
+          "kickoff": 1793556000
+        },
+        {
+          "away": "LAC",
+          "home": "LAR",
+          "kickoff": 1793567100
+        },
+        {
+          "away": "KC",
+          "home": "DEN",
+          "kickoff": 1793568300
+        },
+        {
+          "away": "NE",
+          "home": "MIA",
+          "kickoff": 1793568300
+        },
+        {
+          "away": "PHI",
+          "home": "WAS",
+          "kickoff": 1793582400
+        },
+        {
+          "away": "CHI",
+          "home": "SEA",
+          "kickoff": 1793668500
+        }
+      ]
+    },
+    {
+      "week": 9,
+      "lockTs": 1793927700,
+      "byes": [
+        "PIT",
+        "TEN"
+      ],
+      "games": [
+        {
+          "away": "JAX",
+          "home": "BAL",
+          "kickoff": 1793927700
+        },
+        {
+          "away": "CIN",
+          "home": "ATL",
+          "kickoff": 1794148200
+        },
+        {
+          "away": "DAL",
+          "home": "IND",
+          "kickoff": 1794160800
+        },
+        {
+          "away": "NYJ",
+          "home": "KC",
+          "kickoff": 1794160800
+        },
+        {
+          "away": "DET",
+          "home": "MIA",
+          "kickoff": 1794160800
+        },
+        {
+          "away": "CLE",
+          "home": "NO",
+          "kickoff": 1794160800
+        },
+        {
+          "away": "NYG",
+          "home": "PHI",
+          "kickoff": 1794160800
+        },
+        {
+          "away": "LAR",
+          "home": "WAS",
+          "kickoff": 1794160800
+        },
+        {
+          "away": "DEN",
+          "home": "CAR",
+          "kickoff": 1794160800
+        },
+        {
+          "away": "HOU",
+          "home": "LAC",
+          "kickoff": 1794171900
+        },
+        {
+          "away": "LV",
+          "home": "SF",
+          "kickoff": 1794171900
+        },
+        {
+          "away": "GB",
+          "home": "NE",
+          "kickoff": 1794173100
+        },
+        {
+          "away": "ARI",
+          "home": "SEA",
+          "kickoff": 1794173100
+        },
+        {
+          "away": "TB",
+          "home": "CHI",
+          "kickoff": 1794187200
+        },
+        {
+          "away": "BUF",
+          "home": "MIN",
+          "kickoff": 1794273300
+        }
+      ]
+    },
+    {
+      "week": 10,
+      "lockTs": 1794532500,
+      "byes": [
+        "CHI",
+        "DEN",
+        "PHI",
+        "TB"
+      ],
+      "games": [
+        {
+          "away": "WAS",
+          "home": "NYG",
+          "kickoff": 1794532500
+        },
+        {
+          "away": "NE",
+          "home": "DET",
+          "kickoff": 1794753000
+        },
+        {
+          "away": "KC",
+          "home": "ATL",
+          "kickoff": 1794765600
+        },
+        {
+          "away": "HOU",
+          "home": "CLE",
+          "kickoff": 1794765600
+        },
+        {
+          "away": "MIN",
+          "home": "GB",
+          "kickoff": 1794765600
+        },
+        {
+          "away": "JAX",
+          "home": "TEN",
+          "kickoff": 1794765600
+        },
+        {
+          "away": "MIA",
+          "home": "IND",
+          "kickoff": 1794765600
+        },
+        {
+          "away": "CAR",
+          "home": "NO",
+          "kickoff": 1794765600
+        },
+        {
+          "away": "BUF",
+          "home": "NYJ",
+          "kickoff": 1794765600
+        },
+        {
+          "away": "SEA",
+          "home": "LV",
+          "kickoff": 1794776700
+        },
+        {
+          "away": "LAR",
+          "home": "ARI",
+          "kickoff": 1794776700
+        },
+        {
+          "away": "SF",
+          "home": "DAL",
+          "kickoff": 1794777900
+        },
+        {
+          "away": "PIT",
+          "home": "CIN",
+          "kickoff": 1794792000
+        },
+        {
+          "away": "LAC",
+          "home": "BAL",
+          "kickoff": 1794878100
+        }
+      ]
+    },
+    {
+      "week": 11,
+      "lockTs": 1795137300,
+      "byes": [
+        "ATL",
+        "CLE",
+        "GB",
+        "LAR",
+        "NE",
+        "SEA"
+      ],
+      "games": [
+        {
+          "away": "IND",
+          "home": "HOU",
+          "kickoff": 1795137300
+        },
+        {
+          "away": "MIA",
+          "home": "BUF",
+          "kickoff": 1795370400
+        },
+        {
+          "away": "NO",
+          "home": "CHI",
+          "kickoff": 1795370400
+        },
+        {
+          "away": "TEN",
+          "home": "DAL",
+          "kickoff": 1795370400
+        },
+        {
+          "away": "TB",
+          "home": "DET",
+          "kickoff": 1795370400
+        },
+        {
+          "away": "ARI",
+          "home": "KC",
+          "kickoff": 1795370400
+        },
+        {
+          "away": "JAX",
+          "home": "NYG",
+          "kickoff": 1795370400
+        },
+        {
+          "away": "BAL",
+          "home": "CAR",
+          "kickoff": 1795370400
+        },
+        {
+          "away": "NYJ",
+          "home": "LAC",
+          "kickoff": 1795381500
+        },
+        {
+          "away": "LV",
+          "home": "DEN",
+          "kickoff": 1795382700
+        },
+        {
+          "away": "PIT",
+          "home": "PHI",
+          "kickoff": 1795382700
+        },
+        {
+          "away": "MIN",
+          "home": "SF",
+          "kickoff": 1795396800
+        },
+        {
+          "away": "CIN",
+          "home": "WAS",
+          "kickoff": 1795482900
+        }
+      ]
+    },
+    {
+      "week": 12,
+      "lockTs": 1795654800,
+      "byes": [],
+      "games": [
+        {
+          "away": "GB",
+          "home": "LAR",
+          "kickoff": 1795654800
+        },
+        {
+          "away": "CHI",
+          "home": "DET",
+          "kickoff": 1795716000
+        },
+        {
+          "away": "PHI",
+          "home": "DAL",
+          "kickoff": 1795728600
+        },
+        {
+          "away": "KC",
+          "home": "BUF",
+          "kickoff": 1795742400
+        },
+        {
+          "away": "DEN",
+          "home": "PIT",
+          "kickoff": 1795809600
+        },
+        {
+          "away": "NO",
+          "home": "CIN",
+          "kickoff": 1795975200
+        },
+        {
+          "away": "LV",
+          "home": "CLE",
+          "kickoff": 1795975200
+        },
+        {
+          "away": "NYG",
+          "home": "IND",
+          "kickoff": 1795975200
+        },
+        {
+          "away": "NYJ",
+          "home": "MIA",
+          "kickoff": 1795975200
+        },
+        {
+          "away": "ATL",
+          "home": "MIN",
+          "kickoff": 1795975200
+        },
+        {
+          "away": "BAL",
+          "home": "HOU",
+          "kickoff": 1795975200
+        },
+        {
+          "away": "TEN",
+          "home": "JAX",
+          "kickoff": 1795986300
+        },
+        {
+          "away": "WAS",
+          "home": "ARI",
+          "kickoff": 1795987500
+        },
+        {
+          "away": "SEA",
+          "home": "SF",
+          "kickoff": 1795987500
+        },
+        {
+          "away": "NE",
+          "home": "LAC",
+          "kickoff": 1796001600
+        },
+        {
+          "away": "CAR",
+          "home": "TB",
+          "kickoff": 1796087700
+        }
+      ]
+    },
+    {
+      "week": 13,
+      "lockTs": 1796346900,
+      "byes": [
+        "BAL",
+        "IND",
+        "LV",
+        "NYJ"
+      ],
+      "games": [
+        {
+          "away": "KC",
+          "home": "LAR",
+          "kickoff": 1796346900
+        },
+        {
+          "away": "DET",
+          "home": "ATL",
+          "kickoff": 1796580000
+        },
+        {
+          "away": "JAX",
+          "home": "CHI",
+          "kickoff": 1796580000
+        },
+        {
+          "away": "CIN",
+          "home": "CLE",
+          "kickoff": 1796580000
+        },
+        {
+          "away": "WAS",
+          "home": "TEN",
+          "kickoff": 1796580000
+        },
+        {
+          "away": "GB",
+          "home": "NO",
+          "kickoff": 1796580000
+        },
+        {
+          "away": "SF",
+          "home": "NYG",
+          "kickoff": 1796580000
+        },
+        {
+          "away": "LAC",
+          "home": "TB",
+          "kickoff": 1796580000
+        },
+        {
+          "away": "MIA",
+          "home": "DEN",
+          "kickoff": 1796591100
+        },
+        {
+          "away": "PHI",
+          "home": "ARI",
+          "kickoff": 1796591100
+        },
+        {
+          "away": "CAR",
+          "home": "MIN",
+          "kickoff": 1796592300
+        },
+        {
+          "away": "BUF",
+          "home": "NE",
+          "kickoff": 1796592300
+        },
+        {
+          "away": "HOU",
+          "home": "PIT",
+          "kickoff": 1796606400
+        },
+        {
+          "away": "DAL",
+          "home": "SEA",
+          "kickoff": 1796692500
+        }
+      ]
+    },
+    {
+      "week": 14,
+      "lockTs": 1796951700,
+      "byes": [
+        "ARI",
+        "DAL"
+      ],
+      "games": [
+        {
+          "away": "MIN",
+          "home": "NE",
+          "kickoff": 1796951700
+        },
+        {
+          "away": "ATL",
+          "home": "CLE",
+          "kickoff": 1797184800
+        },
+        {
+          "away": "TEN",
+          "home": "DET",
+          "kickoff": 1797184800
+        },
+        {
+          "away": "CHI",
+          "home": "MIA",
+          "kickoff": 1797184800
+        },
+        {
+          "away": "DEN",
+          "home": "NYJ",
+          "kickoff": 1797184800
+        },
+        {
+          "away": "IND",
+          "home": "PHI",
+          "kickoff": 1797184800
+        },
+        {
+          "away": "HOU",
+          "home": "WAS",
+          "kickoff": 1797184800
+        },
+        {
+          "away": "NO",
+          "home": "CAR",
+          "kickoff": 1797184800
+        },
+        {
+          "away": "TB",
+          "home": "BAL",
+          "kickoff": 1797184800
+        },
+        {
+          "away": "LAC",
+          "home": "LV",
+          "kickoff": 1797195900
+        },
+        {
+          "away": "KC",
+          "home": "CIN",
+          "kickoff": 1797197100
+        },
+        {
+          "away": "LAR",
+          "home": "SF",
+          "kickoff": 1797197100
+        },
+        {
+          "away": "NYG",
+          "home": "SEA",
+          "kickoff": 1797197100
+        },
+        {
+          "away": "BUF",
+          "home": "GB",
+          "kickoff": 1797211200
+        },
+        {
+          "away": "PIT",
+          "home": "JAX",
+          "kickoff": 1797297300
+        }
+      ]
+    },
+    {
+      "week": 15,
+      "lockTs": 1797556500,
+      "byes": [],
+      "games": [
+        {
+          "away": "SF",
+          "home": "LAC",
+          "kickoff": 1797556500
+        },
+        {
+          "away": "SEA",
+          "home": "PHI",
+          "kickoff": 1797717600
+        },
+        {
+          "away": "CHI",
+          "home": "BUF",
+          "kickoff": 1797729600
+        },
+        {
+          "away": "MIA",
+          "home": "GB",
+          "kickoff": 1797789600
+        },
+        {
+          "away": "IND",
+          "home": "TEN",
+          "kickoff": 1797789600
+        },
+        {
+          "away": "CLE",
+          "home": "NYG",
+          "kickoff": 1797789600
+        },
+        {
+          "away": "BAL",
+          "home": "PIT",
+          "kickoff": 1797789600
+        },
+        {
+          "away": "NO",
+          "home": "TB",
+          "kickoff": 1797789600
+        },
+        {
+          "away": "ATL",
+          "home": "WAS",
+          "kickoff": 1797789600
+        },
+        {
+          "away": "CIN",
+          "home": "CAR",
+          "kickoff": 1797789600
+        },
+        {
+          "away": "JAX",
+          "home": "HOU",
+          "kickoff": 1797789600
+        },
+        {
+          "away": "NYJ",
+          "home": "ARI",
+          "kickoff": 1797800700
+        },
+        {
+          "away": "DEN",
+          "home": "LV",
+          "kickoff": 1797801900
+        },
+        {
+          "away": "DAL",
+          "home": "LAR",
+          "kickoff": 1797801900
+        },
+        {
+          "away": "DET",
+          "home": "MIN",
+          "kickoff": 1797816000
+        },
+        {
+          "away": "NE",
+          "home": "KC",
+          "kickoff": 1797902100
+        }
+      ]
+    },
+    {
+      "week": 16,
+      "lockTs": 1798161300,
+      "byes": [],
+      "games": [
+        {
+          "away": "HOU",
+          "home": "PHI",
+          "kickoff": 1798161300
+        },
+        {
+          "away": "GB",
+          "home": "CHI",
+          "kickoff": 1798221600
+        },
+        {
+          "away": "BUF",
+          "home": "DEN",
+          "kickoff": 1798234200
+        },
+        {
+          "away": "LAR",
+          "home": "SEA",
+          "kickoff": 1798247700
+        },
+        {
+          "away": "TB",
+          "home": "ATL",
+          "kickoff": 1798347600
+        },
+        {
+          "away": "CIN",
+          "home": "IND",
+          "kickoff": 1798347600
+        },
+        {
+          "away": "WAS",
+          "home": "MIN",
+          "kickoff": 1798347600
+        },
+        {
+          "away": "CAR",
+          "home": "PIT",
+          "kickoff": 1798347600
+        },
+        {
+          "away": "LAC",
+          "home": "MIA",
+          "kickoff": 1798394400
+        },
+        {
+          "away": "ARI",
+          "home": "NO",
+          "kickoff": 1798394400
+        },
+        {
+          "away": "NE",
+          "home": "NYJ",
+          "kickoff": 1798394400
+        },
+        {
+          "away": "CLE",
+          "home": "BAL",
+          "kickoff": 1798394400
+        },
+        {
+          "away": "TEN",
+          "home": "LV",
+          "kickoff": 1798405500
+        },
+        {
+          "away": "SF",
+          "home": "KC",
+          "kickoff": 1798406700
+        },
+        {
+          "away": "JAX",
+          "home": "DAL",
+          "kickoff": 1798420800
+        },
+        {
+          "away": "NYG",
+          "home": "DET",
+          "kickoff": 1798506900
+        }
+      ]
+    },
+    {
+      "week": 17,
+      "lockTs": 1798766100,
+      "byes": [],
+      "games": [
+        {
+          "away": "BAL",
+          "home": "CIN",
+          "kickoff": 1798766100
+        },
+        {
+          "away": "DEN",
+          "home": "NE",
+          "kickoff": 1798952400
+        },
+        {
+          "away": "KC",
+          "home": "LAC",
+          "kickoff": 1798952400
+        },
+        {
+          "away": "LAR",
+          "home": "TB",
+          "kickoff": 1798952400
+        },
+        {
+          "away": "WAS",
+          "home": "JAX",
+          "kickoff": 1798952400
+        },
+        {
+          "away": "NO",
+          "home": "ATL",
+          "kickoff": 1798999200
+        },
+        {
+          "away": "IND",
+          "home": "CLE",
+          "kickoff": 1798999200
+        },
+        {
+          "away": "NYG",
+          "home": "DAL",
+          "kickoff": 1798999200
+        },
+        {
+          "away": "PIT",
+          "home": "TEN",
+          "kickoff": 1798999200
+        },
+        {
+          "away": "BUF",
+          "home": "MIA",
+          "kickoff": 1798999200
+        },
+        {
+          "away": "MIN",
+          "home": "NYJ",
+          "kickoff": 1798999200
+        },
+        {
+          "away": "SEA",
+          "home": "CAR",
+          "kickoff": 1798999200
+        },
+        {
+          "away": "LV",
+          "home": "ARI",
+          "kickoff": 1799010300
+        },
+        {
+          "away": "DET",
+          "home": "CHI",
+          "kickoff": 1799011500
+        },
+        {
+          "away": "PHI",
+          "home": "SF",
+          "kickoff": 1799025600
+        },
+        {
+          "away": "HOU",
+          "home": "GB",
+          "kickoff": 1799111700
+        }
+      ]
+    },
+    {
+      "week": 18,
+      "lockTs": 1799557200,
+      "byes": [],
+      "games": [
+        {
+          "away": "NYJ",
+          "home": "BUF",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "CLE",
+          "home": "CIN",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "LAC",
+          "home": "DEN",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "DET",
+          "home": "GB",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "JAX",
+          "home": "IND",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "LV",
+          "home": "KC",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "SEA",
+          "home": "LAR",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "CHI",
+          "home": "MIN",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "MIA",
+          "home": "NE",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "TB",
+          "home": "NO",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "PHI",
+          "home": "NYG",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "SF",
+          "home": "ARI",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "DAL",
+          "home": "WAS",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "ATL",
+          "home": "CAR",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "PIT",
+          "home": "BAL",
+          "kickoff": 1799557200
+        },
+        {
+          "away": "TEN",
+          "home": "HOU",
+          "kickoff": 1799557200
+        }
+      ]
+    }
+  ]
+}

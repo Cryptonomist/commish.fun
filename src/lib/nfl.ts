@@ -10,6 +10,8 @@
  * mechanical; there is no judgement to drift.
  */
 
+import schedule from "@/data/nfl-schedule-2026.json";
+
 /* TEAM COLOURS ARE CONTENT, NOT PALETTE.
  *
  * The Pigskin rules govern the product's own surfaces. These thirty-two pairs
@@ -81,25 +83,20 @@ export const withTeamUsed = (mask: number, teamIndex: number): number =>
 export const availableTeams = (mask: number): Team[] =>
   TEAMS.filter((t) => !hasUsedTeam(mask, t.i));
 
-/* Season anchor. Week 1 kicks off WEDNESDAY 9 September 2026, 8:20pm EDT
- * (00:20 UTC on the 10th), New England at Seattle. Picks lock at the week's
- * FIRST kickoff, which is this moment for week 1 — the deadline the whole
- * product is built around.
+/* Season anchor, read from the generated schedule rather than typed in.
  *
- * THIS WAS WRONG BY EXACTLY TWENTY-FOUR HOURS and it is worth saying why,
- * because the failure was not cosmetic. It read Thursday the 10th, on the
- * reasonable assumption that a season opens on a Thursday. 2026 opens on a
- * Wednesday. `seasonLockSchedule` derives all eighteen locks from this instant
- * and `create_pool` writes them on chain, where `submit_pick` enforces them —
- * so every pool built from the old value would have accepted picks for a full
- * day after the opener had been played. Someone could have watched Seattle
- * win and then picked Seattle.
+ * IT USED TO BE A LITERAL AND IT WAS WRONG BY TWENTY-FOUR HOURS. It read
+ * Thursday 10 September, on the reasonable assumption that a season opens on a
+ * Thursday; 2026 opens on a Wednesday. Every lock in every pool derived from
+ * it, `create_pool` wrote them on chain, and `submit_pick` enforced them — so
+ * pools would have accepted picks for a full day after the opener was played.
  *
- * Verified against the league schedule rather than reasoned about. The deeper
- * fix is not to anchor a season on one constant at all: real weeks are not
- * seven days apart, so see the note in lib/schedule.ts. */
-export const SEASON = 2026;
-export const WEEK_1_KICKOFF = new Date("2026-09-10T00:20:00Z");
+ * Deriving it from `data/nfl-schedule-2026.json` removes the class of mistake
+ * rather than the instance: nobody can mistype a date that nobody types. The
+ * deeper half of the same fix is that the other seventeen locks come from that
+ * file too, because real weeks are not seven days apart. See lib/season.ts. */
+export const SEASON = schedule.season;
+export const WEEK_1_KICKOFF = new Date(schedule.weeks[0].lockTs * 1000);
 
 /* ESPN calls Washington WSH. The on-chain team index calls it WAS, and that
  * index is a contract that cannot move. One alias, in one place. */

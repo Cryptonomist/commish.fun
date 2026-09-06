@@ -17,7 +17,12 @@
 
 import type { Team } from "@/lib/nfl";
 
-export type TeamState = "available" | "picked" | "spent";
+/* A bye is not a spent team and must not look like one. Spent means you used it
+ * and it is gone for the season; bye means it is not playing this week and will
+ * be pickable again next. They are both unavailable and that is where the
+ * similarity ends, so the bye keeps its full name struck through nothing and
+ * says what it is. */
+export type TeamState = "available" | "picked" | "spent" | "bye";
 
 /** The club's two colours as one bar. Shared by every thirty-two cell grid in
  *  the app so identification looks the same wherever you are scanning. The
@@ -55,7 +60,8 @@ export function TeamButton({
 }) {
   const picked = state === "picked";
   const spent = state === "spent";
-  const dead = disabled || spent;
+  const bye = state === "bye";
+  const dead = disabled || spent || bye;
 
   return (
     <button
@@ -64,14 +70,14 @@ export function TeamButton({
       disabled={dead}
       aria-pressed={picked}
       aria-label={`${team.city} ${team.name}${
-        spent ? ", already used this season" : ""
+        spent ? ", already used this season" : bye ? ", on a bye this week" : ""
       }`}
       className={[
         "group relative flex h-16 w-full flex-col items-center justify-center gap-0.5",
         "overflow-hidden rounded-xl border text-center transition-colors",
         picked
           ? "border-action bg-action text-night"
-          : spent
+          : spent || bye
             ? "border-night-3 bg-night-2/40 text-cream-dim/40"
             : "border-night-3 bg-night-2 text-cream hover:border-action",
         dead ? "cursor-not-allowed" : "",
@@ -79,7 +85,7 @@ export function TeamButton({
     >
       {/* Hidden once picked, when the cell means "your pick" rather than a club
           and one clear state beats two half-signals. */}
-      {!picked ? <ClubBar team={team} dim={spent} /> : null}
+      {!picked ? <ClubBar team={team} dim={spent || bye} /> : null}
 
       <span
         className={`text-sm font-bold tracking-wide ${spent ? "line-through" : ""}`}
@@ -87,7 +93,7 @@ export function TeamButton({
         {team.abbr}
       </span>
       <span className="text-[10px] uppercase tracking-wide opacity-70">
-        {pending ? "sending…" : team.name}
+        {pending ? "sending…" : bye ? "BYE" : team.name}
       </span>
     </button>
   );

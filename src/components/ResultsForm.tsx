@@ -1,34 +1,37 @@
 "use client";
 
-/* The commissioner proposes a week.
+/* The commissioner posts a week, against the week's actual games.
  *
  * THIS IS THE ONE PIECE OF TRUST THE DESIGN KEEPS, so the screen is built to
  * make it checkable rather than to make it fast. Results enter through a human,
  * and the defence is that everything that human claims is visible to everyone
  * else against a scoreboard they already have open, for a window long enough to
- * do something about it. A form that made posting feel like an administrative
- * chore would be hiding the only moment where the commissioner can be wrong.
+ * do something about it.
  *
- * EVERY TEAM IS ONE CONTROL WITH THREE STATES: not marked, won, push. Two
- * independent mask editors would let a commissioner mark a team both a winner
- * and a push, which the program refuses with OverlappingMasks, and which would
- * otherwise make the survive test depend on which branch ran first. Cycling one
- * control makes the illegal state unreachable rather than merely rejected.
+ * IT SHOWS GAMES, NOT AN ALPHABET. It used to be thirty-two teams sorted A to
+ * Z, which asked a commissioner to remember sixteen scores and offered no way
+ * to check their work. Worse, it made two illegal states reachable: both teams
+ * in one game marked winners, and a game silently left unresolved — which is
+ * not a neutral act, because the program reads an unmarked team as a loss, so
+ * forgetting one game eliminates everybody who picked either side of it.
  *
- * NOT MARKED IS A LOSS. `rules::survives` carries a member on `won() ||
- * pushed()`, so a team left alone eliminates everyone who picked it. That is
- * the sentence the summary line has to say out loud, because the destructive
- * outcome here is the one that comes from doing nothing.
+ * Both are now unreachable. A game holds one outcome, and the form refuses to
+ * post while any game is undecided.
+ *
+ * BYES ARE NOT LOSSES AND ARE NOT SHOWN AS MARKABLE. A team that is not playing
+ * cannot be picked — the pick grid enforces that — so it belongs in neither
+ * mask, and listing it separately is the only honest place for it.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
-import { TEAMS } from "@/lib/nfl";
-import { ClubBar } from "@/components/TeamButton";
+import { teamByAbbr, type Team } from "@/lib/nfl";
+import { gamesFor, weekOf } from "@/lib/season";
 import { countdown } from "@/lib/format";
 import { MIN_POST_DELAY_SECS } from "@/lib/schedule";
+import { ClubBar } from "@/components/TeamButton";
 import {
   buildPostResults,
   maskCount,
@@ -36,7 +39,6 @@ import {
   maskWith,
   maskWithout,
   readableProgramError,
-  TEAM_COUNT,
   type PoolView,
 } from "@/lib/program";
 
@@ -46,8 +48,8 @@ type Status =
   | { at: "confirming" }
   | { at: "error"; message: string };
 
-/** Not marked, won, push. The order the control cycles through. */
-type Mark = "none" | "won" | "push";
+/** What a game's row is currently claiming. */
+type Outcome = "undecided" | "away" | "home" | "push";
 
 export function ResultsForm({
   poolKey,
@@ -71,10 +73,6 @@ export function ResultsForm({
     return () => clearInterval(t);
   }, []);
 
-  /* `post_results` refuses until three hours after the week's own lock, a floor
-   * that stops a commissioner posting a week before it has been played. Showing
-   * the clock beats showing a disabled button with no reason, and refusing here
-   * means the wallet never opens on a transaction the chain would reject. */
   const week = pool.currentWeek;
   const lockSecs = pool.lockTs[week - 1];
   const opensAt = useMemo(
@@ -83,30 +81,63 @@ export function ResultsForm({
   );
   const open = !!opensAt && now >= opensAt;
 
-  const marked = maskCount(winners) + maskCount(pushes);
-  const busy = status.at === "signing" || status.at === "confirming";
+  /* Pair the schedule's abbreviations with the on-chain team index once. A game
+   * whose team is not in the index is dropped rather than guessed at, which can
+   * only happen if the schedule and lib/nfl.ts have drifted. */
+  const games = useMemo(
+    () =>
+      gamesFor(week)
+        .map((g) => {
+          const away = teamByAbbr(g.away);
+          const home = teamByAbbr(g.home);
+          return away && home ? { away, home } : null;
+        })
+        .filter((g): g is { away: Team; home: Team } => g !== null),
+    [week],
+  );
+  const byes = useMemo(
+    () =>
+      (weekOf(week)?.byes ?? [])
+        .map(teamByAbbr)
+        .filter((t): t is Team => t !== undefined),
+    [week],
+  );
 
-  const markOf = (team: number): Mark =>
-    maskHas(winners, team) ? "won" : maskHas(pushes, team) ? "push" : "none";
-
-  const cycle = (team: number) => {
-    if (busy || !open) return;
-    switch (markOf(team)) {
-      case "none":
-        setWinners((w) => maskWith(w, team));
-        break;
-      case "won":
-        setWinners((w) => maskWithout(w, team));
-        setPushes((p) => maskWith(p, team));
-        break;
-      case "push":
-        setPushes((p) => maskWithout(p, team));
-        break;
-    }
+  const outcomeOf = (g: { away: Team; home: Team }): Outcome => {
+    if (maskHas(pushes, g.away.i)) return "push";
+    if (maskHas(winners, g.away.i)) return "away";
+    if (maskHas(winners, g.home.i)) return "home";
+    return "undecided";
   };
 
+  /* One outcome per game, enforced by construction: setting any of them clears
+   * the other three. Two winners in one game is not a state this form can
+   * produce, which is stronger than refusing it afterwards. */
+  const decide = (g: { away: Team; home: Team }, next: Outcome) => {
+    if (!open || status.at !== "idle") return;
+    const clear = (m: number) => maskWithout(maskWithout(m, g.away.i), g.home.i);
+    const current = outcomeOf(g);
+    const target = current === next ? "undecided" : next;
+
+    setWinners((w) => {
+      const cleared = clear(w);
+      if (target === "away") return maskWith(cleared, g.away.i);
+      if (target === "home") return maskWith(cleared, g.home.i);
+      return cleared;
+    });
+    setPushes((p) => {
+      const cleared = clear(p);
+      return target === "push"
+        ? maskWith(maskWith(cleared, g.away.i), g.home.i)
+        : cleared;
+    });
+  };
+
+  const undecided = games.filter((g) => outcomeOf(g) === "undecided").length;
+  const busy = status.at === "signing" || status.at === "confirming";
+
   const post = useCallback(async () => {
-    if (!publicKey || !signTransaction || busy || !open) return;
+    if (!publicKey || !signTransaction || busy || !open || undecided > 0) return;
 
     setStatus({ at: "signing" });
     try {
@@ -154,6 +185,7 @@ export function ResultsForm({
     signTransaction,
     busy,
     open,
+    undecided,
     poolKey,
     week,
     winners,
@@ -184,49 +216,65 @@ export function ResultsForm({
 
       <p className="mt-2 text-sm text-cream-dim">
         {open
-          ? "Mark every team that won. Tap again for a push, a cancelled or voided game, which carries whoever picked it. Everything you leave alone is a loss."
+          ? "Tap the team that won each game. A cancelled or tied game is a push, which carries whoever picked either side."
           : "Results cannot be posted until three hours after a week's first kickoff. That floor is in the program, not in this form."}
       </p>
 
-      <ul className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {TEAMS.map((t) => {
-          const mark = markOf(t.i);
-          const next =
-            mark === "none" ? "a winner" : mark === "won" ? "a push" : "unmarked";
-          const said =
-            mark === "none" ? "not marked" : mark === "won" ? "winner" : "push";
-
+      <ul className="mt-5 flex flex-col gap-1.5">
+        {games.map((g) => {
+          const o = outcomeOf(g);
           return (
-            <li key={t.abbr}>
+            <li
+              key={`${g.away.abbr}-${g.home.abbr}`}
+              className="grid grid-cols-[1fr_auto_1fr_auto] items-stretch gap-1.5"
+            >
+              <Side
+                team={g.away}
+                won={o === "away"}
+                lost={o === "home"}
+                push={o === "push"}
+                disabled={!open || busy}
+                onClick={() => decide(g, "away")}
+              />
+              <span className="self-center px-1 text-[11px] text-cream-dim/60">
+                at
+              </span>
+              <Side
+                team={g.home}
+                won={o === "home"}
+                lost={o === "away"}
+                push={o === "push"}
+                disabled={!open || busy}
+                onClick={() => decide(g, "home")}
+              />
               <button
                 type="button"
-                onClick={() => cycle(t.i)}
+                onClick={() => decide(g, "push")}
                 disabled={!open || busy}
-                aria-label={`${t.city} ${t.name}: ${said}. Tap to mark ${next}.`}
+                aria-pressed={o === "push"}
+                aria-label={`${g.away.city} at ${g.home.city}: mark the game a push`}
                 className={[
-                  "flex h-16 w-full flex-col items-center justify-center rounded-xl border text-center transition-colors",
-                  mark === "won"
-                    ? "border-alive bg-alive text-night"
-                    : mark === "push"
-                      ? "border-cream-dim bg-cream-dim/15 text-cream"
-                      : "border-night-3 bg-night-2 text-cream hover:border-action",
-                  "relative overflow-hidden",
-                  !open || busy ? "cursor-not-allowed opacity-70" : "",
+                  "rounded-lg border px-2.5 text-[10px] font-bold tracking-[0.1em] transition-colors",
+                  o === "push"
+                    ? "border-cream-dim bg-cream-dim/20 text-cream"
+                    : "border-night-3 text-cream-dim/60 hover:border-cream-dim/60",
+                  !open || busy ? "cursor-not-allowed" : "",
                 ].join(" ")}
               >
-                {/* The same club bar the pick grid uses. A commissioner scans
-                    these thirty-two under exactly the same pressure. Dropped
-                    once marked, when the fill is carrying the meaning. */}
-                {mark === "none" ? <ClubBar team={t} /> : null}
-                <span className="text-sm font-bold tracking-wide">{t.abbr}</span>
-                <span className="text-[10px] uppercase tracking-wide opacity-70">
-                  {mark === "won" ? "WON" : mark === "push" ? "PUSH" : t.name}
-                </span>
+                PUSH
               </button>
             </li>
           );
         })}
       </ul>
+
+      {byes.length > 0 ? (
+        <p className="mt-4 text-xs text-cream-dim">
+          <span className="font-bold tracking-[0.14em]">ON A BYE</span>{" "}
+          {byes.map((t) => t.abbr).join(" ")} — not playing, and not pickable, so
+          they belong to neither result.
+        </p>
+      ) : null}
 
       {status.at === "error" ? (
         <p className="mt-4 rounded-xl border border-out/40 bg-out/10 p-4 text-sm text-cream">
@@ -237,24 +285,33 @@ export function ResultsForm({
       <p className="mt-5 text-sm text-cream-dim">
         <span className="font-bold text-alive">{maskCount(winners)} won</span>
         {" · "}
-        <span className="font-bold text-cream">{maskCount(pushes)} push</span>
-        {" · "}
-        <span className="font-bold text-out">{TEAM_COUNT - marked} not marked</span>
-        . Every member who picked an unmarked team is out.
+        <span className="font-bold text-cream">
+          {maskCount(pushes) / 2} push
+        </span>
+        {undecided > 0 ? (
+          <>
+            {" · "}
+            <span className="font-bold text-out">{undecided} undecided</span>
+          </>
+        ) : null}
+        .{" "}
+        {undecided > 0
+          ? "A game left undecided is not neutral: the program reads an unmarked team as a loss, so both sides would go out."
+          : "Every game is accounted for."}
       </p>
 
       <button
         type="button"
         onClick={post}
-        disabled={!open || busy || marked === 0}
+        disabled={!open || busy || undecided > 0}
         className="mt-4 h-14 w-full rounded-xl bg-action text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-cream-dim"
       >
         {status.at === "signing"
           ? "Confirm in your wallet…"
           : status.at === "confirming"
             ? "Waiting for the network…"
-            : marked === 0
-              ? "Mark the week's results"
+            : undecided > 0
+              ? `${undecided} game${undecided === 1 ? "" : "s"} still to mark`
               : `Post week ${week} for review`}
       </button>
 
@@ -263,5 +320,48 @@ export function ResultsForm({
         and a majority of the members still alive can strike it down.
       </p>
     </section>
+  );
+}
+
+function Side({
+  team,
+  won,
+  lost,
+  push,
+  disabled,
+  onClick,
+}: {
+  team: Team;
+  won: boolean;
+  lost: boolean;
+  push: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={won}
+      aria-label={`${team.city} ${team.name}${won ? ", winner" : ""}`}
+      className={[
+        "relative flex h-12 items-center gap-2 overflow-hidden rounded-lg border px-3 text-left transition-colors",
+        won
+          ? "border-alive bg-alive/15 text-cream"
+          : push
+            ? "border-cream-dim/40 bg-night-2 text-cream-dim"
+            : lost
+              ? "border-night-3 bg-night-2/40 text-cream-dim/50"
+              : "border-night-3 bg-night-2 text-cream hover:border-action",
+        disabled ? "cursor-not-allowed" : "",
+      ].join(" ")}
+    >
+      <ClubBar team={team} dim={lost || push} />
+      <span className="text-sm font-bold tracking-wide">{team.abbr}</span>
+      <span className="truncate text-[11px] uppercase tracking-wide opacity-60">
+        {team.name}
+      </span>
+    </button>
   );
 }

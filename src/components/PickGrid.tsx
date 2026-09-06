@@ -23,12 +23,14 @@ import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { TEAMS } from "@/lib/nfl";
+import { byeMask, isOnBye } from "@/lib/season";
 import { TeamButton } from "@/components/TeamButton";
 import { countdown } from "@/lib/format";
 import {
   buildSubmitPick,
   hasUsed,
   isAlive,
+  maskCount,
   readableProgramError,
   NO_PICK,
   type MemberView,
@@ -77,12 +79,16 @@ export function PickGrid({
     member.pickWeek === pool.currentWeek ? member.currentPick : NO_PICK;
 
   const remaining = TEAMS.filter((t) => !hasUsed(member.usedMask, t.i)).length;
+  const byes = maskCount(byeMask(pool.currentWeek));
   const busy = status.at === "signing" || status.at === "confirming";
 
   const pick = useCallback(
     async (team: number) => {
       if (!publicKey || !signTransaction || busy || locked || !alive) return;
       if (hasUsed(member.usedMask, team)) return;
+      // The button is already disabled; refusing here too means a stray call
+      // cannot spend somebody's season on a team that is not playing.
+      if (isOnBye(pool.currentWeek, team)) return;
 
       setStatus({ at: "signing", team });
       try {
@@ -129,6 +135,7 @@ export function PickGrid({
       locked,
       alive,
       member.usedMask,
+      pool.currentWeek,
       poolKey,
       connection,
       onPicked,
@@ -183,7 +190,8 @@ export function PickGrid({
             {locked ? "" : " — tap another to change it."}
           </>
         )}{" "}
-        · {remaining} of 32 teams left for the season.
+        · {remaining} of 32 teams left for the season
+        {byes > 0 ? `, and ${byes} on a bye this week` : ""}.
       </p>
 
       {status.at === "error" ? (
@@ -196,11 +204,18 @@ export function PickGrid({
         {TEAMS.map((t) => {
           const spent = hasUsed(member.usedMask, t.i);
           const picked = thisWeeksPick === t.i;
+          /* A team on a bye is not a risky pick, it is an impossible one: the
+           * program has no notion of a team that did not play, so an unmarked
+           * team is a loss and whoever picked it is simply out. The spec has
+           * said these must be unselectable since the first handoff. */
+          const bye = isOnBye(pool.currentWeek, t.i);
           return (
             <li key={t.abbr}>
               <TeamButton
                 team={t}
-                state={picked ? "picked" : spent ? "spent" : "available"}
+                state={
+                  picked ? "picked" : spent ? "spent" : bye ? "bye" : "available"
+                }
                 disabled={locked || busy}
                 pending={
                   (status.at === "signing" || status.at === "confirming") &&

@@ -14,6 +14,7 @@
  */
 
 import { WEEK_1_KICKOFF } from "@/lib/nfl";
+import { realLockSchedule } from "@/lib/season";
 
 export const WEEKS = 18;
 
@@ -73,8 +74,19 @@ export function minWeekGapSecs(disputeWindowSecs: number): number {
   return MIN_POST_DELAY_SECS + disputeWindowSecs;
 }
 
-/** Eighteen weekly locks, in unix seconds, starting from the first kickoff. */
+/* Eighteen weekly locks, in unix seconds.
+ *
+ * ON A REAL CLOCK THESE ARE FACTS, NOT ARITHMETIC, and `firstKickoff` is
+ * ignored. They come from the committed schedule, because a season's kickoffs
+ * are not evenly spaced: week one to week two is eight days, week twelve moves
+ * for Thanksgiving, week eighteen opens on a Saturday afternoon. The old
+ * `start + n × 7 days` was three days out by the end of the season, and locking
+ * a week at the wrong moment is the one thing this product cannot get wrong.
+ *
+ * On a fast clock there is no real season to read, so the compressed one is
+ * generated from the anchor as before. */
 export function seasonLockSchedule(firstKickoff: Date): number[] {
+  if (!FAST_CLOCK) return realLockSchedule();
   const start = Math.floor(firstKickoff.getTime() / 1000);
   return Array.from({ length: WEEKS }, (_, i) => start + i * WEEK_SPACING_SECS);
 }

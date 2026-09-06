@@ -692,6 +692,68 @@ async function main() {
     `120 is not greater than ${fastGap}`,
   );
 
+  /* ── The season schedule is a contract too ────────────────────────────────
+   *
+   * `lockTs` goes on chain at pool creation and `submit_pick` enforces it to
+   * the second, so this file is part of the deal a member joins. Two things
+   * must hold or pools built from it are broken in ways nothing else catches:
+   * every abbreviation has to resolve to the on-chain team index, and the locks
+   * have to be strictly increasing or `create_pool` refuses outright. */
+  console.log("\nSeason schedule");
+  const sched = JSON.parse(
+    fs.readFileSync(
+      path.resolve(process.cwd(), "src/data/nfl-schedule-2026.json"),
+      "utf8",
+    ),
+  ) as {
+    season: number;
+    weeks: { week: number; lockTs: number; byes: string[]; games: { away: string; home: string }[] }[];
+  };
+  const nfl = fs.readFileSync(
+    path.resolve(process.cwd(), "src/lib/nfl.ts"),
+    "utf8",
+  );
+  const known = new Set([...nfl.matchAll(/abbr: "([A-Z]{2,3})"/g)].map((m) => m[1]));
+
+  ok(`eighteen weeks for ${sched.season}`, sched.weeks.length === 18);
+
+  const strays = new Set<string>();
+  let games = 0;
+  for (const w of sched.weeks) {
+    games += w.games.length;
+    for (const g of w.games) {
+      for (const a of [g.away, g.home]) if (!known.has(a)) strays.add(a);
+    }
+    for (const b of w.byes) if (!known.has(b)) strays.add(b);
+  }
+  ok(
+    `every team in ${games} games and all byes is one of the thirty-two`,
+    strays.size === 0,
+    strays.size ? `unknown: ${[...strays].join(", ")}` : "",
+  );
+
+  let increasing = true;
+  for (let i = 1; i < sched.weeks.length; i++) {
+    if (sched.weeks[i].lockTs <= sched.weeks[i - 1].lockTs) increasing = false;
+  }
+  ok("locks are strictly increasing, as create_pool requires", increasing);
+
+  /* Each team plays or sits, exactly once a week. A team appearing twice, or
+   * neither playing nor on a bye, means the schedule is malformed in a way the
+   * bye mask would silently paper over. */
+  let accounted = true;
+  for (const w of sched.weeks) {
+    const seen = new Map<string, number>();
+    for (const g of w.games) {
+      for (const a of [g.away, g.home]) seen.set(a, (seen.get(a) ?? 0) + 1);
+    }
+    for (const b of w.byes) seen.set(b, (seen.get(b) ?? 0) + 1);
+    if (seen.size !== 32 || [...seen.values()].some((n) => n !== 1)) {
+      accounted = false;
+    }
+  }
+  ok("every week accounts for all thirty-two teams exactly once", accounted);
+
   /* ── Every key the decoders read must exist on the account ────────────────
    *
    * `decodePool` and `decodeMember` reach into the decoded account by
