@@ -59,6 +59,20 @@ export function PickGrid({
   const [status, setStatus] = useState<Status>({ at: "idle" });
   const [now, setNow] = useState(() => new Date());
 
+  /* The team a change moved away from, so it can be moved back.
+   *
+   * Tapping a team submits it immediately — no Save button, because a pick is
+   * changeable until the lock and staging one behind a second click would be
+   * ceremony. The cost of that is a mis-tap being a real transaction, and
+   * somebody exploring the grid to see what each team looks like has already
+   * changed their pick by the time they find out.
+   *
+   * Nothing is lost when they do: `used_mask` is not touched by `submit_pick`
+   * at all — a team is spent in `settle_member`, once the week is over — so
+   * the team they moved off is still there, and going back is just another
+   * pick. This only has to remember which one it was. */
+  const [changedFrom, setChangedFrom] = useState<number | null>(null);
+
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
@@ -82,6 +96,9 @@ export function PickGrid({
   const byes = maskCount(byeMask(pool.currentWeek));
   const busy = status.at === "signing" || status.at === "confirming";
 
+  // A new week is a new decision; last week's change is not undoable.
+  useEffect(() => setChangedFrom(null), [pool.currentWeek]);
+
   const pick = useCallback(
     async (team: number) => {
       if (!publicKey || !signTransaction || busy || locked || !alive) return;
@@ -89,6 +106,12 @@ export function PickGrid({
       // The button is already disabled; refusing here too means a stray call
       // cannot spend somebody's season on a team that is not playing.
       if (isOnBye(pool.currentWeek, team)) return;
+
+      /* Read before the write. Whatever is on chain now is what an undo goes
+       * back to, and after `onPicked` refreshes there is no way to recover it. */
+      const previous =
+        member.pickWeek === pool.currentWeek ? member.currentPick : NO_PICK;
+      if (previous === team) return; // already picked; nothing to sign
 
       setStatus({ at: "signing", team });
       try {
@@ -123,6 +146,10 @@ export function PickGrid({
         }
 
         setStatus({ at: "idle" });
+        /* Offer the way back only when there was somewhere to come back from.
+         * Undoing clears it rather than pointing at the team just left, which
+         * would be a redo button wearing an undo label. */
+        setChangedFrom(previous === NO_PICK ? null : previous === changedFrom ? null : previous);
         await onPicked();
       } catch (err) {
         setStatus({ at: "error", message: readableProgramError(err) });
@@ -135,6 +162,9 @@ export function PickGrid({
       locked,
       alive,
       member.usedMask,
+      member.pickWeek,
+      member.currentPick,
+      changedFrom,
       pool.currentWeek,
       poolKey,
       connection,
@@ -193,6 +223,30 @@ export function PickGrid({
         · {remaining} of 32 teams left for the season
         {byes > 0 ? `, and ${byes} on a bye this week` : ""}.
       </p>
+
+      {/* Only while it can still be acted on. After the lock this would be an
+          offer the chain will refuse. */}
+      {changedFrom !== null && !locked && thisWeeksPick !== changedFrom ? (
+        <p className="mt-2 text-sm text-cream-dim">
+          Changed from{" "}
+          <span className="font-bold text-cream">
+            {TEAMS[changedFrom].city} {TEAMS[changedFrom].name}
+          </span>
+          .{" "}
+          <button
+            type="button"
+            onClick={() => pick(changedFrom)}
+            disabled={busy}
+            className="font-bold text-action underline underline-offset-2 hover:text-action-hi disabled:opacity-50"
+          >
+            Put it back
+          </button>{" "}
+          <span className="text-cream-dim">
+            — nothing is spent until the week is settled, so switching costs you
+            only the signature.
+          </span>
+        </p>
+      ) : null}
 
       {status.at === "error" ? (
         <p className="mt-4 rounded-xl border border-out/40 bg-out/10 p-4 text-sm text-cream">
