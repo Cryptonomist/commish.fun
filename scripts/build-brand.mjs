@@ -119,20 +119,39 @@ const glow = (w, h) => `<defs>
  *  by box height leaves the mark looking spindly. It is sized up against the
  *  cap height by eye instead, which is the only way this kind of pairing ever
  *  gets settled. */
+/** The wordmark on its own. `anchor` is an SVG text-anchor, so "middle" with
+ *  x at half the width centres it without anyone having to know how wide Anton
+ *  sets eleven characters. */
+function wordmark(x, y, fontSize, anchor = "start") {
+  return `<text x="${x}" y="${(y + fontSize * 0.35).toFixed(1)}" text-anchor="${anchor}" font-family="Anton" font-size="${fontSize}" letter-spacing="${(fontSize * 0.015).toFixed(2)}" fill="${C.cream}">COMMISH<tspan fill="${C.action}">.FUN</tspan></text>`;
+}
+
 function lockup(x, y, markH, fontSize) {
   const gap = markH * 0.16;
   return `<g transform="translate(${x} ${y})">
     <g transform="translate(${markH / 2} 0) scale(${markH / 200})">${laces(C.action)}</g>
-    <text x="${markH + gap}" y="${fontSize * 0.35}" font-family="Anton" font-size="${fontSize}" letter-spacing="${fontSize * 0.015}" fill="${C.cream}">COMMISH<tspan fill="${C.action}">.FUN</tspan></text>
+    ${wordmark(markH + gap, 0, fontSize)}
   </g>`;
 }
 
-const bannerSvg = (w, h, markH, fontSize, tagline) => {
+/* Two compositions, because the two sizes are read differently.
+ *
+ * A link preview is a card someone glances at in a feed, so it carries the
+ * full lockup and a line saying what the thing is. A social header is a strip
+ * sitting directly above the profile it belongs to, where the avatar is
+ * already showing the mark six inches away — repeating it there is just
+ * saying the same thing twice, and centring the wordmark also keeps it clear
+ * of the avatar, which on X hangs into the bottom-left corner. */
+const bannerSvg = (w, h, opts) => {
+  const { markH, fontSize, tagline = null, centered = false } = opts;
   const pad = w * 0.065;
+  const body = centered
+    ? wordmark(w / 2, h / 2, fontSize, "middle")
+    : lockup(pad, h / 2 - (tagline ? h * 0.05 : 0), markH, fontSize);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
   ${glow(w, h)}
   ${field(w, h)}
-  ${lockup(pad, h / 2 - (tagline ? h * 0.05 : 0), markH, fontSize)}
+  ${body}
   ${
     tagline
       ? `<text x="${pad}" y="${h / 2 + h * 0.16}" font-family="Anton" font-size="${h * 0.052}" letter-spacing="${h * 0.011}" fill="${C.creamDim}">${tagline}</text>`
@@ -202,10 +221,18 @@ async function main() {
   await writePng(avatar, "favicon-180.png", 180, 180, true);
 
   // Anything with the wordmark needs the installed font.
-  const banner = writeSvg("banner-x.svg", bannerSvg(1500, 500, 205, 116, null));
+  // Wordmark only and centred: the avatar beside it is already the mark.
+  const banner = writeSvg(
+    "banner-x.svg",
+    bannerSvg(1500, 500, { fontSize: 152, centered: true }),
+  );
   const og = writeSvg(
     "og.svg",
-    bannerSvg(1200, 630, 190, 108, "FOOTBALL POOLS, ESCROWED ON-CHAIN"),
+    bannerSvg(1200, 630, {
+      markH: 190,
+      fontSize: 108,
+      tagline: "FOOTBALL POOLS, ESCROWED ON-CHAIN",
+    }),
   );
   await writePng(banner, "banner-x.png", 1500, 500, true);
   await writePng(og, "og.png", 1200, 630, true);

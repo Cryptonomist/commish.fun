@@ -90,7 +90,7 @@
     <rect x="-49" y="9" width="98" height="18" rx="9"/>
     <rect x="-49" y="45" width="98" height="18" rx="9"/>
   </g></g>
-    <text x="220.4" y="37.8" font-family="Anton" font-size="108" letter-spacing="1.6199999999999999" fill="#F0F2EC">COMMISH<tspan fill="#FF6A2B">.FUN</tspan></text>
+    <text x="220.4" y="37.8" text-anchor="start" font-family="Anton" font-size="108" letter-spacing="1.62" fill="#F0F2EC">COMMISH<tspan fill="#FF6A2B">.FUN</tspan></text>
   </g>
   <text x="78" y="415.8" font-family="Anton" font-size="32.76" letter-spacing="6.93" fill="#98A69B">FOOTBALL POOLS, ESCROWED ON-CHAIN</text>
 </svg>
