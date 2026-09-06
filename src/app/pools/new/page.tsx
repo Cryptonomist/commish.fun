@@ -243,15 +243,15 @@ export default function NewPool() {
         <h1 className="display text-4xl uppercase sm:text-5xl">Start a pool</h1>
         <p className="mt-3 leading-relaxed text-cream-dim">
           Set the buy-in and share the join link. The vault is created on-chain
-          when you confirm — nobody, you included, can move what is in it except
+          when you confirm. Nobody, you included, can move what is in it except
           through payout logic.
         </p>
 
         {configReady === false ? (
           <p className="mt-6 rounded-xl border border-out/40 bg-out/10 p-4 text-sm text-cream">
             The program has not been initialised on <b>{CLUSTER}</b> yet. Run{" "}
-            <code className="text-action">init_config</code> once — see
-            SETUP.md — before any pool can be created.
+            <code className="text-action">init_config</code> once (see
+            SETUP.md) before any pool can be created.
           </p>
         ) : null}
 
@@ -408,7 +408,7 @@ export default function NewPool() {
                 >
                   {shortAddress(status.signature, 6)}
                 </a>{" "}
-                — not confirmed yet.
+                , not confirmed yet.
               </p>
             ) : publicKey ? (
               <p className="text-center text-xs text-cream-dim">
@@ -476,7 +476,7 @@ function Created({
       </Link>
       <p className="text-xs text-cream-dim">
         You are not a member yet. The commissioner joins like everyone else and
-        pays the same buy-in — that link is also the one you send the others.
+        pays the same buy-in, and that link is also the one you send the others.
       </p>
     </div>
   );

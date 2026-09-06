@@ -21,7 +21,7 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
  * preview branch lacks the var costs a deploy. */
 if (process.env.NODE_ENV === "development" && (!url || !anonKey)) {
   console.warn(
-    "[supabase] NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY are not set — copy .env.example to .env.local",
+    "[supabase] NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY are not set. Copy .env.example to .env.local",
   );
 }
 

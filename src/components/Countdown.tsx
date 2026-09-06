@@ -23,6 +23,6 @@ export function Countdown({ to = WEEK_1_KICKOFF }: { to?: Date }) {
   }, [to]);
 
   return (
-    <span className="tabular-nums text-gold">{label ?? "—"}</span>
+    <span className="tabular-nums text-gold">{label ?? "…"}</span>
   );
 }

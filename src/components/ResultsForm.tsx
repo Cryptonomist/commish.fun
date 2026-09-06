@@ -357,7 +357,7 @@ export function ResultsForm({
       {byes.length > 0 ? (
         <p className="mt-4 text-xs text-cream-dim">
           <span className="font-bold tracking-[0.14em]">ON A BYE</span>{" "}
-          {byes.map((t) => t.abbr).join(" ")} — not playing, and not pickable, so
+          {byes.map((t) => t.abbr).join(" ")}. Not playing, and not pickable, so
           they belong to neither result.
         </p>
       ) : null}

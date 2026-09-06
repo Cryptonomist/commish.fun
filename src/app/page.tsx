@@ -39,7 +39,7 @@ const DRIVE = [
   {
     yard: "+3H",
     h: "Results go up",
-    p: "The commissioner cannot post until three hours after that lock. Not a claim that every game is final — a floor that stops a week being called before it is played.",
+    p: "The commissioner cannot post until three hours after that lock. Not a claim that every game is final, but a floor that stops a week being called before it is played.",
   },
   {
     yard: "OPEN",
@@ -49,7 +49,7 @@ const DRIVE = [
   {
     yard: "FINAL",
     h: "The week commits",
-    p: "The window closes and anyone can fire the crank — not just the commissioner. Somebody who loses interest in March cannot freeze the pot.",
+    p: "The window closes and anyone can fire the crank, not just the commissioner. Somebody who loses interest in March cannot freeze the pot.",
   },
   {
     yard: "NEXT",
@@ -149,7 +149,7 @@ export default async function Home() {
             </span>
 
             <h1 className="display max-w-4xl text-[clamp(2.4rem,7vw,5rem)] uppercase">
-              Football pools,
+              NFL football pools,
               <br />
               <span className="text-action">escrowed</span> on-chain.
             </h1>

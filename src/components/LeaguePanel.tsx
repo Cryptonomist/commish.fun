@@ -181,7 +181,7 @@ export function LeaguePanel({
         <h2 className="display text-2xl uppercase">The pot</h2>
         <p className="text-sm text-cream-dim">
           {pool.paidMembers} paid ·{" "}
-          {vaultAmount === null ? "—" : formatUsdc(vaultAmount)} in the vault
+          {vaultAmount === null ? "…" : formatUsdc(vaultAmount)} in the vault
         </p>
       </div>
 
@@ -221,7 +221,7 @@ export function LeaguePanel({
           <div className="rounded-xl border border-night-3 bg-night-2/60 p-4">
             <p className="text-sm text-cream-dim">
               Dues have closed. Locking the books is the next step, and{" "}
-              <span className="text-cream">anyone can do it</span> — it takes no
+              <span className="text-cream">anyone can do it</span>. It takes no
               signature from the commissioner, so a league cannot be frozen by
               somebody who stopped replying.
             </p>
@@ -318,7 +318,7 @@ export function LeaguePanel({
         ) : (
           <p className="rounded-xl border border-night-3 bg-night-2/60 p-4 text-sm text-cream-dim">
             Dues are locked and the pot is settled at{" "}
-            {vaultAmount === null ? "—" : formatUsdc(vaultAmount)}. Waiting for
+            {vaultAmount === null ? "…" : formatUsdc(vaultAmount)}. Waiting for
             the commissioner to post who gets paid. You will get{" "}
             {Math.round(pool.disputeWindowSecs / 3600)} hours to throw it out.
           </p>
@@ -422,7 +422,7 @@ function SlotRow({
       </div>
       <div className="shrink-0 text-right">
         <p className={`text-sm font-bold ${claimed ? "text-cream-dim" : "text-gold"}`}>
-          {vaultAmount === null ? "—" : formatUsdc(slotAmount(slot.bps, vaultAmount))}
+          {vaultAmount === null ? "…" : formatUsdc(slotAmount(slot.bps, vaultAmount))}
         </p>
         <p className="text-xs text-cream-dim">
           {slot.state === 0 ? (
@@ -498,10 +498,10 @@ function ClaimYourSlot({
         >
           {busy
             ? "Working…"
-            : `Claim ${slot.label} — ${
+            : `Claim ${slot.label}${
                 vaultAmount === null
                   ? ""
-                  : formatUsdc(slotAmount(slot.bps, vaultAmount))
+                  : ` for ${formatUsdc(slotAmount(slot.bps, vaultAmount))}`
               }`}
         </button>
       ))}

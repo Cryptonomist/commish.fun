@@ -26,19 +26,19 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://commish.fun";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
   title: {
-    default: "Commish — Football pools, escrowed on-chain",
+    default: "Commish · NFL football pools, escrowed on-chain",
     template: "%s · Commish",
   },
   /* The one line that shows up in a search result and a pasted link, so it
      says what the product is rather than telling a joke about it. */
   description:
-    "Escrow for football pools. Members pay into a vault that is the pool's own account, picks and results are recorded on chain, and the commissioner never holds the money.",
+    "Escrow for NFL football pools. Members pay into a vault that is the pool's own account, picks and results are recorded on chain, and the commissioner never holds the money.",
   applicationName: "Commish",
   openGraph: {
     type: "website",
     url: SITE,
     siteName: "Commish",
-    title: "Commish — Football pools, escrowed on-chain",
+    title: "Commish · NFL football pools, escrowed on-chain",
     description:
       "Survivor pools now, league dues next. The commissioner runs the pool and never holds the money.",
     images: [{ url: "/brand/og.png", width: 1200, height: 630, alt: "Commish" }],
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     site: "@Commishfun",
-    title: "Commish — Football pools, escrowed on-chain",
+    title: "Commish · NFL football pools, escrowed on-chain",
     description:
       "Survivor pools now, league dues next. The commissioner runs the pool and never holds the money.",
     images: ["/brand/og.png"],

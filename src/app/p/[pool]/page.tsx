@@ -238,7 +238,7 @@ export default function PoolPage() {
               <Stat label="BUY-IN" value={formatUsdc(pool.buyIn)} gold />
               <Stat
                 label="IN THE VAULT"
-                value={vaultAmount === null ? "—" : formatUsdc(vaultAmount)}
+                value={vaultAmount === null ? "…" : formatUsdc(vaultAmount)}
                 gold
               />
               <Stat
@@ -249,7 +249,7 @@ export default function PoolPage() {
 
             <p className="mt-6 rounded-xl border border-night-3 bg-night-2/60 p-4 text-sm text-cream-dim">
               The vault is this pool&apos;s own token account. The commissioner
-              collects nothing and can move nothing — money leaves only by a
+              collects nothing and can move nothing. Money leaves only by a
               winner&apos;s claim or, past the refund deadline, back to everyone
               who paid.
             </p>

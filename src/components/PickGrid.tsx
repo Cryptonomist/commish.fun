@@ -261,7 +261,7 @@ export function PickGrid({
             <span className="font-bold text-cream">
               {TEAMS[thisWeeksPick].city} {TEAMS[thisWeeksPick].name}
             </span>
-            {locked ? "" : " — tap another to change it."}
+            {locked ? "" : ", or tap another to change it."}
           </>
         )}{" "}
         · {remaining} of 32 teams left for the season
@@ -286,8 +286,8 @@ export function PickGrid({
             Put it back
           </button>{" "}
           <span className="text-cream-dim">
-            — nothing is spent until the week is settled, so switching costs you
-            only the signature.
+            (nothing is spent until the week is settled, so switching costs
+            only the signature)
           </span>
         </p>
       ) : null}
@@ -367,7 +367,7 @@ export function PickGrid({
 
       <p className="mt-2 text-xs text-cream-dim">
         A team you pick is spent for the season whether it wins or loses. A
-        cancelled game is not a loss — you survive, and the team is still gone.
+        cancelled game is not a loss. You survive, and the team is still gone.
         {byes > 0 ? " Teams on a bye are not listed; they play again next week." : ""}
       </p>
     </section>
