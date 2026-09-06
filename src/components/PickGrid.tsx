@@ -22,8 +22,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
-import { TEAMS } from "@/lib/nfl";
-import { byeMask, isOnBye } from "@/lib/season";
+import { TEAMS, teamByAbbr } from "@/lib/nfl";
+import { byeMask, gamesFor, isOnBye } from "@/lib/season";
 import { TeamButton } from "@/components/TeamButton";
 import { countdown } from "@/lib/format";
 import {
@@ -95,6 +95,50 @@ export function PickGrid({
   const remaining = TEAMS.filter((t) => !hasUsed(member.usedMask, t.i)).length;
   const byes = maskCount(byeMask(pool.currentWeek));
   const busy = status.at === "signing" || status.at === "confirming";
+
+  /* THE WEEK IS A SLATE, NOT AN ALPHABET.
+   *
+   * Nobody deciding a Survivor pick thinks "Arizona, Atlanta, Baltimore". They
+   * think "is Seattle beating Arizona", and then whether that is worth burning
+   * Seattle in week one. Thirty-two cells in alphabetical order make the reader
+   * reassemble the matchups in their head from a schedule they do not have in
+   * front of them, which is the same complaint that turned the results form
+   * from an alphabet into a list of games.
+   *
+   * Ordered by kickoff, so it reads the way a slate reads: Thursday night at
+   * the top, Monday at the bottom. Teams on a bye simply are not here, which
+   * is more honest than a greyed cell and needs no explaining — the count is in
+   * the line above. */
+  const matchups = useMemo(
+    () =>
+      gamesFor(pool.currentWeek)
+        .map((g) => {
+          const away = teamByAbbr(g.away);
+          const home = teamByAbbr(g.home);
+          return away && home ? { key: `${g.away}@${g.home}`, away, home, kickoff: g.kickoff } : null;
+        })
+        .filter((m): m is NonNullable<typeof m> => m !== null)
+        .sort((a, b) => a.kickoff - b.kickoff),
+    [pool.currentWeek],
+  );
+
+  const stateOf = (i: number) =>
+    thisWeeksPick === i
+      ? "picked"
+      : hasUsed(member.usedMask, i)
+        ? "spent"
+        : isOnBye(pool.currentWeek, i)
+          ? "bye"
+          : "available";
+
+  const spent = TEAMS.filter((t) => hasUsed(member.usedMask, t.i));
+
+  const kickoffLabel = (secs: number) =>
+    new Date(secs * 1000).toLocaleString(undefined, {
+      weekday: "short",
+      hour: "numeric",
+      minute: "2-digit",
+    });
 
   // A new week is a new decision; last week's change is not undoable.
   useEffect(() => setChangedFrom(null), [pool.currentWeek]);
@@ -254,37 +298,77 @@ export function PickGrid({
         </p>
       ) : null}
 
-      <ul className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {TEAMS.map((t) => {
-          const spent = hasUsed(member.usedMask, t.i);
-          const picked = thisWeeksPick === t.i;
-          /* A team on a bye is not a risky pick, it is an impossible one: the
-           * program has no notion of a team that did not play, so an unmarked
-           * team is a loss and whoever picked it is simply out. The spec has
-           * said these must be unselectable since the first handoff. */
-          const bye = isOnBye(pool.currentWeek, t.i);
-          return (
+      {matchups.length > 0 ? (
+        <ul className="mt-5 flex flex-col gap-2">
+          {matchups.map((m) => (
+            <li
+              key={m.key}
+              className="rounded-xl border border-night-3 bg-night-2/30 p-2"
+            >
+              <p className="px-1 pb-1.5 text-[11px] uppercase tracking-wide text-cream-dim">
+                {kickoffLabel(m.kickoff)}
+              </p>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <TeamButton
+                  team={m.away}
+                  state={stateOf(m.away.i)}
+                  disabled={locked || busy}
+                  pending={busy && status.team === m.away.i}
+                  onClick={pick}
+                />
+                <span
+                  aria-hidden="true"
+                  className="px-1 text-xs font-bold text-cream-dim"
+                >
+                  @
+                </span>
+                <TeamButton
+                  team={m.home}
+                  state={stateOf(m.home.i)}
+                  disabled={locked || busy}
+                  pending={busy && status.team === m.home.i}
+                  onClick={pick}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        /* No schedule for this week — a pool running a compressed season, or a
+         * data gap. The alphabet is a worse way to pick, but it is a far better
+         * one than an empty screen. */
+        <ul className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {TEAMS.map((t) => (
             <li key={t.abbr}>
               <TeamButton
                 team={t}
-                state={
-                  picked ? "picked" : spent ? "spent" : bye ? "bye" : "available"
-                }
+                state={stateOf(t.i)}
                 disabled={locked || busy}
-                pending={
-                  (status.at === "signing" || status.at === "confirming") &&
-                  status.team === t.i
-                }
+                pending={busy && status.team === t.i}
                 onClick={pick}
               />
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      )}
 
-      <p className="mt-4 text-xs text-cream-dim">
+      {/* The alphabet earned its place for exactly one job: showing the whole
+          season's spending at a glance. A slate cannot do that — it only knows
+          this week — so the spending gets its own line rather than being lost
+          with the grid that used to carry it. */}
+      {spent.length > 0 ? (
+        <p className="mt-4 text-xs text-cream-dim">
+          <span className="uppercase tracking-wide">Spent this season</span>{" "}
+          <span className="text-cream-dim/70 line-through">
+            {spent.map((t) => t.abbr).join(" · ")}
+          </span>
+        </p>
+      ) : null}
+
+      <p className="mt-2 text-xs text-cream-dim">
         A team you pick is spent for the season whether it wins or loses. A
         cancelled game is not a loss — you survive, and the team is still gone.
+        {byes > 0 ? " Teams on a bye are not listed; they play again next week." : ""}
       </p>
     </section>
   );
