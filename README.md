@@ -52,18 +52,44 @@ The commissioner keeps the job, loses the custody.
 
 🏗️ **Building in public, Sept 3–10, 2026** as an entry in [NoahAI Nitro 03](https://x.com/TryNoahAI) (theme: build the Solana version of your favorite Web2 product). Ships for NFL Week 1 kickoff.
 
-- [ ] Escrow program: create / join / vault
-- [ ] Pick submission with on-chain lock
-- [ ] Results: post, dispute window, member veto
-- [ ] Weekly settlement + eliminations
-- [ ] Payouts: winner, co-winner split, deadman refund
-- [ ] Pick grid + pool dashboard
+- [x] Escrow program: create / join / vault
+- [x] Pick submission with on-chain lock
+- [x] Results: post, dispute window, member veto
+- [x] Weekly settlement + eliminations
+- [x] Payouts: winner, co-winner split, deadman refund
+- [x] Pick grid + pool dashboard
 - [ ] First real pool onboarded
+
+**What that has actually been put through**, because a checked box is only worth
+its evidence:
+
+- One pool ran the whole loop on **devnet against production timing** — 4h14m,
+  with `post_results` refused for three hours after the lock and
+  `finalize_week` refused for an hour after that, every boundary enforced by
+  the chain. Vault $3.00 → $0.00, the single survivor paid exactly $3.00.
+- The **deadman refund** has been driven end to end: a pool abandoned, three
+  members each taking their pro-rata share back, vault to zero.
+- A **veto** has struck a posting down by majority and been re-posted, and a
+  minority vote has correctly failed to strike one down.
+- **19 LiteSVM tests pass against the production binary** — `anchor build` with
+  no features, the one that would actually ship. `tests/00-build-guard.ts`
+  refuses to run the suite against anything else, because a `fastclock` build
+  shortens the very floors those tests exist to check.
+
+Not yet: an audit, mainnet, a multisig upgrade authority, and the four league
+instructions, which are tested but have no UI.
 
 ## Brand
 
-Action `#FF6A2B` (the brand, links and buttons) · Night `#0A100C` · Cream `#F0F2EC` · Pot Gold `#E9C258` (money only) · Alive `#57E08A` · Out `#EC565B`
-Mark: the laces, nothing else, orange on night and never on a filled tile. Assets in [`brand/`](brand/).
+Action `#FF6A2B` (the brand, links and buttons) · Night `#0A100C` · Turf `#16281C` (exported artwork only) · Cream `#F0F2EC` · Pot Gold `#E9C258` (money only) · Alive `#57E08A` · Out `#EC565B`
+
+Mark: the laces, nothing else. Orange on night and never on a filled tile *in
+the product* — orange is the interaction colour, and an orange slab at the top
+of a page teaches people it means nothing. The filled tile is for frames
+somebody else owns: the avatar, app icon and favicon are cream laces on orange,
+because at 48px in a timeline and 16px in a tab strip, night on dark
+disappears. Whole kit generated from one set of numbers by
+[`scripts/build-brand.mjs`](scripts/build-brand.mjs); assets in [`brand/`](brand/).
 
 ## Disclaimer
 
