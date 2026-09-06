@@ -22,6 +22,20 @@
   --color-night: #0a100c;      /* ground */
   --color-night-2: #121b15;    /* raised surfaces, cards, inputs */
   --color-night-3: #1f2c24;    /* hairlines, borders */
+  /* The ground for exported artwork only — the X banner and the link preview.
+     Never a page background.
+
+     NIGHT IS TOO DARK TO CARRY A FIELD ON ITS OWN. Its green channel sits six
+     above its red, which the eye resolves as plain black, and that is correct
+     in the app: the ground is a backdrop for cards, and gold, alive and action
+     all have to read off it. But an exported banner has no cards. It is ground
+     and type and nothing else, so the ground itself has to say "football",
+     and at #0a100c the yard numbers had nothing to sit against and vanished.
+
+     Same principle as the orange tile in build-brand.mjs: a surface inside a
+     frame we own can afford to be quiet, and one competing in somebody else's
+     feed cannot. */
+  --color-turf: #16281c;       /* EXPORTED ARTWORK ONLY */
   --color-cream: #f0f2ec;      /* type */
   --color-cream-dim: #98a69b;  /* secondary type */
   --color-action: #ff6a2b;     /* links, CTAs, live countdowns */

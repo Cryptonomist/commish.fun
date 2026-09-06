@@ -33,6 +33,7 @@ const C = {
   night: "#0A100C",
   night2: "#121B15",
   night3: "#1F2C24",
+  turf: "#16281C",
   cream: "#F0F2EC",
   creamDim: "#98A69B",
   action: "#FF6A2B",
@@ -114,14 +115,23 @@ function field(w, h) {
   return parts.join("\n  ");
 }
 
-/** The floodlight wash: gold-led, because orange over green mixes to brown. */
+/** The floodlight wash on the exported ground: gold-led, because orange over
+ *  green mixes to brown.
+ *
+ *  TURF, NOT NIGHT. These two images are the only surfaces in the whole system
+ *  with no content on them — just ground and type — so the ground alone has to
+ *  say football. Night cannot: its green channel is six above its red, which
+ *  reads as black, and the yard numerals at 9% had nothing to sit against and
+ *  disappeared. In the app that same near-black is right, because there the
+ *  ground is a backdrop for cards and every signal colour reads off it. See
+ *  --color-turf in globals.css. */
 const glow = (w, h) => `<defs>
     <radialGradient id="flood" cx="50%" cy="-10%" r="75%">
       <stop offset="0%" stop-color="${C.gold}" stop-opacity="0.10"/>
       <stop offset="100%" stop-color="${C.gold}" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect width="${w}" height="${h}" fill="${C.night}"/>
+  <rect width="${w}" height="${h}" fill="${C.turf}"/>
   <rect width="${w}" height="${h}" fill="url(#flood)"/>`;
 
 /** Mark plus wordmark, laid out left to right from a given origin. No filled
