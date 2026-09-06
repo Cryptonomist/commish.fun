@@ -117,10 +117,19 @@ export type CreatePoolArgs = {
   buyIn: bigint;
   maxMembers: number;
   startWeek: number;
-  /** Eighteen unix-second locks. */
+  /** Eighteen unix-second locks. Ignored by a league, which has no schedule —
+   *  pass zeros. */
   lockTs: number[];
   refundDeadlineTs: number;
   disputeWindowSecs: number;
+  /* LEAGUE ONLY, AND REQUIRED THERE. One to eight slots whose `bps` must sum
+   * to exactly 10000. The program enforces that at creation rather than at
+   * payout, for a reason worth repeating: slots adding to 90% would take
+   * everybody's money and leave a tenth of it in the vault with no instruction
+   * able to release it. Better to refuse the pool than to strand the dues. */
+  prizeSlots?: { label: string; bps: number }[];
+  /** League only. Joining closes here and `lock_dues` opens. */
+  duesDeadlineTs?: number;
 };
 
 export type CreatePoolPlan = {
@@ -142,6 +151,33 @@ export function buildCreatePool(args: CreatePoolArgs): CreatePoolPlan {
   const pool = poolPda(args.commissioner, args.nonce);
   const vault = ataFor(pool, USDC_MINT);
 
+  /* Refused here as well as on chain, because the program's message for this is
+   * SlotsNotSummingTo100 and by then the wallet popup has already happened. */
+  const slots = args.prizeSlots ?? [];
+  if (args.poolType === POOL_LEAGUE) {
+    if (slots.length === 0 || slots.length > MAX_PRIZE_SLOTS) {
+      throw new Error(`A league needs 1 to ${MAX_PRIZE_SLOTS} prize slots`);
+    }
+    const total = slots.reduce((n, s) => n + s.bps, 0);
+    if (total !== BPS_DENOM) {
+      throw new Error(
+        `Prize slots add up to ${(total / 100).toFixed(2)}%, and the program ` +
+          `requires exactly 100%. Anything less strands the difference in the ` +
+          `vault with no instruction able to release it.`,
+      );
+    }
+    for (const s of slots) {
+      if (enc.encode(s.label).length > MAX_SLOT_LABEL) {
+        throw new Error(`Slot label "${s.label}" is over ${MAX_SLOT_LABEL} bytes`);
+      }
+    }
+    if (!args.duesDeadlineTs) {
+      throw new Error("A league needs a dues deadline");
+    }
+  } else if (slots.length > 0) {
+    throw new Error("Only a league has prize slots");
+  }
+
   const data = coder.instruction.encode("create_pool", {
     nonce: new BN(args.nonce.toString()),
     name: args.name,
@@ -150,10 +186,11 @@ export function buildCreatePool(args: CreatePoolArgs): CreatePoolPlan {
     max_members: args.maxMembers,
     start_week: args.startWeek,
     lock_ts: args.lockTs.map((t) => new BN(t)),
-    // Ignored for pick pools: the program sets it to the starting week's lock.
-    dues_deadline_ts: new BN(0),
+    /* A pick pool ignores this — the program sets it to the starting week's
+     * lock. A league lives by it: joining closes here and `lock_dues` opens. */
+    dues_deadline_ts: new BN(args.duesDeadlineTs ?? 0),
     refund_deadline_ts: new BN(args.refundDeadlineTs),
-    prize_slots: [],
+    prize_slots: slots.map((s) => ({ label: s.label, bps: s.bps })),
     weekly_pot_bps: 0,
     dispute_window_secs: args.disputeWindowSecs,
   });
