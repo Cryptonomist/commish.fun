@@ -172,7 +172,7 @@ const inWords = (secs: number) => {
 };
 
 async function main() {
-  const [cmd, arg, extra, extra2] = process.argv.slice(2);
+  const [cmd, arg, extra, extra2, extra3] = process.argv.slice(2);
 
   if (!LOCAL && !DEVNET) {
     throw new Error(
@@ -206,6 +206,9 @@ async function main() {
     MIN_DISPUTE_WINDOW_SECS,
     minWeekGapSecs,
     validateSchedule,
+    seasonLockSchedule,
+    firstKickoffFor,
+    refundDeadlineFor,
   } = await import("@/lib/schedule");
   const { isOnBye, weekOf } = await import("@/lib/season");
 
@@ -337,24 +340,49 @@ async function main() {
         : MIN_DISPUTE_WINDOW_SECS;
       const startWeek = Number(extra2 ?? 1);
 
-      /* Strictly greater than the program's floor, not equal to it: the check
-       * is `gap > min_week_gap`, so a schedule built to land exactly on the
-       * boundary is rejected. The slack also absorbs the clock moving while the
-       * transaction is in flight. */
-      const gap = minWeekGapSecs(disputeWindowSecs) + 300;
-      const lead = 600;
+      /* TWO SCHEDULES, AND THE REAL ONE IS THE DEFAULT.
+       *
+       * A pool people are meant to join runs on the season that is actually
+       * being played, read out of the committed schedule — the same locks the
+       * pool creation form builds, so a pool made here and one made in the
+       * browser are the same object. That is what a demo pool has to be.
+       *
+       * `compressed` is the other thing: eighteen synthetic locks packed as
+       * tightly as `create_pool` permits, for walking the results loop without
+       * waiting out a season. It is a testing instrument, so it is opt-in. */
+      let locks: number[];
+      let refundDeadlineTs: number;
 
-      /* Starting at week 18 back-dates the other seventeen locks, which
-       * `create_pool` allows — it requires only that the week this pool
-       * actually plays has not kicked off yet. That is the one way to reach a
-       * refund deadline in minutes instead of days: the deadline must be later
-       * than the LAST lock, and on production timing eighteen locks more than
-       * four hours apart are three days wide no matter when they start. It is
-       * what makes `reclaim_dues` reachable without waiting out a season. */
-      const first = now() + lead - (startWeek - 1) * gap;
-      const locks = Array.from({ length: 18 }, (_, i) => first + i * gap);
-      const refundDeadlineTs =
-        locks[17] + (startWeek === 18 ? 300 : 14 * 24 * 60 * 60);
+      if (extra3 === "compressed") {
+        /* Strictly greater than the program's floor, not equal to it: the
+         * check is `gap > min_week_gap`, so a schedule built to land exactly
+         * on the boundary is rejected. The slack also absorbs the clock moving
+         * while the transaction is in flight. */
+        const gap = minWeekGapSecs(disputeWindowSecs) + 300;
+        /* Starting at week 18 back-dates the other seventeen locks, which
+         * `create_pool` allows — it requires only that the week this pool
+         * actually plays has not kicked off yet. That is the one way to reach
+         * a refund deadline in minutes instead of days: the deadline must be
+         * later than the LAST lock, and on production timing eighteen locks
+         * more than four hours apart are three days wide no matter when they
+         * start. It is what makes `reclaim_dues` reachable without waiting out
+         * a season. */
+        const first = now() + 600 - (startWeek - 1) * gap;
+        locks = Array.from({ length: 18 }, (_, i) => first + i * gap);
+        refundDeadlineTs = locks[17] + (startWeek === 18 ? 300 : 14 * 24 * 60 * 60);
+      } else {
+        locks = seasonLockSchedule(firstKickoffFor(startWeek));
+        refundDeadlineTs = refundDeadlineFor(locks);
+        if (locks[startWeek - 1] <= now()) {
+          throw new Error(
+            `Week ${startWeek} locked at ` +
+              `${new Date(locks[startWeek - 1] * 1000).toISOString()}, which has ` +
+              `passed — create_pool refuses a week that already kicked off, and ` +
+              `it is right to. Pick a later week, or pass "compressed" as the ` +
+              `fourth argument for a synthetic schedule.`,
+          );
+        }
+      }
 
       // Everything create_pool checks about time, checked before signing.
       const problem = validateSchedule({
@@ -365,10 +393,24 @@ async function main() {
       });
       if (problem) throw new Error(`${problem.field}: ${problem.message}`);
 
+      /* A pool on the real season is something people are going to open and
+       * read, so it gets a name rather than a timestamp. A compressed one is a
+       * test fixture and a timestamp is the most useful thing it can be called,
+       * because there will be several and they differ only in when they were
+       * made. POOL_NAME overrides either; 32 bytes is the program's limit. */
+      const name =
+        process.env.POOL_NAME ??
+        (extra3 === "compressed"
+          ? `Bots ${new Date().toISOString().slice(5, 16).replace("T", " ")}`
+          : `Commish Demo - Week ${startWeek}`);
+      if (new TextEncoder().encode(name).length > P.MAX_NAME) {
+        throw new Error(`"${name}" is over ${P.MAX_NAME} bytes.`);
+      }
+
       const plan = P.buildCreatePool({
         commissioner: payer.publicKey,
         nonce: P.randomNonce(),
-        name: `Bots ${new Date().toISOString().slice(5, 16).replace("T", " ")}`,
+        name,
         poolType: P.POOL_SURVIVOR,
         buyIn: BigInt(Math.round(dues * 1e6)),
         maxMembers: 16,
@@ -867,7 +909,7 @@ async function main() {
           "",
           "usage:",
           "  npx tsx scripts/seed-pool.ts fund <wallet> [dollars]",
-          "  npx tsx scripts/seed-pool.ts create [dues] [disputeMins] [startWeek]",
+          "  npx tsx scripts/seed-pool.ts create [dues] [disputeMins] [startWeek] [compressed]",
           "  npx tsx scripts/seed-pool.ts join <pool> [members]",
           "  npx tsx scripts/seed-pool.ts post <pool> ARI,BAL",
           "  npx tsx scripts/seed-pool.ts veto <pool> [votes]",
