@@ -56,9 +56,15 @@ export const WEEK_SPACING_SECS = FAST_CLOCK ? 120 : 7 * 24 * 60 * 60;
  *  On a real clock this is the fixed week-1 kickoff. On a fast clock it has to
  *  keep moving: `create_pool` refuses a first lock that is already past, so an
  *  anchor fixed at page load would go stale in the time it takes to fill the
- *  form in. Callers refresh it. */
+ *  form in. Callers refresh it.
+ *
+ *  FIVE MINUTES, NOT TWO. Joining closes at the first lock — the dues deadline
+ *  for a pick pool is that same instant — so everything a test pool needs, all
+ *  of its members and all of their picks, has to land before it. Two minutes
+ *  was not enough to copy the pool address out of the browser and run one
+ *  command, which meant a pool that could never be played. */
 export function firstKickoffFor(now: Date = new Date()): Date {
-  return FAST_CLOCK ? new Date(now.getTime() + 120_000) : WEEK_1_KICKOFF;
+  return FAST_CLOCK ? new Date(now.getTime() + 300_000) : WEEK_1_KICKOFF;
 }
 
 /** The shortest gap between two locks that still leaves room to post results,
