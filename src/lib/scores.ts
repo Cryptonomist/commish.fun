@@ -20,7 +20,7 @@
  * countdown.
  */
 
-import { abbrFromFeed } from "@/lib/nfl";
+import { abbrFromFeed, SEASON } from "@/lib/nfl";
 
 export type GameState = "pre" | "in" | "post";
 
@@ -31,6 +31,12 @@ export type Game = {
   detail: string;
   home: { abbr: string; score: number | null };
   away: { abbr: string; score: number | null };
+  /* Who won, but only once the game is over. `null` while it is scheduled or
+   * in progress, which is what lets the results form fill only what is settled
+   * and leave the rest for the commissioner to wait on. "tie" is its own answer
+   * rather than a missing one: a tie is a real NFL outcome and, per the rules,
+   * a loss for both sides rather than a push. */
+  winner: "home" | "away" | "tie" | null;
 };
 
 export type Scoreboard = {
@@ -84,21 +90,38 @@ function toGame(raw: unknown): Game | null {
   if (!home || !away) return null;
 
   const type = obj(obj(e.status).type);
+  const state = toState(str(type.state));
+
+  /* Only a completed game has a winner. The feed marks one competitor
+   * `winner: true`; a completed game with neither marked is a tie. */
+  let winner: Game["winner"] = null;
+  if (state === "post" && type.completed === true) {
+    const flag = (want: string) =>
+      obj(teams.find((t) => str(obj(t).homeAway) === want)).winner === true;
+    winner = flag("home") ? "home" : flag("away") ? "away" : "tie";
+  }
+
   return {
     id: str(e.id) || `${away.abbr}-${home.abbr}`,
-    state: toState(str(type.state)),
+    state,
     // shortDetail is the compact one: "9/9 - 8:20 PM EDT", "Final", "Q3 4:12".
     detail: str(type.shortDetail) || str(type.description),
     home,
     away,
+    winner,
   };
 }
 
-/** The current week's board. Never throws; an unreachable feed is an empty
- *  board, which the ticker renders as the countdown instead. */
-export async function fetchScoreboard(): Promise<Scoreboard> {
+/** A week's board, or the current one when no week is named. Never throws; an
+ *  unreachable feed is an empty board, which the ticker renders as the
+ *  countdown instead and the results form reports as "could not reach". */
+export async function fetchScoreboard(week?: number): Promise<Scoreboard> {
   try {
-    const res = await fetch(ESPN, {
+    const url =
+      week && week >= 1 && week <= 18
+        ? `${ESPN}?seasontype=2&week=${week}&dates=${SEASON}`
+        : ESPN;
+    const res = await fetch(url, {
       // One upstream call a minute for the whole site, not one per visitor.
       next: { revalidate: 60 },
       headers: { accept: "application/json" },
@@ -110,11 +133,13 @@ export async function fetchScoreboard(): Promise<Scoreboard> {
       .map(toGame)
       .filter((g): g is Game => g !== null);
 
+    // Named apart from the `week` parameter: this is what the feed answered
+    // with, which is not necessarily what was asked for.
     const season = obj(d.season).year;
-    const week = obj(d.week).number;
+    const weekNo = obj(d.week).number;
     return {
       season: typeof season === "number" ? season : null,
-      week: typeof week === "number" ? week : null,
+      week: typeof weekNo === "number" ? weekNo : null,
       games,
       source: "espn",
     };

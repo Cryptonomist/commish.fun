@@ -14,8 +14,13 @@ import { fetchScoreboard } from "@/lib/scores";
 /** Rebuild at most once a minute. In-play scores move slower than that. */
 export const revalidate = 60;
 
-export async function GET() {
-  const board = await fetchScoreboard();
+export async function GET(request: Request) {
+  /* `?week=N` for the results form, which needs a specific week rather than
+   * whichever one the feed thinks is current. Anything unparseable falls back
+   * to the current board rather than erroring: this is a cache, not an API. */
+  const raw = new URL(request.url).searchParams.get("week");
+  const week = raw && /^\d+$/.test(raw) ? Number(raw) : undefined;
+  const board = await fetchScoreboard(week);
   return Response.json(board, {
     headers: {
       // Let the CDN serve a slightly stale board rather than a slow one, and
