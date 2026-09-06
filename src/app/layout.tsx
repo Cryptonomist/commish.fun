@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     title: "Commish — Football pools, escrowed on-chain",
     description:
       "Survivor pools now, league dues next. The commissioner runs the pool and never holds the money.",
-    images: [{ url: "/brand/launch.png", width: 1200, height: 675 }],
+    images: [{ url: "/brand/og.png", width: 1200, height: 630, alt: "Commish" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -49,9 +49,9 @@ export const metadata: Metadata = {
     title: "Commish — Football pools, escrowed on-chain",
     description:
       "Survivor pools now, league dues next. The commissioner runs the pool and never holds the money.",
-    images: ["/brand/launch.png"],
+    images: ["/brand/og.png"],
   },
-  icons: { icon: "/brand/appicon.png", apple: "/brand/appicon.png" },
+  icons: { icon: "/brand/appicon.png", apple: "/brand/favicon-180.png" },
 };
 
 export const viewport: Viewport = {
