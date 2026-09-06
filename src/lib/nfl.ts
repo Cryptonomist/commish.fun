@@ -81,11 +81,26 @@ export const withTeamUsed = (mask: number, teamIndex: number): number =>
 export const availableTeams = (mask: number): Team[] =>
   TEAMS.filter((t) => !hasUsedTeam(mask, t.i));
 
-/* Season anchor. Week 1 kicks off Thursday 10 September 2026, 8:20pm ET
- * (00:20 UTC on the 11th). Picks lock at the week's FIRST kickoff, which is
- * this moment for week 1 — the deadline the whole product is built around. */
+/* Season anchor. Week 1 kicks off WEDNESDAY 9 September 2026, 8:20pm EDT
+ * (00:20 UTC on the 10th), New England at Seattle. Picks lock at the week's
+ * FIRST kickoff, which is this moment for week 1 — the deadline the whole
+ * product is built around.
+ *
+ * THIS WAS WRONG BY EXACTLY TWENTY-FOUR HOURS and it is worth saying why,
+ * because the failure was not cosmetic. It read Thursday the 10th, on the
+ * reasonable assumption that a season opens on a Thursday. 2026 opens on a
+ * Wednesday. `seasonLockSchedule` derives all eighteen locks from this instant
+ * and `create_pool` writes them on chain, where `submit_pick` enforces them —
+ * so every pool built from the old value would have accepted picks for a full
+ * day after the opener had been played. Someone could have watched Seattle
+ * win and then picked Seattle.
+ *
+ * Verified against the league schedule rather than reasoned about. The deeper
+ * fix is not to anchor a season on one constant at all: real weeks are not
+ * seven days apart, so see the note in lib/schedule.ts. */
 export const SEASON = 2026;
-export const WEEK_1_KICKOFF = new Date("2026-09-11T00:20:00Z");
+export const WEEK_1_KICKOFF = new Date("2026-09-10T00:20:00Z");
+
 
 /** Weeks are 7 days from week 1's kickoff. Good enough for the countdown and
  *  the UI; the on-chain lock time is whatever the pool was created with. */
