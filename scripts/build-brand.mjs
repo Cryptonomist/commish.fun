@@ -33,7 +33,8 @@ const C = {
   night: "#0A100C",
   night2: "#121B15",
   night3: "#1F2C24",
-  turf: "#16281C",
+  turf: "#24492E",
+  chalk: "#FFFFFF",
   cream: "#F0F2EC",
   creamDim: "#98A69B",
   action: "#FF6A2B",
@@ -82,6 +83,23 @@ const tileSvg = (ground, fill) =>
 
 /* ── The field, reused from the site's hero ───────────────────────────────── */
 
+/* How the markings are painted: chalk, and they move with the ground.
+ *
+ * On the old near-black field these were cream at 9%, a texture you half-saw,
+ * because anything brighter would have been the loudest thing in the frame.
+ * A ground light enough to read as turf lets them be what they are on a real
+ * field — white, and actually legible. Raised together, because numerals at
+ * full strength over ghost yard lines looks like a mistake rather than a
+ * field.
+ *
+ * They stay well under the wordmark either way. These are the surface the
+ * name sits on; the moment somebody reads a yard number before they read
+ * COMMISH, they have gone too far. */
+const FIELD_INK = C.chalk;
+const NUMERAL_OPACITY = 0.16;
+const LINE_OPACITY = { strong: 0.18, weak: 0.09 };
+const HASH_OPACITY = 0.14;
+
 /** Yard lines, hash marks and numerals across a box, at the same weights the
  *  landing page uses. The numerals need Anton; everything else is geometry. */
 function field(w, h) {
@@ -90,11 +108,11 @@ function field(w, h) {
     const x = (w * i * 5) / 100;
     const strong = (i * 5) % 10 === 0;
     parts.push(
-      `<rect x="${x.toFixed(1)}" y="0" width="1" height="${h}" fill="${C.cream}" opacity="${strong ? 0.1 : 0.05}"/>`,
+      `<rect x="${x.toFixed(1)}" y="0" width="1" height="${h}" fill="${FIELD_INK}" opacity="${strong ? LINE_OPACITY.strong : LINE_OPACITY.weak}"/>`,
     );
     for (const ty of [0.3, 0.7]) {
       parts.push(
-        `<rect x="${(x - 6).toFixed(1)}" y="${(h * ty).toFixed(1)}" width="13" height="1" fill="${C.cream}" opacity="0.08"/>`,
+        `<rect x="${(x - 6).toFixed(1)}" y="${(h * ty).toFixed(1)}" width="13" height="1" fill="${FIELD_INK}" opacity="${HASH_OPACITY}"/>`,
       );
     }
   }
@@ -108,7 +126,7 @@ function field(w, h) {
     const x = (w * (i + 1) * 10) / 100;
     for (const y of [size * 1.15, h - size * 0.4]) {
       parts.push(
-        `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="Anton" font-size="${size.toFixed(1)}" fill="${C.cream}" opacity="0.09" text-anchor="middle" letter-spacing="${(size * 0.08).toFixed(1)}">${n}</text>`,
+        `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="Anton" font-size="${size.toFixed(1)}" fill="${FIELD_INK}" opacity="${NUMERAL_OPACITY}" text-anchor="middle" letter-spacing="${(size * 0.08).toFixed(1)}">${n}</text>`,
       );
     }
   });

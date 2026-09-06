@@ -34,8 +34,17 @@
 
      Same principle as the orange tile in build-brand.mjs: a surface inside a
      frame we own can afford to be quiet, and one competing in somebody else's
-     feed cannot. */
-  --color-turf: #16281c;       /* EXPORTED ARTWORK ONLY */
+     feed cannot.
+
+     THE ORANGE SETS THE CEILING, and it is worth writing the number down. The
+     wordmark ends in an orange .FUN, and orange loses contrast against green
+     far faster than cream does. Measured against candidate grounds, cream and
+     white stay comfortable everywhere while --color-action falls 5.43 : 3.55 :
+     2.79 : 2.11 as the ground lifts. Large display text needs 3:1, so #24492e
+     is the lightest this can be before half the wordmark stops being type and
+     becomes decoration. Anything greener than this needs a different orange,
+     not a bolder ground. */
+  --color-turf: #24492e;       /* EXPORTED ARTWORK ONLY */
   --color-cream: #f0f2ec;      /* type */
   --color-cream-dim: #98a69b;  /* secondary type */
   --color-action: #ff6a2b;     /* links, CTAs, live countdowns */
