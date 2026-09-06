@@ -182,14 +182,40 @@ export function buildCreatePool(args: CreatePoolArgs): CreatePoolPlan {
 
 export const MAX_DISPLAY_NAME = 24;
 
-/* Pool status, as the program writes it. Only the ones the UI reads are named;
- * the rest are league states this app does not surface yet. */
+/* Pool status, as the program writes it. Pick pools and leagues share the
+ * field: a league lands on SheetPosted where a pick pool lands on
+ * ResultsPosted, and `veto_results` accepts either. */
 export const STATUS_OPEN = 0;
 export const STATUS_LOCKED = 1;
 export const STATUS_RESULTS_POSTED = 2;
 export const STATUS_FINALIZED = 3;
 export const STATUS_SETTLED = 4;
 export const STATUS_ABANDONED = 5;
+export const STATUS_SHEET_POSTED = 6;
+export const STATUS_SHEET_FINALIZED = 7;
+
+/** A prize slot's life: nobody assigned · assigned and disputable · survived
+ *  the window · taken. */
+export const SLOT_UNASSIGNED = 0;
+export const SLOT_PENDING = 1;
+export const SLOT_FINALIZED = 2;
+export const SLOT_CLAIMED = 3;
+
+export const MAX_PRIZE_SLOTS = 8;
+export const MAX_SLOT_LABEL = 16;
+/** Basis points. A league's slots must sum to exactly this and `create_pool`
+ *  refuses otherwise — slots adding to 90% would strand a tenth of the vault
+ *  with no instruction able to release it. */
+export const BPS_DENOM = 10_000;
+
+export const isLeague = (pool: { poolType: number }): boolean =>
+  pool.poolType === POOL_LEAGUE;
+
+/** What a slot is worth, given what is actually in the vault. Integer maths in
+ *  the same order the program does it, so the number on screen is the number
+ *  that gets transferred rather than a rounded guess at it. */
+export const slotAmount = (bps: number, vaultAmount: bigint): bigint =>
+  (vaultAmount * BigInt(bps)) / BigInt(BPS_DENOM);
 
 /** A pool, decoded, with the raw account's snake_case flattened into something
  *  a component can read without knowing Borsh. */
@@ -243,6 +269,20 @@ export type PoolView = {
   winnersWeek: number;
   winnersCount: number;
   potPerWinner: bigint;
+  /** League only. Empty for pick pools, and `slotCount` is 0 there. */
+  prizeSlots: PrizeSlotView[];
+  slotCount: number;
+};
+
+/** One line of a league's payout sheet. `bps` is fixed at creation; who gets it
+ *  is not, and moves through the states as the sheet is posted, survives its
+ *  dispute window, and is taken. */
+export type PrizeSlotView = {
+  index: number;
+  label: string;
+  bps: number;
+  assignee: PublicKey;
+  state: number;
 };
 
 /* Fixed-size name fields are zero-padded on chain. Trimming at the first NUL
@@ -298,6 +338,27 @@ export function decodePool(data: Uint8Array): PoolView {
     winnersWeek: num("winners_week"),
     winnersCount: num("winners_count"),
     potPerWinner: big("pot_per_winner"),
+    /* The array is always MAX_PRIZE_SLOTS long on chain; `slot_count` says how
+     * many of them a commissioner actually declared. Slicing here means no
+     * caller has to remember that, and none of them can accidentally offer a
+     * seventh prize in a pool that has three. */
+    slotCount: num("slot_count"),
+    prizeSlots: (
+      raw.prize_slots as unknown as {
+        label: number[];
+        bps: number;
+        assignee: PublicKey;
+        state: number;
+      }[]
+    )
+      .slice(0, num("slot_count"))
+      .map((s, index) => ({
+        index,
+        label: fromFixedBytes(s.label),
+        bps: Number(s.bps),
+        assignee: s.assignee,
+        state: Number(s.state),
+      })),
   };
 }
 
@@ -610,6 +671,111 @@ export function buildFinalizeWeek(pool: PublicKey): TransactionInstruction {
     keys: [{ pubkey: pool, isSigner: false, isWritable: true }],
     data: coder.instruction.encode("finalize_week", {}),
   });
+}
+
+/* ─── The league's three cranks and its payout ──────────────────────────────
+ *
+ * A league does not play weeks. It collects dues until a deadline, the
+ * commissioner declares who won what, the members get a window to throw that
+ * out, and then the assignees take their slots. `lock_dues` and
+ * `finalize_sheet` take the same single account as `finalize_week` and are
+ * permissionless for the same reason: a commissioner who walks away must not
+ * be able to freeze the money behind them. */
+
+/** Dues are in, the deadline has passed, nobody else may join. */
+export function buildLockDues(pool: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [{ pubkey: pool, isSigner: false, isWritable: true }],
+    data: coder.instruction.encode("lock_dues", {}),
+  });
+}
+
+/** The sheet survived its dispute window. Every pending slot becomes claimable. */
+export function buildFinalizeSheet(pool: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [{ pubkey: pool, isSigner: false, isWritable: true }],
+    data: coder.instruction.encode("finalize_sheet", {}),
+  });
+}
+
+export type SlotAssignment = { slotIdx: number; member: PublicKey };
+
+/* THE ASSIGNEES ARE PROVEN, NOT ASSERTED.
+ *
+ * Each assignment carries a wallet, and the program will not take the
+ * commissioner's word that it belongs to a paid member. It re-derives the
+ * Member PDA for that wallet and requires the account to be passed alongside,
+ * so a mistyped address is impossible rather than merely unlikely — it fails
+ * at the address derivation instead of paying a stranger.
+ *
+ * That is why the member accounts ride as `remaining_accounts` in the SAME
+ * ORDER as the assignments: the program pairs them by index. Reordering one
+ * list without the other pays the right amounts to the wrong people. */
+export function buildPostPayoutSheet(args: {
+  pool: PublicKey;
+  commissioner: PublicKey;
+  assignments: SlotAssignment[];
+}): TransactionInstruction {
+  if (args.assignments.length === 0) {
+    throw new Error("A payout sheet needs at least one assignment");
+  }
+  const seen = new Set<number>();
+  for (const a of args.assignments) {
+    if (seen.has(a.slotIdx)) {
+      throw new Error(`Slot ${a.slotIdx} is assigned twice`);
+    }
+    seen.add(a.slotIdx);
+  }
+
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: args.pool, isSigner: false, isWritable: true },
+      { pubkey: args.commissioner, isSigner: true, isWritable: false },
+      // Paired by index with `assignments`. See the note above.
+      ...args.assignments.map((a) => ({
+        pubkey: memberPda(args.pool, a.member),
+        isSigner: false,
+        isWritable: false,
+      })),
+    ],
+    data: coder.instruction.encode("post_payout_sheet", {
+      assignments: args.assignments.map((a) => ({
+        slot_idx: a.slotIdx,
+        member: a.member,
+      })),
+    }),
+  });
+}
+
+/* THE ASSIGNEE TAKES THEIR SLOT, and this one does NOT take a Member account.
+ * `claim_pot` needs one because a survivor's eligibility lives on their member
+ * record; a prize slot records its own assignee, so the slot is the proof and
+ * the signer is checked against it. Five accounts, not six. */
+export function buildClaimPrize(args: {
+  pool: PublicKey;
+  wallet: PublicKey;
+  vault: PublicKey;
+  usdcMint: PublicKey;
+  slotIdx: number;
+}): { instruction: TransactionInstruction; walletAta: PublicKey } {
+  const walletAta = ataFor(args.wallet, args.usdcMint);
+  return {
+    walletAta,
+    instruction: new TransactionInstruction({
+      programId: PROGRAM_ID,
+      keys: [
+        { pubkey: args.pool, isSigner: false, isWritable: true },
+        { pubkey: args.wallet, isSigner: true, isWritable: true },
+        { pubkey: args.vault, isSigner: false, isWritable: true },
+        { pubkey: walletAta, isSigner: false, isWritable: true },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      data: coder.instruction.encode("claim_prize", { slot_idx: args.slotIdx }),
+    }),
+  };
 }
 
 /* One member, one call, idempotent: a second call for the same week is refused
