@@ -39,7 +39,26 @@ Why both: Survivor is the *story* (it demos in 90 seconds and it's novel), Leagu
 - **Who:** commissioners running things for people they know; members on phones, mostly not crypto users.
 - **Private only**, link-to-join, no directory. **$0 pools allowed** everywhere. Pools can start any week; leagues can be created any time before their dues deadline.
 - **Language (FINAL):** "pool," "league," "dues," "buy-in," "pot," "prize," "pick." Never "bet," "wager," "odds," "book." This is legal posture, not style (§19).
-- **No NFL/team logos or marks.** City names, abbreviations, colors only.
+- **No NFL/team logos or marks.** City names and abbreviations only. Those are
+  the safe part: naming a team factually is nominative fair use, and *C.B.C.
+  Distribution v. MLB Advanced Media* (8th Cir. 2007) held a fantasy operator's
+  First Amendment right to use names and statistics beats the publicity claim
+  against it. Logos are not the same question and are not close: they are
+  registered marks, they fail the "only as much of the mark as necessary" prong
+  because the name already identifies the team, and as famous marks they carry
+  a dilution claim that succeeds with no consumer confusion at all. NFL
+  Properties licenses at roughly $100k/yr in minimum royalties and not to small
+  operators, so there is no cheap door either.
+  **COLOURS ARE NOT A SAFE HARBOUR, which this line used to say they were.**
+  A single colour can be a trademark (*Qualitex*, 1995), and the NFL enforces
+  team colour combinations as trade dress with no logo present — it sent a
+  cease-and-desist over an ad using the Raiders' black and silver that carried
+  no Raiders logo and no Raiders name. `ClubBar` in `TeamButton.tsx` paints all
+  32 clubs' real colours. The risk is low, because each bar sits beside that
+  team's own name and reads as identification rather than as an imitation of
+  the club's get-up — but it is a judgement call, not a rule, and if it ever
+  needs removing the fix is two fields in `lib/nfl.ts`: teams only need to be
+  *distinguishable*, not accurate.
 - **Commish takes no economic benefit from any real-money pool** in Season 1 (§3, §19).
 
 ---
