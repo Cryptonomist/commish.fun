@@ -64,8 +64,15 @@ export const WEEK_SPACING_SECS = FAST_CLOCK ? 120 : 7 * 24 * 60 * 60;
  *  of its members and all of their picks, has to land before it. Two minutes
  *  was not enough to copy the pool address out of the browser and run one
  *  command, which meant a pool that could never be played. */
-export function firstKickoffFor(now: Date = new Date()): Date {
-  return FAST_CLOCK ? new Date(now.getTime() + 300_000) : WEEK_1_KICKOFF;
+export function firstKickoffFor(startWeek = 1, now: Date = new Date()): Date {
+  if (!FAST_CLOCK) return WEEK_1_KICKOFF;
+  /* It is the START week that has to be five minutes away, not week one. A
+   * pool starting in week eleven would otherwise be fifty minutes of waiting,
+   * since the compressed weeks are two minutes apart. Earlier weeks land in the
+   * past, which `create_pool` allows: it only requires that the week this pool
+   * actually plays has not kicked off yet. */
+  const offset = (startWeek - 1) * WEEK_SPACING_SECS * 1000;
+  return new Date(now.getTime() + 300_000 - offset);
 }
 
 /** The shortest gap between two locks that still leaves room to post results,

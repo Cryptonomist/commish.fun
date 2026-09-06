@@ -128,6 +128,7 @@ async function main() {
   const P = await import("@/lib/program");
   const { TEAMS } = await import("@/lib/nfl");
   const { MIN_POST_DELAY_SECS } = await import("@/lib/schedule");
+  const { isOnBye, weekOf } = await import("@/lib/season");
 
   const connection = new Connection(RPC, "confirmed");
   const payer = loadCliKeypair();
@@ -187,15 +188,24 @@ async function main() {
       if (!info) throw new Error(`No pool at ${pool.toBase58()}`);
       const decoded = P.decodePool(info.data);
 
+      const week = decoded.currentWeek;
+      /* Teams on a bye are not pickable, so the bots do not pick them. The
+       * program has no bye logic — an unmarked team is simply a loss — so a bot
+       * on a bye would be quietly eliminated by a correctly posted week, which
+       * is exactly the trap the pick grid now closes for people. */
+      const pickable = TEAMS.filter((t) => !isOnBye(week, t.i));
+      const byes = weekOf(week)?.byes ?? [];
+
       console.log(`pool    ${decoded.name}`);
       console.log(`buy-in  ${fmtUsd(decoded.buyIn)}`);
-      console.log(`lock    ${inWords(decoded.lockTs[decoded.currentWeek - 1] - now())}\n`);
+      console.log(`week    ${week}${byes.length ? ` · on a bye: ${byes.join(" ")}` : ""}`);
+      console.log(`lock    ${inWords(decoded.lockTs[week - 1] - now())}\n`);
 
       for (let i = 0; i < count; i++) {
         const bot = botFor(pool.toBase58(), i);
         // Each on a different team, so posting results can take some of them
         // out and leave others standing. That is the case worth seeing.
-        const team = TEAMS[i % TEAMS.length];
+        const team = pickable[i % pickable.length];
         await fund(bot.publicKey, Number(decoded.buyIn / BigInt(1_000_000)) + 100);
         await send(
           [

@@ -43,7 +43,9 @@ import {
   validateSchedule,
   DEFAULT_DISPUTE_WINDOW_SECS,
   FAST_CLOCK,
+  WEEKS,
 } from "@/lib/schedule";
+import { weekOf } from "@/lib/season";
 
 /* The dispute window is entered in hours, and the field strips anything that
  * is not a digit. On a fast clock the minimum is thirty SECONDS, which cannot
@@ -73,6 +75,7 @@ export default function NewPool() {
   const [disputeWindow, setDisputeWindow] = useState(
     String(DEFAULT_DISPUTE_WINDOW_SECS / WINDOW_UNIT_SECS),
   );
+  const [week, setWeek] = useState("1");
   const [status, setStatus] = useState<Status>({ at: "idle" });
 
   /* The program's Config is created once per cluster by `init_config`. Until it
@@ -90,17 +93,30 @@ export default function NewPool() {
     };
   }, [connection]);
 
-  /* On a fast clock the season starts two minutes from now, so the anchor has
-   * to keep moving: `create_pool` refuses a first lock already in the past, and
-   * a form left open while somebody thinks about a buy-in would propose a week
-   * that has already kicked off. On a real clock this is a fixed date and the
-   * interval never runs. */
-  const [firstKickoff, setFirstKickoff] = useState(() => firstKickoffFor());
+  /* A pool does not have to start in week one. `create_pool` takes any week
+   * from 1 to 18 and only requires that the one it starts on has not kicked off
+   * yet, which is what lets somebody organise a pool in October. The form used
+   * to hardcode week one and quietly withhold that. */
+  const startWeek = Math.min(WEEKS, Math.max(1, Number(week) || 1));
+
+  /* On a fast clock the season anchor has to keep moving: `create_pool` refuses
+   * a first lock already in the past, and a form left open while somebody
+   * thinks about a buy-in would propose a week that has already kicked off. It
+   * also shifts with the start week, so a week-eleven pool is five minutes away
+   * rather than fifty. On a real clock this is a fixed date and the interval
+   * never runs. */
+  const [firstKickoff, setFirstKickoff] = useState(() =>
+    firstKickoffFor(startWeek),
+  );
   useEffect(() => {
+    setFirstKickoff(firstKickoffFor(startWeek));
     if (!FAST_CLOCK) return;
-    const t = setInterval(() => setFirstKickoff(firstKickoffFor()), 15_000);
+    const t = setInterval(
+      () => setFirstKickoff(firstKickoffFor(startWeek)),
+      15_000,
+    );
     return () => clearInterval(t);
-  }, []);
+  }, [startWeek]);
 
   const locks = useMemo(() => seasonLockSchedule(firstKickoff), [firstKickoff]);
   const disputeWindowSecs = Math.round(
@@ -112,11 +128,15 @@ export default function NewPool() {
       validateSchedule({
         locks,
         disputeWindowSecs,
-        startWeek: 1,
+        startWeek,
         nowSecs: Math.floor(Date.now() / 1000),
       }),
-    [locks, disputeWindowSecs],
+    [locks, disputeWindowSecs, startWeek],
   );
+
+  /** The lock that actually matters: the week this pool opens on. */
+  const startLock = new Date((locks[startWeek - 1] ?? 0) * 1000);
+  const startByes = weekOf(startWeek)?.byes ?? [];
 
   const buyInUnits = useMemo(() => {
     try {
@@ -163,7 +183,7 @@ export default function NewPool() {
         poolType: POOL_SURVIVOR,
         buyIn: buyInUnits,
         maxMembers: members,
-        startWeek: 1,
+        startWeek,
         lockTs: locks,
         refundDeadlineTs: refundDeadlineFor(locks),
         disputeWindowSecs,
@@ -305,15 +325,31 @@ export default function NewPool() {
                   counts.
                 </span>
               </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                  START WEEK
+                </span>
+                <input
+                  value={week}
+                  onChange={(e) => setWeek(e.target.value.replace(/[^\d]/g, ""))}
+                  inputMode="numeric"
+                  className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-action"
+                />
+                <span className="text-xs text-cream-dim">
+                  A pool does not have to start in week 1. Anything from 1 to{" "}
+                  {WEEKS}, as long as that week has not kicked off yet.
+                </span>
+              </label>
             </div>
 
             <div className="rounded-xl border border-night-3 bg-night-2/60 p-4 text-sm">
               <span className="flex items-center gap-2 font-bold text-cream">
                 <Laces size={12} className="text-action" />
-                Picks lock at first kickoff
+                Week {startWeek} picks lock at its first kickoff
               </span>
               <p className="mt-1.5 text-cream-dim">
-                {firstKickoff.toLocaleString("en-US", {
+                {startLock.toLocaleString("en-US", {
                   weekday: "long",
                   month: "long",
                   day: "numeric",
@@ -322,6 +358,12 @@ export default function NewPool() {
                   timeZoneName: "short",
                 })}
               </p>
+              {startByes.length > 0 ? (
+                <p className="mt-1.5 text-xs text-cream-dim">
+                  {startByes.join(" ")} are on a bye that week and will not be
+                  pickable.
+                </p>
+              ) : null}
               <p className="mt-3 border-t border-night-3 pt-3 text-xs text-cream-dim">
                 The vault will be this pool&apos;s own token account, derived by
                 the program. There is no instruction anywhere in it that sends
