@@ -142,19 +142,42 @@ function lockup(x, y, markH, fontSize) {
  * already showing the mark six inches away — repeating it there is just
  * saying the same thing twice, and centring the wordmark also keeps it clear
  * of the avatar, which on X hangs into the bottom-left corner. */
+/* A centred composition stacks: mark over wordmark over tagline, every piece
+ * anchored on the same vertical axis. Keeping the mark beside the wordmark and
+ * centring the pair would mean knowing how wide Anton sets eleven characters,
+ * which is a measurement this script has no way to take — text-anchor can
+ * centre text without that number, but only for the text on its own. Stacking
+ * sidesteps it and is the better answer anyway: a centred lockup that runs
+ * horizontally always looks like it is leaning. */
 const bannerSvg = (w, h, opts) => {
-  const { markH, fontSize, tagline = null, centered = false } = opts;
+  const { markH, fontSize, tagline = null, layout = "left" } = opts;
   const pad = w * 0.065;
-  const body = centered
-    ? wordmark(w / 2, h / 2, fontSize, "middle")
-    : lockup(pad, h / 2 - (tagline ? h * 0.05 : 0), markH, fontSize);
+  const mid = w / 2;
+  const tagSize = h * 0.052;
+
+  let body;
+  if (layout === "wordmark") {
+    body = wordmark(mid, h / 2, fontSize, "middle");
+  } else if (layout === "stacked") {
+    const markCy = h * 0.37;
+    const wordCy = h * 0.60;
+    body = `<g transform="translate(${mid} ${markCy}) scale(${markH / 200})">${laces(C.action)}</g>
+  ${wordmark(mid, wordCy, fontSize, "middle")}`;
+  } else {
+    body = lockup(pad, h / 2 - (tagline ? h * 0.05 : 0), markH, fontSize);
+  }
+
+  const tagAnchor = layout === "left" ? "start" : "middle";
+  const tagX = layout === "left" ? pad : mid;
+  const tagY = layout === "stacked" ? h * 0.60 + h * 0.155 : h / 2 + h * 0.16;
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
   ${glow(w, h)}
   ${field(w, h)}
   ${body}
   ${
     tagline
-      ? `<text x="${pad}" y="${h / 2 + h * 0.16}" font-family="Anton" font-size="${h * 0.052}" letter-spacing="${h * 0.011}" fill="${C.creamDim}">${tagline}</text>`
+      ? `<text x="${tagX}" y="${tagY.toFixed(1)}" text-anchor="${tagAnchor}" font-family="Anton" font-size="${tagSize.toFixed(1)}" letter-spacing="${(h * 0.011).toFixed(1)}" fill="${C.creamDim}">${tagline}</text>`
       : ""
   }
 </svg>
@@ -224,14 +247,17 @@ async function main() {
   // Wordmark only and centred: the avatar beside it is already the mark.
   const banner = writeSvg(
     "banner-x.svg",
-    bannerSvg(1500, 500, { fontSize: 152, centered: true }),
+    bannerSvg(1500, 500, { fontSize: 152, layout: "wordmark" }),
   );
+  // Stacked and centred. This one meets people in a feed with nothing else
+  // around it, so it keeps the mark and the line saying what the thing is.
   const og = writeSvg(
     "og.svg",
     bannerSvg(1200, 630, {
-      markH: 190,
-      fontSize: 108,
+      markH: 150,
+      fontSize: 104,
       tagline: "FOOTBALL POOLS, ESCROWED ON-CHAIN",
+      layout: "stacked",
     }),
   );
   await writePng(banner, "banner-x.png", 1500, 500, true);
