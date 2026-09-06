@@ -480,6 +480,103 @@ async function main() {
       break;
     }
 
+    case "reclaim": {
+      /* THE DEADMAN SWITCH, exercised.
+       *
+       * Every other path in this program has now been driven against a live
+       * pool. This one never has, because reaching it means waiting out a
+       * refund deadline that has to fall after the eighteenth lock — three days
+       * on production timing. `create ... 18` back-dates the schedule so the
+       * deadline lands minutes away instead, which is the only reason this
+       * command can be run at all.
+       *
+       * What it proves is the promise that makes the escrow worth more than a
+       * Venmo balance: the commissioner walks away and everybody still gets
+       * their money back, from a pool nobody is running. */
+      if (!arg) throw new Error("usage: reclaim <pool>");
+      const pool = new PublicKey(arg);
+      const p = P.decodePool((await connection.getAccountInfo(pool))!.data);
+
+      const wait = p.refundDeadlineTs - now();
+      if (wait > 0) {
+        throw new Error(
+          `The refund deadline is ${inWords(wait)} away, and reclaim_dues ` +
+            `refuses until then. That refusal is the feature.`,
+        );
+      }
+      if (p.status === P.STATUS_SETTLED) {
+        throw new Error(
+          "This pool settled, so the money went to a winner. reclaim_dues is " +
+            "for pools that never finished; a settled one pays through claim_pot.",
+        );
+      }
+
+      const vaultBefore = BigInt(
+        (await connection.getTokenAccountBalance(p.vault)).value.amount,
+      );
+      console.log(`vault      ${fmtUsd(vaultBefore)} · ${p.paidMembers} paid`);
+      console.log(
+        `each gets  ${fmtUsd(P.estimatedRefund(p, vaultBefore))}` +
+          `${p.refundPerMember === BigInt(0) ? "  (estimated — nobody has reclaimed yet)" : "  (fixed by the first caller)"}\n`,
+      );
+
+      let claimed = 0;
+      for (let i = 0; i < 8; i++) {
+        const bot = botFor(pool.toBase58(), i);
+        const info = await connection.getAccountInfo(
+          P.memberPda(pool, bot.publicKey),
+        );
+        if (!info) continue;
+        const m = P.decodeMember(info.data);
+        if (!m.paid || m.claimed) continue;
+
+        const plan = P.buildReclaimDues({
+          pool,
+          wallet: bot.publicKey,
+          vault: p.vault,
+          usdcMint: p.usdcMint,
+        });
+        const held = async () =>
+          BigInt(
+            (await connection.getTokenAccountBalance(plan.memberAta).catch(
+              () => ({ value: { amount: "0" } }),
+            )).value.amount,
+          );
+        const was = await held();
+        await send(
+          [
+            // A sponsored member may never have held USDC at all.
+            P.createAtaIdempotentIx(bot.publicKey, bot.publicKey, p.usdcMint),
+            plan.instruction,
+          ],
+          [bot],
+        );
+        console.log(
+          `  Bot ${i + 1}  ${fmtUsd(was)} -> ${fmtUsd(await held())}`,
+        );
+        claimed++;
+      }
+
+      const after = P.decodePool((await connection.getAccountInfo(pool))!.data);
+      const vaultAfter = BigInt(
+        (await connection.getTokenAccountBalance(p.vault)).value.amount,
+      );
+      console.log(
+        `\n${claimed} refunded · vault ${fmtUsd(vaultBefore)} -> ${fmtUsd(vaultAfter)}`,
+      );
+      console.log(
+        `pool is now ${after.status === P.STATUS_ABANDONED ? "ABANDONED, which is what an unfinished pool becomes" : `status ${after.status}`}`,
+      );
+      if (vaultBefore - vaultAfter !== BigInt(claimed) * after.refundPerMember) {
+        console.log(
+          `\nMISMATCH: the vault moved ${fmtUsd(vaultBefore - vaultAfter)} but ` +
+            `${claimed} refunds at ${fmtUsd(after.refundPerMember)} is ` +
+            `${fmtUsd(BigInt(claimed) * after.refundPerMember)}.`,
+        );
+      }
+      break;
+    }
+
     case "status": {
       if (!arg) throw new Error("usage: status <pool>");
       const pool = new PublicKey(arg);
@@ -546,7 +643,13 @@ async function main() {
           "  npx tsx scripts/seed-pool.ts create [dues] [disputeMins] [startWeek]",
           "  npx tsx scripts/seed-pool.ts join <pool> [members]",
           "  npx tsx scripts/seed-pool.ts veto <pool> [votes]",
+          "  npx tsx scripts/seed-pool.ts reclaim <pool>",
           "  npx tsx scripts/seed-pool.ts status <pool>",
+          "",
+          "the deadman refund, start to finish:",
+          "  create 1 1 18   a pool starting at week 18, refund deadline minutes away",
+          "  join <pool> 3   three members pay in",
+          "  reclaim <pool>  once the deadline passes, everybody takes their share back",
         ].join("\n"),
       );
   }
