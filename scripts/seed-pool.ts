@@ -460,6 +460,122 @@ async function main() {
       break;
     }
 
+    case "league": {
+      /* A league is the other half of this program and it plays nothing.
+       *
+       * Members pay dues until a deadline, `lock_dues` closes the door, the
+       * commissioner declares who won what, members get a window to throw that
+       * out, and the assignees take their slots. No picks, no weeks, no
+       * eliminations — the same vault and the same veto, a different way of
+       * deciding who it belongs to.
+       *
+       * The whole cycle is the dispute window plus the wait for the dues
+       * deadline, so about seventy minutes at production timing rather than
+       * the four hours a pick week needs. */
+      const dues = Number(arg ?? 1);
+      const disputeWindowSecs = extra
+        ? Math.round(Number(extra) * 60)
+        : MIN_DISPUTE_WINDOW_SECS;
+      const leadSecs = Number(extra2 ?? 10) * 60;
+
+      const duesDeadlineTs = now() + leadSecs;
+      // Only has to be later than the dues deadline. Far out, because reaching
+      // it is the deadman case and this is the happy path.
+      const refundDeadlineTs = duesDeadlineTs + 30 * 24 * 60 * 60;
+
+      const slots = [
+        { label: "1st", bps: 6000 },
+        { label: "2nd", bps: 3000 },
+        { label: "Last place", bps: 1000 },
+      ];
+
+      const plan = P.buildCreatePool({
+        commissioner: payer.publicKey,
+        nonce: P.randomNonce(),
+        name: process.env.POOL_NAME ?? "Commish Demo - League",
+        poolType: P.POOL_LEAGUE,
+        buyIn: BigInt(Math.round(dues * 1e6)),
+        maxMembers: 12,
+        startWeek: 1,
+        // A league has no schedule. The program never reads these.
+        lockTs: Array.from({ length: 18 }, () => 0),
+        refundDeadlineTs,
+        disputeWindowSecs,
+        prizeSlots: slots,
+        duesDeadlineTs,
+      });
+      await send([plan.instruction], [payer]);
+
+      console.log(`pool          ${plan.pool.toBase58()}`);
+      console.log(`buy-in        ${fmtUsd(BigInt(Math.round(dues * 1e6)))}`);
+      console.log(`dues close    ${inWords(duesDeadlineTs - now())}`);
+      console.log(`dispute       ${disputeWindowSecs}s once the sheet is posted`);
+      console.log(`prizes`);
+      for (const s of slots) {
+        console.log(`  ${s.label.padEnd(12)} ${(s.bps / 100).toFixed(0)}%`);
+      }
+      console.log(
+        `\n  npx tsx scripts/seed-pool.ts join ${plan.pool.toBase58()} 3`,
+      );
+      break;
+    }
+
+    case "sheet": {
+      /* The commissioner declares who gets what. Slot 0 to Bot 1, slot 1 to
+       * Bot 2, and so on — enough to exercise the instruction, and the real
+       * decision belongs in a browser where a person can see who they are
+       * paying. */
+      if (!arg) throw new Error("usage: sheet <pool>");
+      const pool = new PublicKey(arg);
+      const p = P.decodePool((await connection.getAccountInfo(pool))!.data);
+      if (!P.isLeague(p)) throw new Error("Not a league.");
+      if (p.status !== P.STATUS_LOCKED) {
+        throw new Error(
+          `post_payout_sheet needs a locked league; this one is status ` +
+            `${p.status}. Run \`run ${arg}\` first to lock the dues.`,
+        );
+      }
+
+      const vault = BigInt(
+        (await connection.getTokenAccountBalance(p.vault)).value.amount,
+      );
+      const assignments: { slotIdx: number; member: PublicKey }[] = [];
+      for (let i = 0; i < p.slotCount; i++) {
+        const bot = botFor(pool.toBase58(), i);
+        const info = await connection.getAccountInfo(
+          P.memberPda(pool, bot.publicKey),
+        );
+        if (!info) continue;
+        assignments.push({ slotIdx: i, member: bot.publicKey });
+        const slot = p.prizeSlots[i];
+        console.log(
+          `  ${slot.label.padEnd(12)} ${(slot.bps / 100).toFixed(0).padStart(3)}%  ` +
+            `${fmtUsd(P.slotAmount(slot.bps, vault))}  ->  Bot ${i + 1}`,
+        );
+      }
+      if (assignments.length === 0) {
+        throw new Error("No bots are members of this pool.");
+      }
+
+      await send(
+        [
+          P.buildPostPayoutSheet({
+            pool,
+            commissioner: payer.publicKey,
+            assignments,
+          }),
+        ],
+        [payer],
+      );
+
+      const after = P.decodePool((await connection.getAccountInfo(pool))!.data);
+      console.log(
+        `\nsheet posted · window closes ${inWords(after.pendingPostedTs + after.disputeWindowSecs - now())}` +
+          ` · ${P.vetoThreshold(after.paidMembers)} of ${after.paidMembers} votes would strike it down`,
+      );
+      break;
+    }
+
     case "join": {
       if (!arg) throw new Error("usage: join <pool> [members]");
       const pool = new PublicKey(arg);
@@ -467,6 +583,10 @@ async function main() {
       const info = await connection.getAccountInfo(pool);
       if (!info) throw new Error(`No pool at ${pool.toBase58()}`);
       const decoded = P.decodePool(info.data);
+
+      /* A league has no picks. Members pay dues and wait for a payout sheet, so
+       * joining is the whole of their participation. */
+      const league = P.isLeague(decoded);
 
       const week = decoded.currentWeek;
       /* Teams on a bye are not pickable, so the bots do not pick them. The
@@ -478,8 +598,15 @@ async function main() {
 
       console.log(`pool    ${decoded.name}`);
       console.log(`buy-in  ${fmtUsd(decoded.buyIn)}`);
-      console.log(`week    ${week}${byes.length ? ` · on a bye: ${byes.join(" ")}` : ""}`);
-      console.log(`lock    ${inWords(decoded.lockTs[week - 1] - now())}\n`);
+      /* A league's lock_ts is eighteen zeros — it has no schedule — so reading
+       * it would print "lock now" and read as a closed door. What closes a
+       * league is the dues deadline. */
+      if (league) {
+        console.log(`dues close  ${inWords(decoded.duesDeadlineTs - now())}\n`);
+      } else {
+        console.log(`week    ${week}${byes.length ? ` · on a bye: ${byes.join(" ")}` : ""}`);
+        console.log(`lock    ${inWords(decoded.lockTs[week - 1] - now())}\n`);
+      }
 
       /* Locally a bot is handed the buy-in plus a hundred dollars of slack,
        * because the dollars are counterfeit and slack costs nothing. On devnet
@@ -505,6 +632,12 @@ async function main() {
           ],
           [bot],
         );
+        if (league) {
+          console.log(
+            `  Bot ${i + 1}  ${bot.publicKey.toBase58().slice(0, 8)}…  paid in`,
+          );
+          continue;
+        }
         await send(
           [P.buildSubmitPick({ pool, wallet: bot.publicKey, team: team.i })],
           [bot],
@@ -514,8 +647,10 @@ async function main() {
         );
       }
       console.log(
-        `\nMark some of those teams winners and leave the rest, and you will ` +
-          `see both outcomes.`,
+        league
+          ? `\nOnce the dues deadline passes: run <pool> to lock, then sheet <pool>.`
+          : `\nMark some of those teams winners and leave the rest, and you will ` +
+              `see both outcomes.`,
       );
       break;
     }
@@ -627,6 +762,48 @@ async function main() {
       const pool = new PublicKey(arg);
       let p = P.decodePool((await connection.getAccountInfo(pool))!.data);
 
+      /* A league's two cranks. Both are permissionless and neither needs the
+       * commissioner, which is the property that stops a league's money being
+       * frozen by whoever stopped answering their messages. */
+      if (P.isLeague(p)) {
+        if (p.status === P.STATUS_OPEN) {
+          if (now() < p.duesDeadlineTs) {
+            throw new Error(
+              `Dues close in ${inWords(p.duesDeadlineTs - now())}. ` +
+                `lock_dues refuses until then, so people can still pay in.`,
+            );
+          }
+          console.log(`locking dues · ${p.paidMembers} paid, ${fmtUsd(p.totalDues)} in`);
+          await send([P.buildLockDues(pool)], [payer]);
+          console.log(`locked. Post the sheet:  sheet ${arg}`);
+          break;
+        }
+        if (p.status === P.STATUS_SHEET_POSTED) {
+          const closes = p.pendingPostedTs + p.disputeWindowSecs;
+          if (now() < closes) {
+            throw new Error(
+              `The dispute window closes in ${inWords(closes - now())}. ` +
+                `finalize_sheet refuses until members have had their say.`,
+            );
+          }
+          await send([P.buildFinalizeSheet(pool)], [payer]);
+          const after = P.decodePool(
+            (await connection.getAccountInfo(pool))!.data,
+          );
+          const ready = after.prizeSlots.filter(
+            (s) => s.state === P.SLOT_FINALIZED,
+          ).length;
+          console.log(`sheet finalized · ${ready} slot(s) claimable`);
+          console.log(`claim them:  claim ${arg}`);
+          break;
+        }
+        throw new Error(
+          `Nothing for a league to run at status ${p.status}. ` +
+            `Open means dues are still coming in; SheetFinalized means it is ` +
+            `time to claim.`,
+        );
+      }
+
       /* Checked before anything is signed. advance_week names this account
        * whether or not a fee is charged, and Anchor deserializes it before any
        * of the program's own checks run — so a missing one fails with an error
@@ -700,6 +877,77 @@ async function main() {
       if (!arg) throw new Error("usage: claim <pool>");
       const pool = new PublicKey(arg);
       const p = P.decodePool((await connection.getAccountInfo(pool))!.data);
+
+      /* A league pays by slot, not by survival. Each assignee takes the one
+       * that names them, and `claim_prize` needs no Member account because the
+       * slot itself records who it belongs to. */
+      if (P.isLeague(p)) {
+        if (p.status !== P.STATUS_SHEET_FINALIZED) {
+          throw new Error(
+            `claim_prize needs a finalized sheet; this league is status ` +
+              `${p.status}. Run \`run ${arg}\` once the dispute window closes.`,
+          );
+        }
+        const before = BigInt(
+          (await connection.getTokenAccountBalance(p.vault)).value.amount,
+        );
+        console.log(`vault ${fmtUsd(before)}\n`);
+
+        let paid = 0;
+        for (const slot of p.prizeSlots) {
+          if (slot.state !== P.SLOT_FINALIZED) continue;
+          const bot = [...Array(8).keys()]
+            .map((i) => botFor(pool.toBase58(), i))
+            .find((b) => b.publicKey.equals(slot.assignee));
+          if (!bot) {
+            console.log(
+              `  ${slot.label.padEnd(12)} assigned to ${slot.assignee.toBase58().slice(0, 8)}… — not a bot, skipping`,
+            );
+            continue;
+          }
+          const plan = P.buildClaimPrize({
+            pool,
+            wallet: bot.publicKey,
+            vault: p.vault,
+            usdcMint: p.usdcMint,
+            slotIdx: slot.index,
+          });
+          const held = async () =>
+            BigInt(
+              (
+                await connection
+                  .getTokenAccountBalance(plan.walletAta)
+                  .catch(() => ({ value: { amount: "0" } }))
+              ).value.amount,
+            );
+          const was = await held();
+          await send(
+            [
+              P.createAtaIdempotentIx(bot.publicKey, bot.publicKey, p.usdcMint),
+              plan.instruction,
+            ],
+            [bot],
+          );
+          console.log(
+            `  ${slot.label.padEnd(12)} ${(slot.bps / 100).toFixed(0).padStart(3)}%  ` +
+              `${fmtUsd(was)} -> ${fmtUsd(await held())}`,
+          );
+          paid++;
+        }
+
+        const after = BigInt(
+          (await connection.getTokenAccountBalance(p.vault)).value.amount,
+        );
+        console.log(`\n${paid} claimed · vault ${fmtUsd(before)} -> ${fmtUsd(after)}`);
+        if (after !== BigInt(0) && paid === p.slotCount) {
+          console.log(
+            `\nNOTE: every slot claimed and ${fmtUsd(after)} is still in the vault. ` +
+              `Slots sum to 100%, so this should be zero or dust from integer division.`,
+          );
+        }
+        break;
+      }
+
       if (p.status !== P.STATUS_SETTLED) {
         throw new Error(
           `claim_pot needs a settled pool; this one is status ${p.status}. ` +
@@ -927,6 +1175,8 @@ async function main() {
           "usage:",
           "  npx tsx scripts/seed-pool.ts fund <wallet> [dollars]",
           "  npx tsx scripts/seed-pool.ts create [dues] [disputeMins] [startWeek] [compressed]",
+          "  npx tsx scripts/seed-pool.ts league [dues] [disputeMins] [leadMins]",
+          "  npx tsx scripts/seed-pool.ts sheet <pool>",
           "  npx tsx scripts/seed-pool.ts join <pool> [members]",
           "  npx tsx scripts/seed-pool.ts post <pool> ARI,BAL",
           "  npx tsx scripts/seed-pool.ts veto <pool> [votes]",
