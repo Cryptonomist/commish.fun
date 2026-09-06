@@ -1,0 +1,235 @@
+"use client";
+
+/* Survivor, playable in fifteen seconds, before anyone connects anything.
+ *
+ * THE HARDEST PART OF THIS PITCH IS NOT THE ESCROW. It is that a stranger has
+ * to already understand the game for "last one standing takes the pot" to mean
+ * anything, and no paragraph teaches a game as fast as one round of it. So the
+ * hero is not a picture of the product. It is the product's core loop with the
+ * money and the chain taken out: pick a team, watch the week resolve, find out
+ * whether you are still alive.
+ *
+ * IT KEEPS YOUR SPENT TEAMS BETWEEN ROUNDS, which is the whole strategy of
+ * Survivor and the part a paragraph always fails to convey. Winning week one
+ * with Kansas City is easy. It is week nine, with Kansas City gone, that ends
+ * pools — and three rounds of this makes that obvious without saying it.
+ *
+ * The weeks below are invented. They are labelled as a demonstration on screen
+ * and never dressed up as real scores: a product whose entire argument is
+ * "results you can check against a scoreboard" cannot open by showing you
+ * results you cannot.
+ */
+
+import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
+
+import { TEAMS, type Team } from "@/lib/nfl";
+import { ClubBar } from "@/components/TeamButton";
+
+/* Three invented weeks. Every club wins in at least one and loses in at least
+ * one, so a replay is never the round you just played, and no pick is safe
+ * across all three. */
+const WEEKS: readonly (readonly string[])[] = [
+  ["BAL", "BUF", "CIN", "DAL", "DET", "GB", "HOU", "KC", "LAC", "MIA", "MIN", "PHI", "SEA", "SF", "TB", "WAS"],
+  ["ARI", "BUF", "CHI", "CIN", "DEN", "DET", "GB", "IND", "KC", "LAR", "MIN", "NO", "NYJ", "PHI", "PIT", "SF"],
+  ["ATL", "BAL", "CAR", "CLE", "DAL", "HOU", "JAX", "LAC", "LV", "MIA", "NE", "NYG", "SEA", "TB", "TEN", "WAS"],
+];
+
+type Phase = "pick" | "locking" | "result";
+
+const reducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+export function TryAWeek() {
+  const [week, setWeek] = useState(0);
+  const [phase, setPhase] = useState<Phase>("pick");
+  const [picked, setPicked] = useState<number | null>(null);
+  const [spent, setSpent] = useState<number[]>([]);
+
+  const winners = useMemo(
+    () => new Set<string>(WEEKS[week % WEEKS.length]),
+    [week],
+  );
+
+  const survived = picked !== null && winners.has(TEAMS[picked].abbr);
+  const finished = phase === "result";
+
+  const choose = useCallback((i: number) => {
+    setPicked(i);
+    setPhase("locking");
+    // The beat between the pick and the result is the whole tension of the
+    // week compressed into a second. It is the one thing here worth animating,
+    // and it is skipped outright for anyone who has asked for less motion.
+    window.setTimeout(() => setPhase("result"), reducedMotion() ? 0 : 900);
+  }, []);
+
+  const nextWeek = useCallback(() => {
+    setSpent((s) => (picked === null ? s : [...s, picked]));
+    setPicked(null);
+    setWeek((w) => w + 1);
+    setPhase("pick");
+  }, [picked]);
+
+  const restart = useCallback(() => {
+    setSpent([]);
+    setPicked(null);
+    setWeek(0);
+    setPhase("pick");
+  }, []);
+
+  const cellState = (t: Team) => {
+    if (picked === t.i) return "yours" as const;
+    if (spent.includes(t.i)) return "spent" as const;
+    if (finished) return winners.has(t.abbr) ? ("won" as const) : ("lost" as const);
+    return "open" as const;
+  };
+
+  const weekNo = (week % WEEKS.length) + 1;
+  const survivedThree = finished && survived && spent.length >= 2;
+
+  return (
+    <div className="rounded-2xl border border-night-3 bg-night-2/50 p-4 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+          TRY A WEEK
+          <span className="ml-2 font-normal tracking-normal opacity-70">
+            demonstration, invented results
+          </span>
+        </p>
+        {spent.length > 0 ? (
+          <p className="text-xs text-cream-dim">
+            <span className="font-bold text-cream">{spent.length}</span> team
+            {spent.length === 1 ? "" : "s"} spent · {32 - spent.length} left
+          </p>
+        ) : null}
+      </div>
+
+      <p
+        className="display mt-2 text-2xl uppercase sm:text-3xl"
+        aria-live="polite"
+      >
+        {phase === "pick" ? (
+          <>Week {weekNo}. Pick one team to win.</>
+        ) : phase === "locking" ? (
+          <>Picks locked.</>
+        ) : survived ? (
+          <>
+            <span className="text-alive">{TEAMS[picked!].city} held.</span> You
+            survive.
+          </>
+        ) : (
+          <>
+            <span className="text-out">{TEAMS[picked!].city} lost.</span> You are
+            out.
+          </>
+        )}
+      </p>
+
+      <ul className="mt-5 grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+        {TEAMS.map((t) => {
+          const s = cellState(t);
+          return (
+            <li key={t.abbr}>
+              <button
+                type="button"
+                onClick={phase === "pick" ? () => choose(t.i) : undefined}
+                disabled={phase !== "pick" || s === "spent"}
+                aria-label={`${t.city} ${t.name}${
+                  s === "spent" ? ", already used" : ""
+                }`}
+                className={[
+                  "relative flex h-14 w-full flex-col items-center justify-center overflow-hidden",
+                  "rounded-lg border text-center transition-colors",
+                  s === "yours"
+                    ? finished
+                      ? survived
+                        ? "border-alive bg-alive text-night"
+                        : "border-out bg-out text-night"
+                      : "border-action bg-action text-night"
+                    : s === "spent"
+                      ? "border-night-3 bg-night-2/40 text-cream-dim/35"
+                      : s === "won"
+                        ? "border-alive/45 bg-alive/10 text-cream"
+                        : s === "lost"
+                          ? "border-night-3 bg-night-2/40 text-cream-dim/45"
+                          : "border-night-3 bg-night-2 text-cream hover:border-action",
+                  phase === "pick" && s !== "spent"
+                    ? "cursor-pointer"
+                    : "cursor-default",
+                ].join(" ")}
+              >
+                {s !== "yours" ? (
+                  <ClubBar team={t} dim={s === "spent" || s === "lost"} />
+                ) : null}
+                <span
+                  className={`text-xs font-bold tracking-wide ${
+                    s === "spent" ? "line-through" : ""
+                  }`}
+                >
+                  {t.abbr}
+                </span>
+                <span className="text-[9px] uppercase tracking-wide opacity-60">
+                  {t.name}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+        {phase === "pick" ? (
+          <p className="text-sm text-cream-dim">
+            One team a week. Win and you advance, lose or tie and you are out,
+            and each team is spent for the season whether it carried you or not.
+          </p>
+        ) : phase === "locking" ? (
+          <p className="text-sm text-cream-dim">Waiting on the scoreboard…</p>
+        ) : survivedThree ? (
+          <>
+            <Link
+              href="/pools/new"
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-action px-6 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
+            >
+              Start a real pool
+            </Link>
+            <p className="text-sm text-cream-dim">
+              Three weeks down. A season is eighteen, and by week nine the teams
+              you have left are the whole game.
+            </p>
+          </>
+        ) : survived ? (
+          <>
+            <button
+              type="button"
+              onClick={nextWeek}
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-action px-6 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
+            >
+              Play week {weekNo + 1}
+            </button>
+            <p className="text-sm text-cream-dim">
+              {TEAMS[picked!].name} are spent now. You cannot pick them again
+              this season.
+            </p>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={restart}
+              className="inline-flex h-12 items-center justify-center rounded-xl border border-night-3 px-6 text-sm font-bold tracking-wide text-cream transition-colors hover:border-action"
+            >
+              Try again
+            </button>
+            <p className="text-sm text-cream-dim">
+              That is the whole game. One wrong week and the season is over,
+              which is why nobody wants the pot sitting in a friend&rsquo;s
+              account while it plays out.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

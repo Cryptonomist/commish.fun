@@ -26,6 +26,7 @@ import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { TEAMS } from "@/lib/nfl";
+import { ClubBar } from "@/components/TeamButton";
 import { countdown } from "@/lib/format";
 import { MIN_POST_DELAY_SECS } from "@/lib/schedule";
 import {
@@ -209,9 +210,14 @@ export function ResultsForm({
                     : mark === "push"
                       ? "border-cream-dim bg-cream-dim/15 text-cream"
                       : "border-night-3 bg-night-2 text-cream hover:border-action",
+                  "relative overflow-hidden",
                   !open || busy ? "cursor-not-allowed opacity-70" : "",
                 ].join(" ")}
               >
+                {/* The same club bar the pick grid uses. A commissioner scans
+                    these thirty-two under exactly the same pressure. Dropped
+                    once marked, when the fill is carrying the meaning. */}
+                {mark === "none" ? <ClubBar team={t} /> : null}
                 <span className="text-sm font-bold tracking-wide">{t.abbr}</span>
                 <span className="text-[10px] uppercase tracking-wide opacity-70">
                   {mark === "won" ? "WON" : mark === "push" ? "PUSH" : t.name}

@@ -23,6 +23,7 @@ import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { TEAMS } from "@/lib/nfl";
+import { TeamButton } from "@/components/TeamButton";
 import { countdown } from "@/lib/format";
 import {
   buildSubmitPick,
@@ -195,36 +196,18 @@ export function PickGrid({
         {TEAMS.map((t) => {
           const spent = hasUsed(member.usedMask, t.i);
           const picked = thisWeeksPick === t.i;
-          const pending =
-            (status.at === "signing" || status.at === "confirming") &&
-            status.team === t.i;
-
           return (
             <li key={t.abbr}>
-              <button
-                type="button"
-                onClick={() => pick(t.i)}
-                disabled={spent || locked || busy}
-                aria-pressed={picked}
-                className={[
-                  "flex h-16 w-full flex-col items-center justify-center rounded-xl border text-center transition-colors",
-                  picked
-                    ? "border-action bg-action text-night"
-                    : spent
-                      ? "border-night-3 bg-night-2/40 text-cream-dim/40"
-                      : "border-night-3 bg-night-2 text-cream hover:border-action",
-                  spent || locked || busy ? "cursor-not-allowed" : "",
-                ].join(" ")}
-              >
-                <span
-                  className={`text-sm font-bold tracking-wide ${spent ? "line-through" : ""}`}
-                >
-                  {t.abbr}
-                </span>
-                <span className="text-[10px] uppercase tracking-wide opacity-70">
-                  {pending ? "sending…" : t.name}
-                </span>
-              </button>
+              <TeamButton
+                team={t}
+                state={picked ? "picked" : spent ? "spent" : "available"}
+                disabled={locked || busy}
+                pending={
+                  (status.at === "signing" || status.at === "confirming") &&
+                  status.team === t.i
+                }
+                onClick={pick}
+              />
             </li>
           );
         })}
