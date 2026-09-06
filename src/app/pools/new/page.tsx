@@ -32,6 +32,10 @@ import {
   randomNonce,
   readableProgramError,
   POOL_SURVIVOR,
+  POOL_LEAGUE,
+  MAX_PRIZE_SLOTS,
+  MAX_SLOT_LABEL,
+  BPS_DENOM,
   MAX_NAME,
   MIN_MEMBERS,
   MAX_MEMBERS,
@@ -76,6 +80,37 @@ export default function NewPool() {
     String(DEFAULT_DISPUTE_WINDOW_SECS / WINDOW_UNIT_SECS),
   );
   const [week, setWeek] = useState("1");
+
+  /* TWO PRODUCTS BEHIND ONE FORM.
+   *
+   * A pick pool runs a season of picks. A league runs no season at all: it
+   * collects dues until a deadline and pays a sheet the commissioner posts.
+   * They share the escrow, the veto and the deadman refund, and share almost
+   * nothing else, so half these fields are meaningless in the other mode and
+   * are hidden rather than disabled. */
+  const [mode, setMode] = useState<"survivor" | "league">("survivor");
+  const isLeagueMode = mode === "league";
+
+  /* Joining closes here and `lock_dues` opens. A week is the usual gap between
+   * agreeing a league and everybody having actually paid. */
+  const [duesDeadline, setDuesDeadline] = useState(() => {
+    const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    d.setMinutes(0, 0, 0);
+    // datetime-local wants local time with no zone, which is what toISOString
+    // is not, hence the offset.
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
+    return local.toISOString().slice(0, 16);
+  });
+
+  /* The split, as percentages a person can read. The program stores basis
+   * points and requires them to add to exactly 10000, so the conversion and
+   * that check both happen below. Sixty/thirty/ten is the ordinary league
+   * payout and a better starting point than an empty table. */
+  const [slots, setSlots] = useState<{ label: string; pct: string }[]>([
+    { label: "1st", pct: "60" },
+    { label: "2nd", pct: "30" },
+    { label: "3rd", pct: "10" },
+  ]);
   const [status, setStatus] = useState<Status>({ at: "idle" });
 
   /* The program's Config is created once per cluster by `init_config`. Until it
@@ -149,6 +184,38 @@ export default function NewPool() {
   const members = Number(maxMembers);
   const nameBytes = new TextEncoder().encode(name).length;
 
+  /* Percentages to basis points, rounded once and summed as integers. Summing
+   * the percentages as floats and multiplying at the end lets 33.33 three
+   * times look like 100 on screen and arrive as 9999 on chain, where the
+   * program refuses it. Rounding each slot first means what is added up here
+   * is exactly what gets sent. */
+  const slotBps = useMemo(
+    () => slots.map((s) => Math.round((Number(s.pct) || 0) * 100)),
+    [slots],
+  );
+  const bpsTotal = slotBps.reduce((n, b) => n + b, 0);
+  const duesDeadlineTs = useMemo(
+    () => Math.floor(new Date(duesDeadline).getTime() / 1000),
+    [duesDeadline],
+  );
+  const badLabel = slots.find(
+    (s) =>
+      s.label.trim().length === 0 ||
+      new TextEncoder().encode(s.label).length > MAX_SLOT_LABEL,
+  );
+
+  const leagueError: string | null = !isLeagueMode
+    ? null
+    : !Number.isFinite(duesDeadlineTs)
+      ? "Pick a date for dues to close."
+      : duesDeadlineTs <= Math.floor(Date.now() / 1000)
+        ? "Dues have to close in the future."
+        : badLabel
+          ? `Prize names are 1 to ${MAX_SLOT_LABEL} characters.`
+          : bpsTotal !== BPS_DENOM
+            ? `The split adds up to ${(bpsTotal / 100).toFixed(2)}%. It has to be exactly 100%, or the difference would be stuck in the vault with nothing able to release it.`
+            : null;
+
   const formError: string | null =
     nameBytes === 0
       ? "Give the pool a name."
@@ -160,7 +227,9 @@ export default function NewPool() {
               members < MIN_MEMBERS ||
               members > MAX_MEMBERS
             ? `Between ${MIN_MEMBERS} and ${MAX_MEMBERS} members.`
-            : (problem?.message ?? null);
+            : isLeagueMode
+              ? leagueError
+              : (problem?.message ?? null);
 
   const busy = status.at === "sending" || status.at === "confirming";
   const canSubmit = connected && !formError && !busy && configReady !== false;
@@ -180,13 +249,30 @@ export default function NewPool() {
         commissioner: publicKey,
         nonce,
         name,
-        poolType: POOL_SURVIVOR,
+        poolType: isLeagueMode ? POOL_LEAGUE : POOL_SURVIVOR,
         buyIn: buyInUnits,
         maxMembers: members,
         startWeek,
-        lockTs: locks,
-        refundDeadlineTs: refundDeadlineFor(locks),
+        /* A league has no schedule and the program never reads these, but the
+         * instruction still takes eighteen of them. */
+        lockTs: isLeagueMode ? locks.map(() => 0) : locks,
+        /* The deadman. For a league it only has to be later than the dues
+         * deadline; a month is long enough that reaching it means the league
+         * really was abandoned, and short enough that the money is not stuck
+         * for a season. */
+        refundDeadlineTs: isLeagueMode
+          ? duesDeadlineTs + 30 * 24 * 60 * 60
+          : refundDeadlineFor(locks),
         disputeWindowSecs,
+        ...(isLeagueMode
+          ? {
+              duesDeadlineTs,
+              prizeSlots: slots.map((s, i) => ({
+                label: s.label.trim(),
+                bps: slotBps[i],
+              })),
+            }
+          : {}),
       });
 
       /* SIGN HERE, SEND OURSELVES.
@@ -264,6 +350,52 @@ export default function NewPool() {
           />
         ) : (
           <form className="mt-10 flex flex-col gap-6" onSubmit={onSubmit}>
+            {/* Chosen first, because it decides what the rest of the form even
+                means. A league has no weeks and a Survivor pool has no payout
+                sheet, so the fields that do not apply are gone rather than
+                greyed out. */}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                WHAT KIND
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    {
+                      key: "survivor" as const,
+                      title: "Survivor",
+                      blurb: "Pick a team each week. Wrong and you are out.",
+                    },
+                    {
+                      key: "league" as const,
+                      title: "League dues",
+                      blurb:
+                        "Your season runs elsewhere. Commish just holds the pot.",
+                    },
+                  ]
+                ).map((m) => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setMode(m.key)}
+                    aria-pressed={mode === m.key}
+                    className={`rounded-xl border p-3 text-left transition-colors ${
+                      mode === m.key
+                        ? "border-action bg-action/10"
+                        : "border-night-3 bg-night-2 hover:border-action/50"
+                    }`}
+                  >
+                    <span className="display block text-base uppercase text-cream">
+                      {m.title}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-snug text-cream-dim">
+                      {m.blurb}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <label className="flex flex-col gap-2">
               <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
                 POOL NAME
@@ -326,30 +458,142 @@ export default function NewPool() {
                 </span>
               </label>
 
-              <label className="flex flex-col gap-2">
-                <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
-                  START WEEK
-                </span>
-                <input
-                  value={week}
-                  onChange={(e) => setWeek(e.target.value.replace(/[^\d]/g, ""))}
-                  inputMode="numeric"
-                  className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-action"
-                />
-                <span className="text-xs text-cream-dim">
-                  A pool does not have to start in week 1. Anything from 1 to{" "}
-                  {WEEKS}, as long as that week has not kicked off yet.
-                </span>
-              </label>
+              {isLeagueMode ? (
+                <label className="flex flex-col gap-2">
+                  <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                    DUES CLOSE
+                  </span>
+                  <input
+                    type="datetime-local"
+                    value={duesDeadline}
+                    onChange={(e) => setDuesDeadline(e.target.value)}
+                    className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-action"
+                  />
+                  <span className="text-xs text-cream-dim">
+                    Nobody can join after this, and the payout cannot be posted
+                    until it passes.
+                  </span>
+                </label>
+              ) : (
+                <label className="flex flex-col gap-2">
+                  <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                    START WEEK
+                  </span>
+                  <input
+                    value={week}
+                    onChange={(e) => setWeek(e.target.value.replace(/[^\d]/g, ""))}
+                    inputMode="numeric"
+                    className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-action"
+                  />
+                  <span className="text-xs text-cream-dim">
+                    A pool does not have to start in week 1. Anything from 1 to{" "}
+                    {WEEKS}, as long as that week has not kicked off yet.
+                  </span>
+                </label>
+              )}
             </div>
+
+            {/* The split is fixed at creation and can never be edited, which is
+                the property that makes it worth agreeing before the season
+                rather than arguing about after it. */}
+            {isLeagueMode ? (
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                  HOW THE POT SPLITS
+                </span>
+
+                <ul className="flex flex-col gap-2">
+                  {slots.map((s, i) => (
+                    <li key={i} className="flex gap-2">
+                      <input
+                        value={s.label}
+                        onChange={(e) =>
+                          setSlots((all) =>
+                            all.map((x, j) =>
+                              j === i ? { ...x, label: e.target.value } : x,
+                            ),
+                          )
+                        }
+                        placeholder="1st"
+                        maxLength={MAX_SLOT_LABEL}
+                        className="min-w-0 grow rounded-xl border border-night-3 bg-night-2 px-4 py-3 text-cream outline-none placeholder:text-cream-dim/50 focus:border-action"
+                      />
+                      <div className="flex w-28 shrink-0 items-center rounded-xl border border-night-3 bg-night-2 pr-3 focus-within:border-action">
+                        <input
+                          value={s.pct}
+                          onChange={(e) =>
+                            setSlots((all) =>
+                              all.map((x, j) =>
+                                j === i
+                                  ? {
+                                      ...x,
+                                      pct: e.target.value.replace(/[^\d.]/g, ""),
+                                    }
+                                  : x,
+                              ),
+                            )
+                          }
+                          inputMode="decimal"
+                          className="w-full min-w-0 bg-transparent px-4 py-3 text-right font-bold text-gold outline-none"
+                        />
+                        <span className="text-sm text-cream-dim">%</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSlots((all) => all.filter((_, j) => j !== i))
+                        }
+                        disabled={slots.length <= 1}
+                        aria-label={`Remove ${s.label || "prize"}`}
+                        className="shrink-0 rounded-xl border border-night-3 px-3 text-cream-dim transition-colors hover:border-out hover:text-out disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSlots((all) => [...all, { label: "", pct: "" }])
+                    }
+                    disabled={slots.length >= MAX_PRIZE_SLOTS}
+                    className="rounded-xl border border-night-3 px-4 py-2 text-sm font-bold text-cream transition-colors hover:border-action disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Add a prize
+                  </button>
+                  <span
+                    className={`text-sm font-bold tabular-nums ${
+                      bpsTotal === BPS_DENOM ? "text-alive" : "text-out"
+                    }`}
+                  >
+                    {(bpsTotal / 100).toFixed(2)}% of 100%
+                  </span>
+                </div>
+
+                <span className="text-xs text-cream-dim">
+                  Up to {MAX_PRIZE_SLOTS} prizes, and they have to add to
+                  exactly 100%. Anything less would leave the difference in the
+                  vault with no instruction able to release it, so the program
+                  refuses the pool rather than stranding the dues.
+                </span>
+              </div>
+            ) : null}
 
             <div className="rounded-xl border border-night-3 bg-night-2/60 p-4 text-sm">
               <span className="flex items-center gap-2 font-bold text-cream">
                 <Laces size={12} className="text-action" />
-                Week {startWeek} picks lock at its first kickoff
+                {isLeagueMode
+                  ? "Joining closes when dues close"
+                  : `Week ${startWeek} picks lock at its first kickoff`}
               </span>
               <p className="mt-1.5 text-cream-dim">
-                {startLock.toLocaleString("en-US", {
+                {(isLeagueMode
+                  ? new Date(duesDeadlineTs * 1000)
+                  : startLock
+                ).toLocaleString("en-US", {
                   weekday: "long",
                   month: "long",
                   day: "numeric",
@@ -358,7 +602,13 @@ export default function NewPool() {
                   timeZoneName: "short",
                 })}
               </p>
-              {startByes.length > 0 ? (
+              {isLeagueMode ? (
+                <p className="mt-1.5 text-xs text-cream-dim">
+                  If nobody ever posts a payout, every member can take their
+                  dues back a month after that. Nobody has to agree to it and
+                  nobody can stop it.
+                </p>
+              ) : startByes.length > 0 ? (
                 <p className="mt-1.5 text-xs text-cream-dim">
                   {startByes.join(" ")} are on a bye that week and will not be
                   pickable.
