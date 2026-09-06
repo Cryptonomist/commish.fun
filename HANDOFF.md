@@ -171,10 +171,26 @@ was against a devnet build or nothing. It now compiles and all nineteen tests
 pass against it, including the timing boundaries that only mean anything
 there. That is the binary that would ship.
 
-What has still not happened: a run on devnet against production timing. The
-devnet program at `Adb5CFrY…` is the production binary, which pins *mainnet*
-USDC — a mint that does not exist on devnet — so nothing can be created
-against it. A devnet run means `anchor build -- --features devnet`: identical
-code, one pubkey different, real three-hour floors. Budget four hours for one
-week's cycle, and note that `scripts/seed-pool.ts create` exists precisely so
-nobody has to sit through them.
+A devnet run at production timing has now happened, on 6 September 2026. Pool
+`BwTdVbj51ujSMR6HwAYATbtHMs1y3Bmysb1jG1j6V3b6`, three bots, $1 dues. Locked
+04:11Z; `post_results` refused every attempt until 07:11Z and went through at
+07:14Z; `finalize_week` refused until 08:15Z. Four hours and fourteen minutes
+end to end, every boundary enforced by the chain rather than by the script.
+The vault went $3.00 to $0.00 and the single survivor was paid exactly $3.00.
+
+That is the number that had never been checked. The three-hour posting floor
+and the one-hour dispute window had only ever run against LiteSVM's warped
+clock or a fastclock validator that shortened them to sixty and thirty
+seconds. They now hold against real wall time on a real cluster.
+
+Note what devnet costs and what it does not test. Its USDC is Circle's, so
+`--features devnet` swaps one pinned mint; that pubkey is the only difference
+from the shipping binary. Its faucet is rate-limited to the point of being
+unusable some days — budget for that, and see `assertPayerCanAfford`, which
+fails before the first transaction rather than three bots into a half-joined
+pool. And `veto_results` was deliberately skipped: it never reads the clock,
+so devnet tells you nothing localnet did not, and squeezing a veto and re-post
+into the cycle leaves about four minutes before the next week locks.
+
+What has still not happened: an audit, a mainnet deployment, and a multisig
+upgrade authority.
