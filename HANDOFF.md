@@ -6,20 +6,30 @@ that are load-bearing, and the things that have already cost hours.
 
 ## What actually works
 
-Three instructions are driven end to end from a browser against a local
-validator: `create_pool`, `join_pool`, `submit_pick`. Money moves, accounts are
-created, a member holds a pick.
+**The whole Survivor lifecycle has been driven against a live chain.**
+`create_pool`, `join_pool`, `submit_pick`, `post_results`, `veto_results`,
+`finalize_week`, `settle_member`, `advance_week`, `claim_pot` and
+`reclaim_dues` have each moved real accounts and real balances, most of them
+from the browser, and the money reconciled every time. A posting was struck
+down by a majority and re-posted; a minority vote was cast and correctly did
+*not* strike one down; a pool was abandoned and refunded its members to the
+cent. That is the escrow's full promise, exercised rather than assumed.
 
-Everything else in the program is **implemented and tested, with no UI**:
-`post_results`, `veto_results`, `finalize_week`, `settle_member`,
-`advance_week`, `claim_pot`, `reclaim_dues`, and the four league instructions.
-Nineteen LiteSVM tests cover them in `tests/workspace.ts` and `tests/veto.ts`.
-Do not rewrite the program to add a screen — the program side is ahead of the
-frontend, not behind it.
+Read one caveat into all of it: **it was a `fastclock` validator**, so the
+floors being enforced were sixty seconds and thirty, not three hours and an
+hour. The behaviour is proven; the timing is not. Only a run on a build
+without `fastclock` settles that, and `tests/00-build-guard.ts` is what stops
+the suite quietly telling you otherwise.
 
-Not built at all, and refused at runtime rather than half-implemented:
+Still not built at all, and refused at runtime rather than half-implemented:
 `submit_pick_mask`, `draft_team`, `claim_weekly`, `close_pool`, and Merkle
-verification against `results_root`.
+verification against `results_root`. The four league instructions are
+implemented and tested but have no UI and have never been run outside
+LiteSVM.
+
+Do not rewrite the program to add a screen. Nineteen LiteSVM tests in
+`tests/workspace.ts` and `tests/veto.ts` cover behaviour no screen reaches,
+and they pass against the production binary.
 
 ## Three bugs were found and fixed. Do not reintroduce them.
 
@@ -147,10 +157,24 @@ exist on devnet or localnet, and every `create_pool` fails.
 3. **`claim_pot`**, which closes the loop.
 4. The three-wallet devnet run, end to end, before anything touches mainnet.
 
-## Before mainnet, none of which has happened
+## Before mainnet
 
 The program has never been audited, never run on mainnet, and its upgrade
 authority is a keypair in a file. `PROGRAM.md` has the full list; the short
 version is that the upgrade authority needs to become a 2-of-3 multisig and then
 be discarded, and that season one takes **zero** fee deliberately — charging
 players on an unaudited escrow is not a trade worth making.
+
+One item has since moved. The production binary — `anchor build` with no
+features — had never been compiled, let alone tested; every run of the suite
+was against a devnet build or nothing. It now compiles and all nineteen tests
+pass against it, including the timing boundaries that only mean anything
+there. That is the binary that would ship.
+
+What has still not happened: a run on devnet against production timing. The
+devnet program at `Adb5CFrY…` is the production binary, which pins *mainnet*
+USDC — a mint that does not exist on devnet — so nothing can be created
+against it. A devnet run means `anchor build -- --features devnet`: identical
+code, one pubkey different, real three-hour floors. Budget four hours for one
+week's cycle, and note that `scripts/seed-pool.ts create` exists precisely so
+nobody has to sit through them.
