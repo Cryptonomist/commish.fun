@@ -21,6 +21,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
+import { JoinChecklist, SOL_NEEDED_LAMPORTS } from "@/components/JoinChecklist";
 import { LeaguePanel } from "@/components/LeaguePanel";
 import { PickGrid } from "@/components/PickGrid";
 import { ReclaimDues } from "@/components/ReclaimDues";
@@ -54,12 +55,16 @@ type Status =
 export default function PoolPage() {
   const params = useParams<{ pool: string }>();
   const { connection } = useConnection();
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, connecting, signTransaction, wallets } =
+    useWallet();
 
   const [pool, setPool] = useState<PoolView | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [vaultAmount, setVaultAmount] = useState<bigint | null>(null);
   const [usdcAmount, setUsdcAmount] = useState<bigint | null>(null);
+  /* Null means unread, which is not the same as zero. A rate-limited RPC that
+   * read as "funded" would hand somebody a green tick and then a failure. */
+  const [solLamports, setSolLamports] = useState<number | null>(null);
   const [member, setMember] = useState<MemberView | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [status, setStatus] = useState<Status>({ at: "idle" });
@@ -105,9 +110,15 @@ export default function PoolPage() {
           .getTokenAccountBalance(ataFor(publicKey, USDC_MINT))
           .catch(() => null);
         setUsdcAmount(wallet ? BigInt(wallet.value.amount) : BigInt(0));
+
+        /* Fees and rent, which the join screen never checked. Somebody with
+         * the buy-in but no lamports used to get a failed transaction rather
+         * than a reason. */
+        setSolLamports(await connection.getBalance(publicKey).catch(() => null));
       } else {
         setMember(null);
         setUsdcAmount(null);
+        setSolLamports(null);
       }
     } catch (e) {
       /* An unreachable RPC is by far the most common failure here, and web3.js
@@ -139,6 +150,13 @@ export default function PoolPage() {
   const nameBytes = new TextEncoder().encode(displayName).length;
   const short = usdcAmount !== null && pool !== null && usdcAmount < pool.buyIn;
 
+  /* ORDERED BY WHAT SOMEBODY CANNOT FIX BY TYPING.
+   *
+   * This chain used to ask for a display name before it mentioned money, so a
+   * person with an empty wallet was told "Pick a name the others will see",
+   * typed one, and only then learned they could not join at all. Money and
+   * fees outrank the name every time, because the name is the only one of
+   * these a keyboard can solve. */
   const problem: string | null =
     !pool || !poolKey
       ? null
@@ -148,13 +166,15 @@ export default function PoolPage() {
           ? "This pool is full."
           : member
             ? "You are already in this pool."
-            : nameBytes === 0
-              ? "Pick a name the others will see."
-              : nameBytes > MAX_DISPLAY_NAME
-                ? `Names are limited to ${MAX_DISPLAY_NAME} characters.`
-                : short
-                  ? `You need ${formatUsdc(pool.buyIn)} of USDC to join.`
-                  : null;
+            : short
+              ? `You need ${formatUsdc(pool.buyIn)} of USDC to join.`
+              : solLamports !== null && solLamports < SOL_NEEDED_LAMPORTS
+                ? "You need a little SOL to cover the network fee."
+                : nameBytes === 0
+                  ? "Pick a name the others will see."
+                  : nameBytes > MAX_DISPLAY_NAME
+                    ? `Names are limited to ${MAX_DISPLAY_NAME} characters.`
+                    : null;
 
   const busy = status.at === "signing" || status.at === "confirming";
   const canJoin = connected && !!pool && !problem && !busy;
@@ -294,8 +314,32 @@ export default function PoolPage() {
                 member={member}
                 onPicked={refresh}
               />
-            ) : member ? null : (
+            ) : member ? (
+              /* A league member has no pick grid and used to get nothing at
+                 all: no form, no confirmation, no sign their money arrived.
+                 The panel above shows the pot; this says they are in it. */
+              <p className="mt-8 rounded-xl border border-alive/40 bg-alive/5 p-4 text-sm text-cream">
+                You are in as{" "}
+                <span className="font-bold">{member.displayName}</span>. Your{" "}
+                {formatUsdc(pool.buyIn)} is in the vault and comes back to you
+                if this pool never pays out.
+              </p>
+            ) : (
               <form className="mt-8 flex flex-col gap-4" onSubmit={onJoin}>
+                {/* Before the name field, because the name is the only one of
+                    these a keyboard can solve. All three at once, so somebody
+                    fixes everything in one trip rather than being told about
+                    the next thing each time they come back. */}
+                <JoinChecklist
+                  hasWallet={wallets.length === 0 ? false : true}
+                  connected={connected}
+                  connecting={connecting}
+                  solLamports={solLamports}
+                  usdc={usdcAmount}
+                  buyIn={pool.buyIn}
+                  formatUsdc={formatUsdc}
+                />
+
                 <label className="flex flex-col gap-2">
                   <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
                     YOUR NAME IN THIS POOL
