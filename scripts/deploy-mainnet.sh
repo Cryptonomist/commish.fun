@@ -33,21 +33,76 @@ say "1. The binary is the one that ships"
 
 [ -f "$BIN" ] || bad "No $BIN. Run: anchor build"
 
-# The devnet feature swaps the USDC mint; fastclock shortens the timing floors
-# from hours to seconds. Either one on mainnet is a catastrophe of a different
-# shape, so this reads the fingerprint the same way tests/00-build-guard.ts
-# does rather than trusting that whoever built it used the right command.
-FEATURES=$(find target -name '*.json' -path '*fingerprint*' -newer Cargo.toml 2>/dev/null \
-  | xargs grep -l '"commish"' 2>/dev/null \
-  | xargs grep -ho '"features":"[^"]*"' 2>/dev/null | sort -u || true)
-if printf '%s' "$FEATURES" | grep -q 'devnet\|fastclock'; then
-  bad "This binary was built WITH features: $FEATURES"
-fi
-ok "no devnet or fastclock feature detected"
+# THE FEATURE GUARD, AND IT HAS TO FAIL CLOSED.
+#
+# `devnet` swaps the USDC mint; `fastclock` drops the posting floor from three
+# hours to sixty seconds and the dispute floor from an hour to thirty seconds.
+# Either one deployed against real money is a catastrophe, a different shape
+# each.
+#
+# THIS CHECK USED TO PASS WITHOUT READING ANYTHING. It piped every fingerprint
+# under target/ through `grep -l '"commish"'` to find the crate's own file —
+# and a crate's fingerprint does not contain its own name, only its
+# dependencies'. So the pipeline matched nothing, FEATURES came out empty, and
+# `grep -q 'devnet\|fastclock'` on an empty string finds neither and returns
+# false. The guard then printed "ok no devnet or fastclock feature detected"
+# about a binary it had never opened. It would have printed exactly that for a
+# fastclock build.
+#
+# So it reads the fingerprint the way tests/00-build-guard.ts genuinely does:
+# by path, newest wins, both spellings of the SBF target directory since the
+# toolchain renamed it. Two differences from that one, both because this is
+# about to spend three and a half SOL. It asserts the feature set is EXACTLY
+# what ships rather than merely lacking the two bad names, so a feature nobody
+# has thought of yet also stops it. And an unreadable fingerprint is a refusal
+# rather than a shrug — the test suite may shrug, because the worst it costs is
+# a confusing afternoon.
+FEATURES=$(node -e '
+  const fs = require("fs"), path = require("path");
+  let best = null;
+  for (const t of ["sbpf-solana-solana", "sbf-solana-solana"]) {
+    const dir = path.resolve("target", t, "release/.fingerprint");
+    if (!fs.existsSync(dir)) continue;
+    for (const e of fs.readdirSync(dir)) {
+      if (!e.startsWith("commish-")) continue;
+      const f = path.join(dir, e, "lib-commish.json");
+      if (!fs.existsSync(f)) continue;
+      try {
+        const raw = JSON.parse(fs.readFileSync(f, "utf8"));
+        const at = fs.statSync(f).mtimeMs;
+        if (!best || at > best.at) best = { at, features: JSON.parse(raw.features ?? "[]") };
+      } catch { /* a fingerprint we cannot parse tells us nothing */ }
+    }
+  }
+  if (!best) process.exit(3);
+  process.stdout.write(best.features.join(","));
+') || bad "cannot read cargo's fingerprint for commish. Run: anchor build"
 
-grep -q 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' programs/commish/src/constants.rs \
-  || bad "constants.rs does not contain the mainnet USDC mint"
-ok "mainnet USDC is the pinned mint"
+[ "$FEATURES" = "default" ] \
+  || bad "built with features [$FEATURES]; mainnet ships [default] and nothing else"
+ok "cargo's own fingerprint says features = [default]"
+
+# A BINARY OLDER THAN THE SOURCE IS THE OTHER WAY TO SHIP THE WRONG CODE, and
+# the feature check cannot see it: edit lib.rs, skip the rebuild, and the
+# fingerprint still reads [default] while the .so predates the fix you are
+# deploying for.
+STALE=$(find programs -name '*.rs' -newer "$BIN" -print -quit 2>/dev/null || true)
+[ -z "$STALE" ] || bad "$STALE is newer than $BIN. Run: anchor build"
+ok "binary is newer than every file in programs/"
+
+# The old version of this grepped constants.rs for the mainnet mint, which is
+# on line 15 of that file in every build that has ever existed — it could not
+# fail. What can fail, and is the thing worth asserting, is WHICH of the two
+# mints the default build gets: the mainnet one has to be the arm behind
+# cfg(not(feature = "devnet")). Swap those two lines and every check above
+# still passes.
+awk '/#\[cfg\(not\(feature = "devnet"\)\)\]/ {
+       getline
+       if ($0 ~ /EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/) found = 1
+     }
+     END { exit !found }' programs/commish/src/constants.rs \
+  || bad "mainnet USDC is not the mint behind cfg(not(feature = \"devnet\"))"
+ok "mainnet USDC is what a default build pins"
 
 SIZE=$(stat -c%s "$BIN")
 MAXLEN=$(( SIZE * HEADROOM_NUM / HEADROOM_DEN ))
