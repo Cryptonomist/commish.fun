@@ -23,6 +23,7 @@ import {
   RETURN_COOKIE,
   STATE_COOKIE,
   issueNonce,
+  readCookie,
 } from "@/lib/identity";
 import {
   biggerAvatar,
@@ -30,6 +31,7 @@ import {
   fetchXUser,
   oauthCookie,
   redirectUri,
+  safeReturnPath,
 } from "@/lib/xauth";
 
 export const dynamic = "force-dynamic";
@@ -50,14 +52,15 @@ function back(request: Request, to: string, status: string) {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const jar = request.headers.get("cookie") ?? "";
-  const read = (name: string): string | null => {
-    const m = new RegExp(`(?:^|; )${name}=([^;]*)`).exec(jar);
-    return m ? decodeURIComponent(m[1]) : null;
-  };
+  const read = (name: string) => readCookie(request, name);
 
-  const from = read(RETURN_COOKIE) ?? "/";
-  const to = from.startsWith("/") && !from.startsWith("//") ? from : "/";
+  /* Origin-checked, not pattern matched. The old test let a backslash through
+   * and this route turned into an open redirect on every one of its exit
+   * paths, including the ones a victim reaches without signing in to X at
+   * all. `readCookie` also cannot throw on a malformed value now, which
+   * matters here specifically: this call sits above the try block, so a
+   * URIError raised on it skipped the graceful path entirely. */
+  const to = safeReturnPath(read(RETURN_COOKIE) ?? "/", url.origin);
 
   /* The person pressed cancel on X's screen. Not an error, and it should not
    * read like one. */

@@ -19,23 +19,42 @@ export async function GET() {
   const result = await buildLeaderboard();
 
   if (!result.ok) {
-    /* Say which failure it is.
+    /* Say which failure it is, without repeating Cloudflare word for word.
      *
-     * "Unavailable" is the same word for "nobody set the credentials" and "the
-     * credentials were refused", and those have opposite fixes. Both messages
-     * describe OUR configuration, name no user and expose no value, so the
-     * only thing distinguishing them costs is that whoever is deploying stops
-     * guessing.
+     * "Unavailable" was the same word for "nobody set the credentials" and
+     * "the credentials were refused", and those have opposite fixes, so the
+     * kind is worth naming. The DETAIL is not, and the first version of this
+     * got that wrong: it reflected `problem.detail` verbatim, and Cloudflare's
+     * error 7003 quotes the request path back at you. That path is
+     * `/client/v4/accounts/<CF_ACCOUNT_ID>/d1/database/<CF_D1_DATABASE_ID>/query`,
+     * so a public 503 was one upstream message away from printing both ids. A
+     * comment two files away asserted there was nothing in these strings worth
+     * withholding; the comment was not a check, and it was wrong.
      *
-     * Never cached: a 503 that sticks in a CDN for a minute after the fix
-     * lands is its own small trap. */
+     * So the kind goes to the caller and the message goes to the log, where
+     * whoever is deploying can read it and nobody else can.
+     *
+     * The variable names are a different matter. They are in `.env.example` in
+     * a public repository, they say nothing about this deployment, and naming
+     * them is the entire difference between a five-minute fix and an
+     * afternoon.
+     *
+     * Never cached: a 503 stuck in a CDN for a minute after the fix lands is
+     * its own small trap. */
     const problem = result.problem;
+
+    if (problem.kind === "rejected") {
+      console.error("[leaderboard] Cloudflare rejected the query:", problem.detail);
+    }
+
     const error =
       problem.kind === "unconfigured"
         ? `The leaderboard is not configured. Missing: ${problem.missing.join(", ")}. ` +
           "Set these in the Vercel project (the CLOUDFLARE_ACCOUNT_ID, D1_DATABASE_ID " +
           "and CLOUDFLARE_API_TOKEN spellings are also accepted) and redeploy."
-        : `Cloudflare refused the query: ${problem.detail}`;
+        : "The leaderboard's database refused the query. The reason is in the " +
+          "server logs; it is usually an API token without D1 Edit on this database, " +
+          "or a schema that has not been applied.";
 
     return Response.json(
       { error, problem: problem.kind },

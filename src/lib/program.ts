@@ -964,6 +964,14 @@ export const SETTLES_PER_TX = 12;
  * program, and nothing here gates a transaction. The program decides; this only
  * decides whether to offer somebody a button.
  */
+/* IT PRESUMES THE POOL HAS SETTLED. Check `status === STATUS_SETTLED` first.
+ *
+ * `claim_pot` requires `STATUS_SETTLED` and THEN applies the rule below. This
+ * carries only the second half, because every caller was a screen for one pool
+ * that had already settled. On an unsettled pool `winnersWeek` is still the
+ * zeroed default, which is WEEK_NONE, so this collapses to `isAlive(member)`
+ * and answers true for everybody still in. The leaderboard called it across
+ * every pool on the program and counted the whole field as winners. */
 export const isPotWinner = (pool: PoolView, member: MemberView): boolean =>
   pool.winnersWeek === WEEK_NONE
     ? isAlive(member)

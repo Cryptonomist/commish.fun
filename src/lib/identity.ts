@@ -44,6 +44,26 @@ export const RETURN_COOKIE = "commish_link_from";
 export const PKCE_COOKIE = "commish_pkce";
 export const STATE_COOKIE = "commish_state";
 
+/* The capability to read your own record back.
+ *
+ * Set when a wallet signature is accepted, and the only thing that will open
+ * an unlisted identity row afterwards. It exists because the obvious design
+ * was wrong: an endpoint that answers "which handle owns this address" for any
+ * address is a lookup table over everyone who linked, and the wallets to feed
+ * it are all on chain. That hands out exactly the pairing the second opt-in
+ * exists to withhold, to anyone who asks, for free.
+ *
+ * It is not a login. It authorises reading one row. Listing, unlisting and
+ * unlinking each still cost a fresh wallet signature over a sentence saying
+ * what they do, so a stolen cookie reads a handle its holder could have read
+ * from the leaderboard if that person had opted in, and can change nothing. */
+export const READ_COOKIE = "commish_id";
+
+/** Long, because the alternative is asking somebody to sign a message every
+ *  time they open the page to check whether they are still linked, which
+ *  teaches exactly the habit this product should not teach. */
+export const READ_COOKIE_MAX_AGE = 180 * 24 * 60 * 60;
+
 export type NonceRow = {
   nonce: string;
   provider: string;
@@ -62,9 +82,41 @@ export type IdentityRow = {
   avatar_url: string | null;
   listed: number;
   linked_at: number;
+  read_token: string | null;
 };
 
 export const nowSecs = (): number => Math.floor(Date.now() / 1000);
+
+/* One cookie reader, because three hand-rolled ones had three bugs.
+ *
+ * `decodeURIComponent` THROWS on a stray percent sign, and a URIError raised
+ * before any validation escapes the handler and becomes a bare 500 with an
+ * empty body. In the X callback it was worse than untidy: the read sat above
+ * the try block, so the graceful "something went wrong, here is your page
+ * back" path could not be reached for that one input.
+ *
+ * The regex also has to anchor the NAME. `(?:^|; )commish_id=` written without
+ * the boundary would match `x_commish_id=`, and a jar is attacker-influenced
+ * on a shared parent domain. And it must reject a malformed value rather than
+ * pass it on: every caller here expects 64 hex characters, so anything else is
+ * already not going to match a row, and returning null says so earlier. */
+export function readCookie(request: Request, name: string): string | null {
+  const jar = request.headers.get("cookie");
+  if (!jar) return null;
+
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const m = new RegExp(`(?:^|;\\s*)${escaped}=([^;]*)`).exec(jar);
+  if (!m) return null;
+
+  try {
+    return decodeURIComponent(m[1]) || null;
+  } catch {
+    /* A value we did not write. Treat it as absent rather than as an error:
+     * the caller's "nothing is pending" branch is the right answer, and a 500
+     * would tell somebody they had found something interesting. */
+    return null;
+  }
+}
 
 /** 32 bytes of CSPRNG, hex encoded. Not a UUID: a v4 UUID is 122 bits and this
  *  is the only thing standing between a stranger and someone else's handle. */
@@ -202,8 +254,9 @@ export async function bindIdentity(args: {
   providerId: string;
   handle: string;
   avatarUrl: string | null;
-}): Promise<void> {
+}): Promise<string> {
   const at = nowSecs();
+  const token = randomToken();
 
   await d1("DELETE FROM identity WHERE provider = ? AND provider_id = ?", [
     args.provider,
@@ -211,14 +264,21 @@ export async function bindIdentity(args: {
   ]);
 
   await d1(
-    `INSERT INTO identity (wallet, provider, provider_id, handle, avatar_url, listed, linked_at)
-     VALUES (?, ?, ?, ?, ?, 0, ?)
+    `INSERT INTO identity (wallet, provider, provider_id, handle, avatar_url, listed, linked_at, read_token)
+     VALUES (?, ?, ?, ?, ?, 0, ?, ?)
      ON CONFLICT(wallet) DO UPDATE SET
        provider    = excluded.provider,
        provider_id = excluded.provider_id,
        handle      = excluded.handle,
        avatar_url  = excluded.avatar_url,
-       linked_at   = excluded.linked_at`,
+       linked_at   = excluded.linked_at,
+       read_token  = excluded.read_token,
+       listed      = CASE
+                       WHEN identity.provider    = excluded.provider
+                        AND identity.provider_id = excluded.provider_id
+                       THEN identity.listed
+                       ELSE 0
+                     END`,
     [
       args.wallet,
       args.provider,
@@ -226,16 +286,36 @@ export async function bindIdentity(args: {
       args.handle,
       args.avatarUrl ?? "",
       at,
+      token,
     ],
   );
+
+  return token;
 }
 
-/* Note that the UPDATE branch leaves `listed` alone.
+/* Why the UPDATE branch treats `listed` with a CASE rather than leaving it be.
  *
- * Re-linking the same wallet, which is what someone does when their handle
- * changes, must not silently switch off a listing they chose. Only the
- * leaderboard route moves that column, and only against a signature that says
- * so in words. */
+ * Re-linking the SAME account, which is what somebody does when their handle
+ * changes, must not switch off a listing they chose. Re-binding a DIFFERENT
+ * account to the same wallet is not that: no signature was ever given to
+ * publish the new handle, so inheriting the old one's consent would put a
+ * handle on the public leaderboard that never agreed to be there. The
+ * comparison is on provider_id, because a handle can be renamed and an account
+ * id cannot.
+ *
+ * Everything else that moves that column still costs a wallet signature over a
+ * sentence that says what it does. */
+
+/** Read a record by its capability token rather than by address. This is the
+ *  only route to an UNLISTED row, and it returns at most one. */
+export async function identityByToken(
+  token: string,
+): Promise<IdentityRow | null> {
+  if (!/^[0-9a-f]{64}$/.test(token)) return null;
+  return d1One<IdentityRow>("SELECT * FROM identity WHERE read_token = ?", [
+    token,
+  ]);
+}
 
 export async function identityFor(
   wallet: string,

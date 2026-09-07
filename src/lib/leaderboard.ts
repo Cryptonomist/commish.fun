@@ -21,6 +21,7 @@ import { Connection } from "@solana/web3.js";
 import { d1, d1Missing } from "./d1";
 import {
   PROGRAM_ID,
+  STATUS_SETTLED,
   decodeMember,
   decodePool,
   discriminatorFilter,
@@ -52,9 +53,10 @@ export type Leaderboard = {
  * distinction is now part of the return type rather than something to be
  * reconstructed from logs.
  *
- * These strings name OUR misconfiguration. There is nothing in them a visitor
- * could act on and nothing about any user, which is why it is safe to put them
- * in a 503 body where whoever is deploying will actually see them. */
+ * The KIND is safe to publish and the DETAIL is not. Cloudflare's error 7003
+ * quotes the request path back, and that path carries the account id and the
+ * database id, so `detail` goes to the log and only `kind` reaches a caller.
+ * The route is what enforces that; this type only carries both. */
 export type LeaderboardProblem =
   | { kind: "unconfigured"; missing: string[] }
   | { kind: "rejected"; detail: string };
@@ -138,11 +140,30 @@ async function fromChain(): Promise<Map<string, Tally>> {
 
     row.poolsJoined += 1;
 
-    /* Leagues pay a sheet the commissioner writes rather than crowning a
-     * survivor, so "won" does not mean the same thing there. Counting a league
-     * prize as a Survivor win would put somebody top of this table for
+    /* THE POOL HAS TO HAVE SETTLED. This is not belt and braces.
+     *
+     * `isPotWinner` is only half the program's rule. `claim_pot` requires
+     * `pool.status == STATUS_SETTLED` first and applies the winners_week test
+     * second; on a screen for one settled pool the first half is a given, so
+     * the client helper never carried it. Across every pool at once it is not
+     * a given at all.
+     *
+     * `winners_week` is only written inside `if settled` in `advance_week`, so
+     * on an unsettled pool it is still the zeroed 0, which is WEEK_NONE, which
+     * sends `isPotWinner` down its "somebody was left standing" branch, where
+     * the whole test is `isAlive(member)`. Every paid member who has not been
+     * knocked out of a pool that is merely OPEN would have counted as a win,
+     * on the column this table sorts by.
+     *
+     * Leagues are excluded for a different reason: they pay a sheet the
+     * commissioner writes rather than crowning a survivor, and counting a
+     * league prize as a Survivor win would put somebody top of this table for
      * finishing third in a money league. */
-    if (!isLeague(pool) && isPotWinner(pool, member)) {
+    if (
+      pool.status === STATUS_SETTLED &&
+      !isLeague(pool) &&
+      isPotWinner(pool, member)
+    ) {
       row.poolsWon += 1;
       if (member.claimed) {
         row.claimedBase = (

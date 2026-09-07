@@ -12,17 +12,20 @@
 
 import { NextResponse } from "next/server";
 
-import { NONCE_COOKIE, readNonce } from "@/lib/identity";
+import { NONCE_COOKIE, readCookie, readNonce } from "@/lib/identity";
 import type { PendingLink } from "@/lib/link";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const jar = request.headers.get("cookie") ?? "";
-  const m = new RegExp(`(?:^|; )${NONCE_COOKIE}=([^;]*)`).exec(jar);
-  if (!m) return NextResponse.json({ pending: null });
+  /* `readCookie` rather than a local regex and a bare decodeURIComponent. A
+   * stray percent sign in that value threw a URIError before any validation
+   * and came back as an empty 500, which is a strange answer from a route
+   * whose honest reply to almost everything is "nothing pending". */
+  const carried = readCookie(request, NONCE_COOKIE);
+  if (!carried) return NextResponse.json({ pending: null });
 
-  const row = await readNonce(decodeURIComponent(m[1]));
+  const row = await readNonce(carried);
   if (!row) return NextResponse.json({ pending: null });
 
   const pending: PendingLink = {

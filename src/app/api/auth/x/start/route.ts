@@ -18,7 +18,12 @@ import {
   STATE_COOKIE,
   randomToken,
 } from "@/lib/identity";
-import { oauthCookie, redirectUri, xClientId } from "@/lib/xauth";
+import {
+  oauthCookie,
+  redirectUri,
+  safeReturnPath,
+  xClientId,
+} from "@/lib/xauth";
 
 /* This route mints secrets. Caching it would be catastrophic and Next has no
  * way to know that, so say so. */
@@ -42,15 +47,10 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
 
-  /* Where to land afterwards.
-   *
-   * Only a same-site path is accepted, and it is checked here rather than at
-   * the callback so a crafted link cannot turn our OAuth flow into an open
-   * redirect. A leading `//` is rejected too: `//evil.example` is a path to
-   * `URL` and a different origin to a browser. */
-  const requested = url.searchParams.get("from") ?? "/";
-  const from =
-    requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+  /* Where to land afterwards. Resolved and origin-checked rather than pattern
+   * matched, because pattern matching this is how the backslash got through.
+   * See `safeReturnPath`. */
+  const from = safeReturnPath(url.searchParams.get("from") ?? "/", url.origin);
 
   const verifier = randomToken();
   const challenge = base64url(

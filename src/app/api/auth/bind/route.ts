@@ -15,10 +15,13 @@ import { NextResponse } from "next/server";
 
 import {
   NONCE_COOKIE,
+  READ_COOKIE,
+  READ_COOKIE_MAX_AGE,
   bindIdentity,
   bindTextFor,
   burnNonce,
   isWallet,
+  readCookie,
   readNonce,
   verifySignature,
 } from "@/lib/identity";
@@ -27,9 +30,8 @@ import { oauthCookie } from "@/lib/xauth";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const jar = request.headers.get("cookie") ?? "";
-  const m = new RegExp(`(?:^|; )${NONCE_COOKIE}=([^;]*)`).exec(jar);
-  if (!m) {
+  const carried = readCookie(request, NONCE_COOKIE);
+  if (!carried) {
     return NextResponse.json(
       { error: "Nothing is waiting to be linked. Start with Connect X." },
       { status: 400 },
@@ -51,8 +53,25 @@ export async function POST(request: Request) {
     );
   }
 
-  const row = await readNonce(decodeURIComponent(m[1]));
-  if (!row) {
+  const row = await readNonce(carried);
+
+  /* The nonce must be one a PROVIDER callback minted, not one this route's
+   * neighbours hand out.
+   *
+   * Two kinds share the table. A `provider: "x"` row is written by the X
+   * callback and carries an account X just vouched for. A `provider: "self"`
+   * row is written by POST /api/auth/identity for a wallet that is already
+   * linked, and it carries THAT wallet's handle.
+   *
+   * Without this check the two are interchangeable here, and the second kind
+   * is minted with no signature and no cookie by anyone who knows an address.
+   * So: ask for a self nonce naming somebody else's wallet, receive their
+   * handle and the issue time in the reply, sign the resulting sentence with
+   * your OWN key, present it here, and walk away with a record putting their
+   * handle against your address. The listing and unlink routes both check the
+   * provider. This one did not, which made them the careful exceptions rather
+   * than the rule. */
+  if (!row || row.provider === "self") {
     return NextResponse.json(
       { error: "That link request expired. Connect X again." },
       { status: 400 },
@@ -78,7 +97,7 @@ export async function POST(request: Request) {
     );
   }
 
-  await bindIdentity({
+  const readToken = await bindIdentity({
     wallet,
     provider: row.provider,
     providerId: row.provider_id,
@@ -96,5 +115,16 @@ export async function POST(request: Request) {
     listed: false,
   });
   res.cookies.set(NONCE_COOKIE, "", { ...oauthCookie(request), maxAge: 0 });
+
+  /* The capability to read this record back.
+   *
+   * The wallet has just proved itself, and this is the moment to hand over the
+   * only thing that will open an unlisted row afterwards. It authorises one
+   * read; listing, unlisting and unlinking each still cost a fresh signature
+   * over a sentence that says what they do. */
+  res.cookies.set(READ_COOKIE, readToken, {
+    ...oauthCookie(request),
+    maxAge: READ_COOKIE_MAX_AGE,
+  });
   return res;
 }

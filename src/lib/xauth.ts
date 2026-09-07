@@ -55,6 +55,30 @@ export function oauthCookie(request: Request) {
   };
 }
 
+/* Where it is safe to send the browser after the round trip.
+ *
+ * The first version tested `startsWith("/") && !startsWith("//")`, which looks
+ * like it covers it and does not. A BACKSLASH defeats it: the URL parser
+ * treats `\` as a path separator for http and https, so `new URL("/\\evil.example",
+ * origin)` resolves to `https://evil.example/` and the redirect leaves the
+ * site entirely. That was live, and it fired on every exit path out of the
+ * callback, so a victim did not even have to finish signing in to X.
+ *
+ * Guessing at the character classes a parser treats as special is how that bug
+ * gets rewritten. So this does not guess. It resolves the candidate exactly
+ * the way the redirect will, then insists the result landed on the same
+ * origin. Whatever the parser thinks `\` or `%2f` or anything else means, the
+ * answer has to still be us. */
+export function safeReturnPath(candidate: string, origin: string): string {
+  try {
+    const resolved = new URL(candidate, origin);
+    if (resolved.origin !== new URL(origin).origin) return "/";
+    return `${resolved.pathname}${resolved.search}`;
+  } catch {
+    return "/";
+  }
+}
+
 export type XUser = {
   id: string;
   username: string;

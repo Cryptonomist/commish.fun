@@ -36,12 +36,26 @@ CREATE TABLE IF NOT EXISTS identity (
   -- decision the privacy page promises they get to make separately.
   listed       INTEGER NOT NULL DEFAULT 0,
   linked_at    INTEGER NOT NULL,
+  -- An opaque capability to read THIS row, and nothing else.
+  --
+  -- Handed to the browser as an httpOnly cookie when the wallet signature is
+  -- accepted, and the only way to read an unlisted row back. Without it, an
+  -- endpoint that answers "which handle owns this address" for any address is
+  -- a lookup table over everybody who linked, including everybody who declined
+  -- to be public. That is precisely the pairing the second opt-in exists to
+  -- withhold, so it cannot be available for the asking.
+  --
+  -- It is not a login. It authorises one read of one row, carries no ability
+  -- to write, spend, list or unlink, and every one of those still costs a
+  -- fresh wallet signature.
+  read_token   TEXT,
   -- One social account cannot be worn by two wallets. Without this, anyone
   -- could link a handle they control to a second address and appear twice.
   UNIQUE (provider, provider_id)
 );
 
 CREATE INDEX IF NOT EXISTS identity_listed ON identity (listed);
+CREATE UNIQUE INDEX IF NOT EXISTS identity_read_token ON identity (read_token);
 
 -- A short-lived challenge, and the only place a verified-but-unbound identity
 -- ever lives.
