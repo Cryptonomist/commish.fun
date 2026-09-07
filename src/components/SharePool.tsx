@@ -192,7 +192,7 @@ export default function SharePool(props: SharePoolProps) {
 
   return (
     <div className={`flex flex-col gap-3 ${className ?? ""}`}>
-      <p className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+      <p className="font-matrix text-[10px] leading-4 text-cream-dim">
         INVITE PEOPLE
       </p>
 

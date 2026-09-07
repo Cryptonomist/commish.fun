@@ -49,7 +49,7 @@ export function ScoreTicker({ initial }: { initial: Scoreboard }) {
     return (
       <div className="border-b border-night-3 bg-night-2/40">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-2 text-xs sm:px-8">
-          <span className="font-bold tracking-[0.18em] text-cream-dim">
+          <span className="font-matrix text-[10px] leading-4 text-cream-dim">
             {label}
           </span>
           <span className="text-cream-dim">
@@ -65,7 +65,7 @@ export function ScoreTicker({ initial }: { initial: Scoreboard }) {
     <div className="relative overflow-hidden border-b border-night-3 bg-night-2/40">
       {/* The label sits over the marquee with a fade behind it so games slide
           under it rather than colliding with it. */}
-      <span className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center gap-3 bg-gradient-to-r from-night via-night to-transparent py-2 pl-5 pr-10 text-xs font-bold tracking-[0.18em] text-cream-dim sm:pl-8">
+      <span className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center gap-3 bg-gradient-to-r from-night via-night to-transparent py-2 pl-5 pr-10 font-matrix text-[10px] leading-4 text-cream-dim sm:pl-8">
         {label}
       </span>
 
@@ -88,7 +88,7 @@ function Side({ abbr, score, won }: { abbr: string; score: number | null; won: b
     <span className="inline-flex items-baseline gap-1.5">
       <span
         aria-hidden="true"
-        className="inline-block h-2.5 w-[3px] translate-y-px rounded-full"
+        className="inline-block h-2.5 w-[3px] translate-y-px rounded-none"
         style={{ background: team?.lead ?? "currentColor" }}
       />
       <span className={won ? "font-bold text-cream" : "text-cream-dim"}>

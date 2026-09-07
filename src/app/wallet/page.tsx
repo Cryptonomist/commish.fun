@@ -45,7 +45,7 @@ function Step({
 }) {
   return (
     <li className="flex gap-4">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-night-3 font-mono text-xs text-cream-dim">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none border border-night-3 font-mono text-xs text-cream-dim">
         {n}
       </span>
       <div className="flex flex-col gap-1.5">

@@ -367,7 +367,7 @@ export default function NewPool() {
                 sheet, so the fields that do not apply are gone rather than
                 greyed out. */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+              <span className="font-matrix text-[10px] leading-4 text-cream-dim">
                 WHAT KIND
               </span>
               <div className="grid gap-2 sm:grid-cols-3">
@@ -416,7 +416,7 @@ export default function NewPool() {
             </div>
 
             <label className="flex flex-col gap-2">
-              <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+              <span className="font-matrix text-[10px] leading-4 text-cream-dim">
                 POOL NAME
               </span>
               <input
@@ -429,7 +429,7 @@ export default function NewPool() {
             </label>
 
             <label className="flex flex-col gap-2">
-              <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+              <span className="font-matrix text-[10px] leading-4 text-cream-dim">
                 BUY-IN (USDC)
               </span>
               <input
@@ -446,7 +446,7 @@ export default function NewPool() {
 
             <div className="grid gap-6 sm:grid-cols-2">
               <label className="flex flex-col gap-2">
-                <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                <span className="font-matrix text-[10px] leading-4 text-cream-dim">
                   MAX MEMBERS
                 </span>
                 <input
@@ -460,7 +460,7 @@ export default function NewPool() {
               </label>
 
               <label className="flex flex-col gap-2">
-                <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                <span className="font-matrix text-[10px] leading-4 text-cream-dim">
                   DISPUTE WINDOW ({WINDOW_UNIT_LABEL})
                 </span>
                 <input
@@ -479,7 +479,7 @@ export default function NewPool() {
 
               {isLeagueMode ? (
                 <label className="flex flex-col gap-2">
-                  <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                  <span className="font-matrix text-[10px] leading-4 text-cream-dim">
                     DUES CLOSE
                   </span>
                   <input
@@ -495,7 +495,7 @@ export default function NewPool() {
                 </label>
               ) : (
                 <label className="flex flex-col gap-2">
-                  <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                  <span className="font-matrix text-[10px] leading-4 text-cream-dim">
                     START WEEK
                   </span>
                   <input
@@ -517,7 +517,7 @@ export default function NewPool() {
                 rather than arguing about after it. */}
             {isLeagueMode ? (
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                <span className="font-matrix text-[10px] leading-4 text-cream-dim">
                   HOW THE POT SPLITS
                 </span>
 

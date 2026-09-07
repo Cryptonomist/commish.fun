@@ -469,7 +469,7 @@ export default function PoolPage() {
                 />
 
                 <label className="flex flex-col gap-2">
-                  <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+                  <span className="font-matrix text-[10px] leading-4 text-cream-dim">
                     YOUR NAME IN THIS POOL
                   </span>
                   <input
@@ -539,7 +539,7 @@ function Stat({
 }) {
   return (
     <div className="bg-night-2 p-4">
-      <dt className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+      <dt className="font-matrix text-[10px] leading-4 text-cream-dim">
         {label}
       </dt>
       <dd

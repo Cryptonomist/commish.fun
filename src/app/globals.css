@@ -19,9 +19,36 @@
    Tailwind v4 reads these straight out of @theme, so `bg-night`, `text-action`
    and `font-display` exist as utilities with no config file. */
 @theme {
-  --color-night: #0a100c;      /* ground */
-  --color-night-2: #121b15;    /* raised surfaces, cards, inputs */
-  --color-night-3: #1f2c24;    /* hairlines, borders */
+  /* ── THE FIELD ────────────────────────────────────────────────────────────
+     TURF IS THE GROUND NOW, and the one rule that makes it work is that TYPE
+     NEVER TOUCHES IT. The field carries chalk, tiles, sprites and panel edges.
+     Every word on this site sits on a panel laid over it.
+
+     That rule is not stylistic. Measured on #24492E, the old cream-dim came to
+     4.00:1, action to 3.55:1 and out to 2.93:1, which is a fail, a fail and a
+     total failure respectively. Moving type off the grass makes the whole
+     class of problem stop existing, and the token fixes below are the belt to
+     that braces. */
+  --color-turf: #24492e;       /* the field. Body ground. Decoration only. */
+  --color-turf-2: #1b3724;     /* mow stripe, zebra rows. 1.28:1, a hint. */
+  --color-panel: #0b1710;      /* every surface that carries type */
+  --color-rule: #2e5b3b;       /* hairlines and dividers inside a panel */
+  --color-chalk: #fbfdf8;      /* field paint, panel frames, glyph outlines */
+
+  /* ── THE OLD GROUND STACK, REDEFINED RATHER THAN DELETED ──────────────────
+     There are 113 `bg-night`, `bg-night-2` and `border-night-3` call sites in
+     src/. Deleting these tokens would mean touching every one of them in the
+     same commit that changes the palette, which is how a migration turns into
+     a weekend of finding the component nobody remembered. Pointing them at
+     the new system instead means every existing utility keeps compiling and
+     lands somewhere correct, and the call sites can be renamed later, or
+     never.
+
+     text-night on an action button is now 6.42:1, against 6.73:1 before, so
+     nothing regresses on the way through. */
+  --color-night: #0b1710;      /* was #0a100c. Now identical to panel. */
+  --color-night-2: #14241a;    /* raised surfaces, cards, inputs */
+  --color-night-3: #2e5b3b;    /* hairlines, borders. Same as rule. */
   /* The ground for exported artwork only — the X banner and the link preview.
      Never a page background.
 
@@ -44,21 +71,77 @@
      is the lightest this can be before half the wordmark stops being type and
      becomes decoration. Anything greener than this needs a different orange,
      not a bolder ground. */
-  --color-turf: #24492e;       /* EXPORTED ARTWORK ONLY */
-  --color-cream: #f0f2ec;      /* type */
-  --color-cream-dim: #98a69b;  /* secondary type */
-  --color-action: #ff6a2b;     /* links, CTAs, live countdowns */
-  --color-action-hi: #ff8551;  /* hover */
-  --color-gold: #e9c258;       /* MONEY ONLY */
-  --color-alive: #57e08a;      /* still in */
-  /* Lifted from #e5484d, which measured 4.50:1 on --color-night-2 and so sat a
-     hair under AA. It passed on the old brown card because that card was
-     darker; the turf card is lighter, and "you are out" is not a state to read
-     marginally. */
-  --color-out: #ec565b;        /* eliminated */
+  --color-cream: #f0f2ec;      /* type. 9.01 on turf, 16.27 on panel */
+  /* Was #98A69B, which measured 4.00:1 on turf and therefore failed AA on the
+     ground it now has to sit near. This one value fixes every placeholder,
+     helper line and micro-label in the codebase at once. */
+  --color-cream-dim: #a9b8ac;  /* 4.91 on turf, 8.86 on panel */
+
+  /* THE ORANGE RULE, and it is worth stating so it cannot be misread.
+     --color-action stays the brand, the fill, and large display type. On turf
+     it measures 3.56:1, which clears large text and UI borders and fails
+     ordinary text. So anything orange, small, and on the grass uses
+     action-lit. In practice that is the wordmark's .FUN and almost nothing
+     else. On a panel, plain action is 6.42:1 and legal at any size. */
+  --color-action: #ff6a2b;     /* 3.56 on turf, 6.42 on panel */
+  --color-action-lit: #ff9450; /* 4.65 on turf. Small orange type only. */
+  --color-action-hi: #ff8551;  /* hover fill */
+  --color-gold: #e9c258;       /* MONEY ONLY. 5.96 on turf. */
+  --color-alive: #57e08a;      /* still in. 6.02 on turf. */
+
+  /* Out is a FILL on turf and never a letterform there: 2.93:1 is not a number
+     you read "you are out" at. An eliminated tile is a red block with
+     panel-coloured ink on it, which measures 5.29:1. Where out must be type on
+     the grass, out-lit carries it. */
+  --color-out: #ec565b;        /* 2.93 on turf: FILL ONLY. 5.29 with panel ink. */
+  --color-out-lit: #ff9094;    /* 4.68 on turf. Small out type or an out border. */
+
+  /* INK ON ANY BRIGHT FILL IS PANEL, one rule, no exceptions: on action
+     6.42:1, on gold 10.77:1, on alive 10.87:1, on out 5.29:1. Cream on an out
+     fill is 3.08 and chalk is 3.39, so both are forbidden there. That is the
+     one trap in this palette and it is written here because it is the reach a
+     developer makes by instinct. */
+
+  /* ── ZERO RADIUS, AND THE WHOLE MIGRATION IN NINE LINES ───────────────────
+     Tailwind v4 resolves every rounded-* utility out of this namespace, so all
+     113 call sites in src/ go square with no file edits at all. This single
+     change carries more of the retro read than any texture, and the moment one
+     component ships with a hardcoded radius the system reverts to an ordinary
+     app that happens to be green.
+
+     rounded-full is calc(infinity * 1px) and is NOT tokenised, so the handful
+     of status pills using it still need a hand pass. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
 
   --font-display: var(--font-anton), "Arial Narrow", sans-serif;
   --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+
+  /* PRESS START 2P, AND THE RULES THAT KEEP IT FROM READING AS A GAME JAM.
+     These are not suggestions. This face is the single thing most likely to
+     take the whole direction from crafted to cheap, and it will happen one
+     component at a time.
+
+       SIZES: 10, 12, 16, 24, 32px only. Nothing between, nothing outside.
+              The face is drawn on an 8px em and fractional sizes go fuzzy.
+       LINE-HEIGHT: set in px, always a multiple of 4. 16 / 20 / 24 / 36 / 48.
+       TRACKING: zero. It is monospaced with built-in sidebearings and adding
+              letter-spacing breaks the grid it is drawn on.
+       LENGTH: five words, and it must fit one line at 12px in a 320px column.
+
+     THE BOUNDARY, and the test for anyone unsure: this face is for things a
+     person RECOGNISES. --font-sans is for things a person READS. Labels,
+     scoreboard values, team abbreviations, button text, eyebrows, status
+     pills. Never a sentence, never a paragraph, never an error message, never
+     anything on a legal page. If you cannot tell which side a string falls on,
+     it is --font-sans. */
+  --font-matrix: var(--font-press-start), ui-monospace, monospace;
 }
 
 /* Anton is a display face: it is all caps in practice and needs air between
@@ -75,24 +158,31 @@ html {
 }
 
 body {
-  background: var(--color-night);
+  background: var(--color-turf);
   color: var(--color-cream);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-/* The stadium-at-night ground: a pool of light from above, the way a field
-   looks under floods. Flat #0A100C reads as unconsidered.
+/* THE FIELD IS LITERAL NOW.
 
-   The warm light is carried by gold rather than by the action orange. Orange
-   laid over green mixes back toward brown, which is the one result this
-   palette exists to avoid, so the orange is a trace and the gold does the
-   work. */
+   This used to be a metaphor: two soft radial washes over near-black, a pool
+   of light standing in for floodlights because the ground could not say
+   football on its own. The ground says it now, so the metaphor is redundant
+   and the mow stripes are real.
+
+   Stripes are 96px and run vertically the way a mown field does from a camera
+   behind the endzone. --color-turf-2 sits 1.28:1 off turf, which is a hint
+   rather than a pattern: visible when you look for it, invisible when you are
+   reading something laid over it. Anything stronger and every panel on the
+   site would be sitting on a barcode. */
 .field-ground {
-  background:
-    radial-gradient(70% 55% at 50% -10%, rgba(233, 194, 88, 0.10), transparent 70%),
-    radial-gradient(50% 40% at 85% 15%, rgba(255, 106, 43, 0.05), transparent 70%),
-    var(--color-night);
+  background-color: var(--color-turf);
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-turf) 0 96px,
+    var(--color-turf-2) 96px 192px
+  );
 }
 
 /* The scoreboard marquee. The track holds two identical copies of the slate
@@ -140,7 +230,7 @@ body {
 .wallet-adapter-button-trigger {
   background-color: var(--color-action) !important;
   color: var(--color-night) !important;
-  border-radius: 0.75rem !important;
+  border-radius: 0 !important;
   height: 2.75rem !important;
   padding: 0 1.25rem !important;
   font-size: 0.875rem !important;

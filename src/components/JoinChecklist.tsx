@@ -134,7 +134,7 @@ export function JoinChecklist(props: JoinNeeds) {
         <li key={r.key} className="flex items-start gap-3 bg-night-2 px-4 py-3">
           <span
             aria-hidden="true"
-            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-none text-[10px] font-bold ${
               r.ok === true
                 ? "bg-alive/20 text-alive"
                 : r.ok === false

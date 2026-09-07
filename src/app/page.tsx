@@ -150,7 +150,7 @@ export default async function Home() {
               behind the demo card below. */}
           <div className="relative flex flex-col gap-7 py-14 sm:py-16">
             <FieldMarkings />
-            <span className="inline-flex w-fit items-center gap-2.5 rounded-full border border-night-3 bg-night-2/80 px-4 py-2 text-xs font-bold tracking-[0.18em]">
+            <span className="inline-flex w-fit items-center gap-2.5 rounded-none border border-night-3 bg-night-2/80 px-4 py-2 font-matrix text-[10px] leading-4">
               <Laces size={13} className="text-action" />
               <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
               <Countdown />
@@ -198,7 +198,7 @@ export default async function Home() {
             {FORMATS.map((f) => (
               <div key={f.h} className="flex flex-col bg-night-2/60 p-6">
                 <span
-                  className={`w-fit rounded-full border px-3 py-1 text-xs font-bold tracking-[0.14em] ${
+                  className={`w-fit rounded-none border px-3 py-1 text-xs font-bold tracking-[0.14em] ${
                     f.live
                       ? "border-alive/40 bg-alive/10 text-alive"
                       : "border-night-3 bg-night-2 text-cream-dim"

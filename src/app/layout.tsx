@@ -21,6 +21,25 @@ const grotesk = localFont({
   display: "swap",
 });
 
+/* The in-game face. Anton is the cartridge label, this is what is printed on
+ * the screen inside it, and running both is what makes the pairing read as
+ * considered rather than as one gimmick: NES sports titles did exactly this,
+ * bitmap type in the game and heavy condensed poster type on the box.
+ *
+ * IT IS RATIONED, and the rules live next to --font-matrix in globals.css.
+ * Labels only, never language. The moment it sets a sentence, a paragraph, an
+ * error message or a legal page, this stops looking like a design and starts
+ * looking like a game jam.
+ *
+ * Latin subset, vendored rather than requested from Google at page load, for
+ * the same reason as the two above. 12KB. */
+const pressStart = localFont({
+  src: "./fonts/press-start-2p.woff2",
+  variable: "--font-press-start",
+  weight: "400",
+  display: "swap",
+});
+
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://commish.fun";
 
 export const metadata: Metadata = {
@@ -74,7 +93,10 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${anton.variable} ${grotesk.variable}`}>
+    <html
+      lang="en"
+      className={`${anton.variable} ${grotesk.variable} ${pressStart.variable}`}
+    >
       <body className="field-ground min-h-dvh antialiased">
         <Providers>{children}</Providers>
       </body>

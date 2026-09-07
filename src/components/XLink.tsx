@@ -254,7 +254,7 @@ export default function XLink({ className }: { className?: string }) {
                 alt=""
                 width={36}
                 height={36}
-                className="h-9 w-9 rounded-full"
+                className="h-9 w-9 rounded-none"
               />
             ) : null}
             <div className="min-w-0">
@@ -307,7 +307,7 @@ export default function XLink({ className }: { className?: string }) {
                 alt=""
                 width={36}
                 height={36}
-                className="h-9 w-9 rounded-full"
+                className="h-9 w-9 rounded-none"
               />
             ) : null}
             <div>

@@ -332,7 +332,7 @@ function TeamRow({
 }) {
   return (
     <div className="mt-4">
-      <p className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+      <p className="font-matrix text-[10px] leading-4 text-cream-dim">
         {label}
       </p>
       {teams.length === 0 ? (

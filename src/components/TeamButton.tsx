@@ -87,11 +87,18 @@ export function TeamButton({
           and one clear state beats two half-signals. */}
       {!picked ? <ClubBar team={team} dim={spent || bye} /> : null}
 
+      {/* The abbreviation is a thing you RECOGNISE, so it wears the matrix
+          face. Locked to 12px with no tracking: Press Start 2P is drawn on an
+          8px em, and a fractional size or any letter-spacing breaks the grid
+          it is built on. */}
       <span
-        className={`text-sm font-bold tracking-wide ${spent ? "line-through" : ""}`}
+        className={`font-matrix text-[12px] leading-4 ${spent ? "line-through" : ""}`}
       >
         {team.abbr}
       </span>
+      {/* The club name is LANGUAGE, so it stays in the text face. That is the
+          boundary the whole direction rests on, and it would be easiest to get
+          wrong right here, two lines apart from its opposite. */}
       <span className="text-[10px] uppercase tracking-wide opacity-70">
         {pending ? "sending…" : bye ? "BYE" : team.name}
       </span>

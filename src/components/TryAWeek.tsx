@@ -91,7 +91,7 @@ export function TryAWeek() {
   return (
     <div className="rounded-2xl border border-night-3 bg-night-2/50 p-4 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-xs font-bold tracking-[0.18em] text-cream-dim">
+        <p className="font-matrix text-[10px] leading-4 text-cream-dim">
           TRY A WEEK
           <span className="ml-2 font-normal tracking-normal opacity-70">
             demonstration, invented results

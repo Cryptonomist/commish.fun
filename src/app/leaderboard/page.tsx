@@ -130,10 +130,10 @@ export default async function LeaderboardPage() {
                             alt=""
                             width={28}
                             height={28}
-                            className="h-7 w-7 shrink-0 rounded-full"
+                            className="h-7 w-7 shrink-0 rounded-none"
                           />
                         ) : (
-                          <span className="h-7 w-7 shrink-0 rounded-full bg-night-3" />
+                          <span className="h-7 w-7 shrink-0 rounded-none bg-night-3" />
                         )}
                         <span className="min-w-0">
                           <span className="block truncate font-semibold text-cream group-hover:text-action">
