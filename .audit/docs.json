@@ -1,0 +1,248 @@
+{
+ "target": "/home/cryptonomist/commish.fun — README.md, LEGAL-REVIEW.md, brand/README.md, COMMISHHANDOFF.md",
+ "findings": [
+  {
+   "file": "README.md",
+   "quote": "Not yet: an audit, mainnet, any change to the single-key upgrade authority, and the four league instructions, which are tested but have no UI.",
+   "reality": "The four league instructions have a complete UI. `src/components/LeaguePanel.tsx:32-38` imports `buildClaimPrize`, `buildFinalizeSheet`, `buildLockDues`, `buildPostPayoutSheet` and drives them from `pool.status`; the panel is rendered at `src/app/p/[pool]/page.tsx:416`. League creation with a prize-split editor is live at `src/app/pools/new/page.tsx:94-97` (`mode` includes \"league\") and `:275` (`prizeSlots: slots.map(...)`). There is even a Sleeper standings pre-fill wired into it (`src/components/SleeperFill.tsx`, imported at `LeaguePanel.tsx:29`).",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "Delete the league clause from the \"Not yet\" sentence and add League Treasurer to the checklist and to the Architecture \"App\" bullet."
+  },
+  {
+   "file": "README.md",
+   "quote": "Action `#FF6A2B` (the brand, links and buttons) · Night `#0A100C` · Turf `#16281C` (exported artwork only) · Cream `#F0F2EC` · Pot Gold `#E9C258` (money only) · Alive `#57E08A` · Out `#EC565B`",
+   "reality": "Two of the seven are wrong. `src/app/globals.css:49` reads `--color-night: #0b1710;  /* was #0a100c. Now identical to panel. */` — the README still publishes the retired hex. `src/app/globals.css:32` reads `--color-turf: #24492e;  /* the field. Body ground. Decoration only. */` and `src/app/globals.css:189` sets `body { background: var(--color-turf); }`, so turf is the page ground, not \"exported artwork only\"; the string `#16281C` does not appear anywhere in `src/app/globals.css`. The line also omits the tokens the current system actually turns on: `--color-panel`, `--color-chalk`, `--color-turf-2`, `--color-cream-dim`, `--color-action-lit`, `--color-out-lit` (globals.css:33-36, 78, 87, 97).",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "Regenerate the palette line from `@theme` in `src/app/globals.css`: Night is `#0B1710`, Turf is `#24492E` and it is the body ground; add Panel/Chalk or say the list is partial."
+  },
+  {
+   "file": "README.md",
+   "quote": "Mark: the laces, nothing else. Orange on night and never on a filled tile *in the product* — orange is the interaction colour, and an orange slab at the top of a page teaches people it means nothing.",
+   "reality": "The filled tile is now in the product, at the top of every page. `src/components/Laces.tsx:74-88` defines `LacesTile` as a 512px `var(--color-action)` square with cream laces on it, and its own comment at `Laces.tsx:47-61` is titled \"THE OLD OBJECTION, AND WHY IT IS DEAD\" and concludes \"Shape disambiguates now, so the tile is free.\" `Wordmark` renders `<LacesTile size={size * 1.4} .../>` (`Laces.tsx:~110`), and `src/components/SiteNav.tsx:47` renders `<Wordmark size={markSize} />` — SiteNav is on `/`, `/arcade`, `/play`, `/p/[pool]` and the rest.",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Rewrite the mark rule to match `Laces.tsx`: the tile is permitted in-product because no button on the site is a square and the tile carries no offset shadow."
+  },
+  {
+   "file": "README.md",
+   "quote": "Whole kit generated from one set of numbers by [`scripts/build-brand.mjs`](scripts/build-brand.mjs); assets in [`brand/`](brand/).",
+   "reality": "There are two sets of numbers and they disagree. `scripts/build-brand.mjs:23-27` imports only `node:fs`, `node:path`, `sharp` and `./pixelfont.mjs` — it never reads `globals.css`. `scripts/build-brand.mjs:33-44` is a hand-typed copy headed \"The palette, copied from globals.css\", and five of its nine values have drifted from `src/app/globals.css`: night `#0A100C` vs `#0b1710` (globals.css:49), night2 `#121B15` vs `#14241a` (:50), night3 `#1F2C24` vs `#2e5b3b` (:51), chalk `#FFFFFF` vs `#fbfdf8` (:36), creamDim `#98A69B` vs `#a9b8ac` (:78).",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Either make `build-brand.mjs` parse the `@theme` block in `globals.css`, or drop the \"one set of numbers\" claim and say the script carries its own palette that must be synced by hand."
+  },
+  {
+   "file": "README.md",
+   "quote": "<img src=\"brand/commish-appicon-final.png\" width=\"120\" alt=\"Commish\" />",
+   "reality": "`brand/commish-appicon-final.png` does not exist, so the README's hero image is broken. The generated icon is `brand/appicon.png` (`scripts/build-brand.mjs:335`). The named file exists only at `brand/archive/commish-appicon-final.png`, which `brand/README.md:84-86` describes as \"The previous identity, in the retired brown-and-orange palette\" — so even if the path were fixed to point there it would show the retired brand.",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Change the src to `brand/appicon.png`."
+  },
+  {
+   "file": "README.md",
+   "quote": "**Week 1 locks Thursday.** 🏈",
+   "reality": "`src/data/nfl-schedule-2026.json` week 1 carries `\"lockTs\": 1788999600` with first game `{\"away\": \"NE\", \"home\": \"SEA\", \"kickoff\": 1788999600}` — that is Wed 9 Sep 2026, 20:20 ET. The Thursday game (`SF @ LAR`, kickoff 1789086900 = Thu 10 Sep, 20:35 ET) is the second game, and picks lock at the FIRST kickoff. COMMISHHANDOFF.md:38 already records this exact correction against ESPN.",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "\"Week 1 locks Wednesday.\" Same fix needed at COMMISHHANDOFF.md:374, which still says Thursday inside the demo script."
+  },
+  {
+   "file": "brand/README.md",
+   "quote": "Everything here is generated by [`scripts/build-brand.mjs`](../scripts/build-brand.mjs) from two sources: the Laces geometry in `src/components/Laces.tsx` and the Pigskin tokens in `src/app/globals.css`.",
+   "reality": "The script reads neither file. `scripts/build-brand.mjs:23-27` imports only `node:fs`, `node:path`, `sharp` and `./pixelfont.mjs`. The palette is a hand copy at `:33-44` that has already drifted from `globals.css` on night, night2, night3, chalk and creamDim (see the README.md finding above), and the laces geometry is re-typed as a template literal at `:50-56` rather than imported from `Laces.tsx`.",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Say the script carries its own copies of both, and name the two places that must be kept in sync — or make it read them."
+  },
+  {
+   "file": "brand/README.md",
+   "quote": "Change a token, re-run the script, and the kit is correct again.",
+   "reality": "Following this instruction does nothing to the kit. Changing `--color-night` in `src/app/globals.css` and re-running `node scripts/build-brand.mjs` re-emits `mark-night.svg` and the banner shadow using `C.night = \"#0A100C\"` from `scripts/build-brand.mjs:35`, which is the old value. This is the exact failure mode the paragraph above it says the generator exists to prevent (\"the palette moved from brown-and-orange to Turf every asset in it went silently wrong\").",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Fix the script to read the tokens, then the sentence becomes true. Until then, state that a token change requires editing `build-brand.mjs:33-44` too."
+  },
+  {
+   "file": "brand/README.md",
+   "quote": "**The mark never sits on a filled tile.** It used to sit in an orange square, which is the same shape and colour as every button on the site, so the logo read as something to click.",
+   "reality": "`src/components/Laces.tsx:74-88` exports `LacesTile` — cream laces on a full-bleed `var(--color-action)` square — and `Laces.tsx:47-61` explicitly retires this rule (\"THE OLD OBJECTION, AND WHY IT IS DEAD... no button here is a square, every button is a wide rectangle carrying a hard offset shadow, and this tile has no shadow at all. Shape disambiguates now, so the tile is free.\"). The tile ships in the site header via `Wordmark` → `src/components/SiteNav.tsx:47`.",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Replace the rule with the current one from `Laces.tsx`, or state the reverse decision explicitly if the intent was to keep the tile out of the header."
+  },
+  {
+   "file": "brand/README.md",
+   "quote": "The site's own faces live in `src/app/fonts/`, each with its licence beside it.",
+   "reality": "`src/app/fonts/` contains four font files — `press-start-2p.woff2`, `silkscreen.woff2`, `silkscreen-bold.woff2`, `space-grotesk.woff2` — and exactly one licence file, `silkscreen-OFL.txt`. Press Start 2P and Space Grotesk have no licence beside them. `src/app/layout.tsx:34` cites the OFL only for Silkscreen; the Press Start 2P block at `layout.tsx:49-66` and the Space Grotesk block at `:43-48` name no licence.",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Add the OFL text for Press Start 2P and Space Grotesk to `src/app/fonts/`, or narrow the sentence to Silkscreen."
+  },
+  {
+   "file": "brand/README.md",
+   "quote": "`public/brand/` holds the copies the site actually serves. The script writes both, so they cannot drift.",
+   "reality": "Only seven PNGs are mirrored. `writeSvg` (`scripts/build-brand.mjs:295-300`) writes to `brand/` only; `writePng` copies to `public/brand/` only when called with `alsoPublic = true` (`:332-336, 347-348`). `avatar-night.png` is deliberately brand-only (`:337`, with the reason at `:326-329`). `public/brand/` today holds appicon.png, avatar.png, banner-x.png, favicon-180.png, mark-action.png, mark-cream.png, og.png — no SVGs and no avatar-night.",
+   "verdict": "stale",
+   "severity": "low",
+   "fix": "\"The script mirrors the served PNGs into `public/brand/`; the SVGs and `avatar-night.*` live in `brand/` only.\""
+  },
+  {
+   "file": "brand/README.md",
+   "quote": "node scripts/build-brand.mjs",
+   "reality": "The documented command depends on `sharp` (`scripts/build-brand.mjs:25`), which is declared in neither `dependencies` nor `devDependencies` in `package.json`. It resolves today only because a copy is present in `node_modules/sharp` transitively. A clean install that does not happen to pull it in leaves the documented command failing at import.",
+   "verdict": "stale",
+   "severity": "low",
+   "fix": "Add `sharp` to `devDependencies` in `package.json`."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "Supabase (Postgres, RLS, Auth with X provider) · Helius RPC (domain-restricted key) · route-handler jobs on a scheduler with `CRON_SECRET` · Vercel hosting (geo headers for §19.6) · Cloudflare DNS",
+   "reality": "Four of the five are gone. (1) Supabase is deleted — the only database is Cloudflare D1 over HTTP (`src/lib/d1.ts:1-16`, schema at `db/schema.sql`), and `src/app/privacy/page.tsx:171` publishes that \"the code that would have talked to it has now been deleted from the project.\" (2) The Helius key is no longer domain-restricted: `workers/rpc-proxy/README.md` documents that Helius's dashboard domain rules did not apply when tested, so the key now lives as a Worker secret and the browser gets `NEXT_PUBLIC_RPC_URL=https://commish-rpc.therealcryptonomist.workers.dev` (`.env.example:36`). (3) There is no `src/app/api/cron` directory and no `CRON_SECRET` anywhere in `src/`. (4) There is no geo header read anywhere; `src/app/privacy/page.tsx:177` states \"We perform no geographic check. There is no country lookup anywhere in this site.\" Only Cloudflare DNS survives. `next` is also 15.5.25 (`package.json:23`), not the \"Next.js 14\" earlier in the same line.",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "Rewrite §8 against `package.json`, `src/lib/d1.ts`, `db/schema.sql` and `workers/rpc-proxy/`. §12 (line 252-253), §18 (line 289) and §20 (line 334) carry the same dead Supabase / cron / domain-restricted-key assumptions."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "self-hosted Anton + Space Grotesk",
+   "reality": "Anton is gone from the repository. `src/app/layout.tsx:34-41` loads Silkscreen as `--font-silkscreen`, `:43-48` Space Grotesk, `:60-66` Press Start 2P; `src/app/globals.css:138` sets `--font-display: var(--font-silkscreen)`. `layout.tsx:12-13` says so directly: \"IT REPLACED ANTON, which was the last thing here still speaking the old language.\" Commit a4304c2 is \"Headings in pixels: Silkscreen replaces Anton\". No Anton file exists anywhere outside `node_modules`/`.git`. §14 (line 259) repeats the error as \"Anton (display, uppercase, .015em, tabular numerals) + Space Grotesk 400–700\".",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "Three faces now: Silkscreen (display), Space Grotesk (sans), Press Start 2P (labels only). Fix both line 147 and line 259."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "Plausible/Umami analytics (never wallet addresses)",
+   "reality": "No analytics package or script exists. Nothing in `package.json`, `src/app/layout.tsx` or `next.config.ts` references Plausible, Umami, gtag, PostHog, Sentry or `@vercel/analytics`. The shipped Privacy page contradicts the handoff outright at `src/app/privacy/page.tsx:149`: \"We set no advertising cookie, no analytics cookie and no tracking cookie, because we run no advertising and no analytics.\" LEGAL-REVIEW.md:30 asserts the same.",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "Delete the analytics clause. It is the only place in the repo still claiming analytics exist, and it contradicts published legal copy."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "Night `#120D0A` · night2 `#1D1310` · line `rgba(246,239,226,.10)` · cream `#F6EFE2` (60/40 alphas) · leather `#FF5C1B` · leatherHi `#FF7A45` · **gold `#E9C258` (money only: pots, dues, prize amounts)** · alive `#35C97A` · out `#E5484D`; radii 10/14/20/pill; 4px base.",
+   "reality": "The whole \"Primetime\" system was replaced by \"the Pigskin system\" (`src/app/globals.css:3`). Current `@theme`: panel `#0b1710` (:34), night `#0b1710` (:49), night2 `#14241a` (:50), turf `#24492e` (:32), cream `#f0f2ec` (:74), action `#ff6a2b` (:86) — not leather `#FF5C1B`, alive `#57e08a` (:90) — not `#35C97A`, out `#ec565b` (:96) — not `#E5484D`. Gold `#e9c258` (:89) is the only survivor. Radii are not 10/14/20 — every radius token is `0px` (`globals.css:129-136`), with the comment \"all 113 call sites in src/ go square\". The inline SVG at line 261 also still paints the laces `fill=\"#FF5C1B\"`, where `Laces.tsx:33` uses `currentColor` and `Laces.tsx:82` uses `var(--color-action)`.",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "Replace §14 wholesale with the `@theme` block from `src/app/globals.css`, and fix the embedded laces SVG's fill."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "Tables: `pools` (+ `pool_type, prize_slots jsonb, slot_count, claimed_bps, total_dues, dues_deadline_ts, weekly_pot_bps, rollover`), `members` (+ `pick_mask, ranks, owned_mask, points`), `x_links`, `link_nonces`, `results_proposals`, `push_subscriptions`, `attestations` (§19.6, server-only); views `career`, `board`. RLS: public SELECT on pools/members/results_proposals/career/board only; all writes via service role.",
+   "reality": "`db/schema.sql` defines exactly three tables — `identity`, `nonce`, `standing` — and no views. Its own header says \"Cloudflare D1, the only database this product has\" and that it holds \"who an address says they are on X, whether they agreed to be named in public, and a cached copy of standings\". None of `pools`, `members`, `x_links`, `link_nonces`, `results_proposals`, `push_subscriptions` or `attestations` exists. RLS is a Postgres feature and this is D1/SQLite, so the RLS sentence has no referent. The jobs in the next line are equally gone: there is no `src/app/api/cron` directory; the API routes are `auth/{bind,identity,listing,pending,x/start,x/callback}`, `leaderboard`, `scores`, `sleeper`.",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "Rewrite §12 from `db/schema.sql` and `src/app/api/`. Note that the missing `attestations` table means §19.6.6 record-keeping has no implementation."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "Until the LLC exists, the founder is operating personally — low risk at zero profit with private pools, not zero risk.",
+   "reality": "The LLC exists and is named as the contracting party in the shipped Terms: `src/app/terms/page.tsx:33` reads \"HoldFi LLC, a Texas limited liability company, whose registered agent is at 5900 Balcones Dr, STE 100, Austin, TX 78731\". §25 (line 378) repeats the stale position: \"Entity and counsel are deliberately deferred until a §19.6.8 demand trigger fires.\" LEGAL-REVIEW.md does not mention the entity at all, so nothing in the doc set records who is now the counterparty.",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "Update §19.7 and §25 to name HoldFi LLC, and add the entity to LEGAL-REVIEW.md's fact table. Who the contracting party is, and whether the Terms' liability cap and indemnity read differently against an LLC than against an individual, is a lawyer question — flagging, not fixing."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "**Pool** (`[\"pool\", commissioner, nonce_le_u64]`, space 1280)",
+   "reality": "The account is 1,616 bytes. `programs/commish/src/state.rs:246` asserts `assert_eq!(pool, 1_616, \"Pool size changed\")`, and the test's comment at `state.rs:226-233` is titled \"THE SPEC SAID 1280. IT IS NOT 1280\" — \"a hand-written 1280 would have allocated an account too small for the struct and panicked on the first `create_pool`, after the rent was already paid.\" The struct comment at `state.rs:57-63` repeats it. The Member line (COMMISHHANDOFF.md:188, \"space 256\") is wrong the other way: `state.rs:247` asserts `member == 201`.",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Replace both numbers with the `InitSpace`-derived values (Pool 1,616, Member 201, Config 92) and note that `state.rs` pins them in a test."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "| 2 | `create_pool(nonce, name, pool_type, buy_in, max_members, start_week, lock_ts[18], dues_deadline_ts, refund_deadline_ts, prize_slots, weekly_pot_bps, commissioner_plays, display_name)` | commissioner |",
+   "reality": "The real signature is `programs/commish/src/lib.rs:110-124`: `(nonce, name, pool_type, buy_in, max_members, start_week, lock_ts, dues_deadline_ts, refund_deadline_ts, prize_slots: Vec<PrizeSlotArg>, weekly_pot_bps, dispute_window_secs: u32)`. There is no `commissioner_plays` and no `display_name` parameter, and the row's stated effect \"optional commissioner Member\" does not happen — `create_pool` inits the pool and vault only (`lib.rs:233-268`). The parameter the row omits, `dispute_window_secs`, is real and load-bearing (`lib.rs:239`, bounds at `constants.rs:90-94`).",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Copy the signature verbatim from `lib.rs:110-124` and drop the commissioner-Member effect."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "| 8 | `submit_pick_mask(mask, ranks?)` | member | `now<lock`; mask ⊆ that week's teams; pick-3: popcount==3 | set mask/ranks |",
+   "reality": "`programs/commish/src/lib.rs` defines 18 instructions and `submit_pick_mask` is not among them: init_config, update_config, create_pool, join_pool, sponsor_join, submit_pick, post_results, veto_results, finalize_week, settle_member, advance_week, claim_pot, reclaim_dues, lock_dues, post_payout_sheet, finalize_sheet, claim_prize, close_member. Three other rows in the same table name instructions that do not exist: `draft_team` (row 9), `claim_weekly` (row 15) and `close_pool` (row 6, which lists \"`close_member` / `close_pool`\" — only `close_member` exists, at `lib.rs:1069`). Also `settle_member(points?, proof?)` (row 13) is actually `settle_member(ctx, _points: u32)` (`lib.rs:585`) — no proof argument, and the points argument is unused. §21's Slice A lists `submit_pick_mask` and `close_*` as part of the shipped P0 slice.",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Mark rows 8, 9 and 15 as not built and delete `close_pool`, or move them to a \"reserved\" table. Fix the §21 Slice A line so the P0 slice does not claim unbuilt instructions."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "2. **Terms, Privacy, Responsible Play** pages with wallet-level self-exclusion (excluded wallets cannot join paid pools); linked from the footer and every join sheet.",
+   "reality": "There is no self-exclusion mechanism anywhere in `src/`, and the shipped page says so in terms: `src/app/play/page.tsx:104` reads \"Because there are no accounts, we have no self exclusion tool. We cannot stop you joining a pool, and we cannot block your wallet from being invited to one.\" The companion control at §19.6.1 is in the same position — no `EligibilityGate` component exists, and `src/app/privacy/page.tsx:177` publishes \"We perform no geographic check. There is no country lookup anywhere in this site\" while `src/app/terms/page.tsx:90` publishes \"We run no sanctions screening and no country blocking.\" There is no `restricted-states.json` and no `middleware.ts`.",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "The handoff and the shipped legal pages now say opposite things about the same controls. Reconcile them deliberately — either restate §19.6 as \"not built, and the pages disclose that\", or build the controls. Whether shipping without them is acceptable is a lawyer question, not one to settle in this file."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "| Route | Content | Done when |",
+   "reality": "The route table (lines 271-281) does not match `src/app/`. Actual routes: `/`, `/arcade`, `/leaderboard`, `/p/[pool]`, `/play`, `/pools/new`, `/privacy`, `/risk`, `/terms`. So `/new` is `/pools/new`, `/trust` is `/risk`, `/board` is `/leaderboard`, `/responsible-play` is `/play`; `/rules`, `/me`, `/p/[pool]/pick`, `/p/[pool]/commish`, `/p/[pool]/claim`, `/p/[pool]/history` and `/api/v1/*` do not exist (the pool sub-pages are folded into the single `src/app/p/[pool]/page.tsx`). `/arcade` (`src/app/arcade/page.tsx`) is a route the table does not list at all.",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Rebuild the table from `src/app/`, and add `/arcade`."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "full transparency on `/trust` and in `docs/LEGAL.md`",
+   "reality": "Neither exists. There is no `/trust` route — the upgrade-authority and program-id disclosure lives on `/risk` (`src/app/risk/page.tsx:48-68`, which publishes program id `Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa` and authority `HoYb6BCszJUY89WhKt2itTpxtLHMJKuoEwXwQPdbhtVu`). There is no `docs/` directory at all: `PROGRAM.md` sits at the repo root and `API.md`, `MANUAL-CLAIM.md` and `LEGAL.md` do not exist. §10.5 (line 242) and §20's \"Resilience promise\" (line 335, `docs/MANUAL-CLAIM.md`) point at the same missing files, and §9 (line 156) names the handoff itself as `COMMISH-HANDOFF.md` where the file is `COMMISHHANDOFF.md`.",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Point §10.5, §19.4 and §20 at `/risk` and at the root-level `PROGRAM.md`; either write `MANUAL-CLAIM.md` or drop the resilience promise, since it is described as \"the strongest trust artifact the product has\"."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "`teams.json` (32: index, abbr, city, nickname, colors, espnId). `schedule.json` generated once from ESPN per week (`lockTs` = earliest kickoff, `byeTeams`, `games[]`); committed; the app passes `lock_ts[18]` to `create_pool`. `restricted-states.json` (§19.5).",
+   "reality": "`src/data/` contains one file, `nfl-schedule-2026.json` (not `schedule.json`, and its bye field is `byes`, not `byeTeams`). There is no `teams.json` — the 32 clubs live in code at `src/lib/nfl.ts`, which §2 of this same document already points to at line 60. There is no `restricted-states.json` anywhere in the repo. The generator is `scripts/build-schedule.mjs`, not `scripts/build-schedule.ts` as §9 (line 155) says.",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Rewrite §11 from `src/data/` and `src/lib/nfl.ts`; drop `restricted-states.json` or mark it unbuilt alongside §19.5."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "Commissioner ghosts entirely → after `refund_deadline` (season end + 30 days) every member reclaims their pro-rata share of whatever is left, via `reclaim_dues`.",
+   "reality": "For a league there is a second gate the doc does not mention. `programs/commish/src/lib.rs:820-829`: if any prize slot is still `SLOT_PENDING` or `SLOT_FINALIZED`, `reclaim_dues` requires `now >= refund_deadline_ts + PRIZE_CLAIM_GRACE_SECS`, which is a further 30 days (`constants.rs:83`). So an abandoned league with one unclaimed finalized prize is not reclaimable at the refund deadline but 30 days after it. §10.3 row 5 (line 207) lists the same constraints and omits the grace too.",
+   "verdict": "stale",
+   "severity": "low",
+   "fix": "Add the prize-claim grace to §5 and to the §10.3 `reclaim_dues` row."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "`pool, wallet: Pubkey   display_name: [u8;24]   // team name in league mode\npaid: bool   sponsored_by: Pubkey   joined_ts: i64",
+   "reality": "The Member field list is stale on the veto marker. `programs/commish/src/state.rs:197` is `pub vetoed_epoch: u16` (\"The `Pool::veto_epoch` this member last voted on\"), not `vetoed_week: u8` as line 194 states, and `Pool` gained `pub veto_epoch: u16` (`state.rs:126`) which the Pool list at line 179 does not carry. `state.rs:112-125` explains why: marking a vote with the week \"locked a member out of every later posting for that same week\", so it counts postings instead. LEGAL-REVIEW.md:33 already cites the new pair.",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Rename `vetoed_week: u8` to `vetoed_epoch: u16` in the Member list and add `veto_epoch: u16` to the Pool list."
+  },
+  {
+   "file": "COMMISHHANDOFF.md",
+   "quote": "Errors: `Paused, WrongMint, BadSchedule, BadStartWeek, BadPrizeSplit, SlotsNotSummingTo100, NameTooLong, NoteTooLong, PoolFull, JoinClosed, DuesDeadlinePassed, DuesNotLocked, PicksLocked, TeamAlreadyUsed, InvalidTeam, MemberEliminated, NotAMember, SlotAlreadyAssigned, SlotNotFinalized, NotSlotAssignee, SheetPending, NoPendingSheet, ResultsAlreadyPosted, ResultsPending, NoPendingResults, OverlappingMasks, DisputeWindowOpen, AlreadyVetoed, TooEarly, NotFinalized, AlreadyProcessed, WeekIncomplete, NotSettled, NotAWinner, AlreadyClaimed, RefundNotAvailable, VaultNotEmpty, NotYourTurn, BadPickMask, BadRanks, DraftClosed, BadProof, MathOverflow`.",
+   "reality": "`programs/commish/src/errors.rs` carries nine more that the list omits: `ModeNotEnabled` (:94), `BadPoolType` (:96), `BadDisputeWindow` (:98), `BadRefundDeadline` (:100), `AlreadySettled` (:102), `WrongPoolKind` (:104), `MemberNotPaid` (:106), `BadVault` (:108), `BadFeeTreasury` (:110). `ModeNotEnabled` in particular is the gate that keeps unbuilt modes from taking money (`constants.rs:112-114`), which §6 and §21 both lean on.",
+   "verdict": "stale",
+   "severity": "low",
+   "fix": "Regenerate the list from `errors.rs`."
+  },
+  {
+   "file": "LEGAL-REVIEW.md",
+   "quote": "| A display name is required to join and is written permanently on chain | `join_pool` in `programs/commish/src/lib.rs`; the join button is gated on `canJoin`, false while `nameBytes === 0` |",
+   "reality": "The website half is correct: `src/app/p/[pool]/page.tsx:231-232` sets `problem` to \"Pick a name the others will see\" when `nameBytes === 0`, `:238-239` makes `canJoin` false whenever `problem` is set, and `:492` disables the button on it. The program half is not: `join_pool` (`lib.rs:272`) passes `display_name` straight to `init_member` (`lib.rs:1136`), which calls `fixed_bytes` (`state.rs:214-220`) — that only checks `bytes.len() <= N` and zero-pads, so an empty string is accepted on chain. The requirement is a property of this website, not of the program. The same table asserts at line 35 that \"The program is permissionless and reachable without this site\", so a direct call can join with no name at all.",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Split the row: \"This site requires a display name to join\" (UI gate) and \"whatever name is submitted is written permanently on chain\" (`fixed_bytes`). Check whether the Privacy page makes the stronger claim too; if it does, it needs the same split."
+  }
+ ],
+ "missingDisclosures": [
+  "README.md never says the product is devnet-only. `Anchor.toml:14` sets `cluster = \"devnet\"`; `programs/commish/src/constants.rs:16-17` swaps in devnet USDC `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU` behind the `devnet` feature; `src/app/risk/page.tsx:68` says \"deployed on Solana devnet\"; and `src/app/layout.tsx:78-82` sets `robots: { index: false, follow: false, nocache: true }` with the note \"REMOVE BOTH AT MAINNET\". A reader of \"Buy-ins escrowed on-chain... Last one standing takes the pot\" has no way to learn the tokens have no value. LEGAL-REVIEW.md:93-97 treats devnet as the central caveat; README carries none of it.",
+  "README.md's Architecture section describes the app as \"pool creation, join links, the pick grid, and live pool status\". It omits: the entire League Treasurer mode (`src/components/LeaguePanel.tsx`, `src/app/pools/new/page.tsx:94-97`), the public leaderboard (`src/app/leaderboard/page.tsx`, `src/lib/leaderboard.ts`), X account linking (`src/app/api/auth/x/*`, `src/components/XLink.tsx`), Sleeper standings import (`src/lib/sleeper.ts`, `src/app/api/sleeper/route.ts`), and the playable game at `/arcade` (`src/app/arcade/page.tsx`, `src/components/CommishBowl.tsx`, `src/lib/bowl.ts`, `src/lib/chiptune.ts`).",
+  "README.md's Architecture calls the server \"a thin sync layer that proposes weekly results from public NFL scores.\" That is `src/app/api/scores/route.ts` only. The server also runs a full OAuth 2 + PKCE flow against X (`src/app/api/auth/x/start/route.ts`, `.../callback/route.ts`), issues and burns wallet-signature nonces (`src/app/api/auth/{pending,bind,identity}/route.ts`), and writes a Cloudflare D1 database that stores wallet↔X-handle pairings (`db/schema.sql` tables `identity`, `nonce`, `standing`; client at `src/lib/d1.ts`). That is a materially different privacy surface from \"a thin sync layer\".",
+  "README.md's \"What that has actually been put through\" section cites only the 19 LiteSVM tests. It does not mention the web suites: 58 tests across `tests-web/auth-guards.test.ts` (16), `tests-web/bowl.test.ts` (25), `tests-web/chiptune.test.ts` (11) and `tests-web/share-name.test.ts` (6), run by `npm run test:web` (`package.json:9`). `auth-guards.test.ts` in particular covers the X-linking guards the legal pages make claims about.",
+  "README.md's trust table row \"Strand the money | A deadman switch lets members reclaim their share if the pool is ever abandoned\" does not disclose that in a league pool `reclaim_dues` is blocked for a further 30 days past the refund deadline whenever any prize slot is still pending or finalized (`programs/commish/src/lib.rs:820-829`, `PRIZE_CLAIM_GRACE_SECS` at `constants.rs:83`).",
+  "brand/README.md's asset table omits `avatar-night.svg` and `avatar-night.png`, both of which `scripts/build-brand.mjs:330` and `:337` emit into `brand/`. It also does not mention `brand/fonts/`, a directory that exists and is empty — worth either documenting or deleting, given the same file says \"Anton is gone from the repository\" and \"There is no font install step any more.\"",
+  "LEGAL-REVIEW.md's fact table does not cover the browser storage the arcade introduced. `src/lib/sfx.ts:23` writes a sound preference to `localStorage` under `commish.sfx`, and `src/components/CommishBowl.tsx:72` writes a longest-run score under `commish.bowl.best` (read at `:171`, written at `:271-273`). The Privacy page's local-storage paragraph (`src/app/privacy/page.tsx:147`) discloses only the wallet adapter's storage, so two keys the site writes are undescribed. Neither carries personal data, but the page's list is presented as complete.",
+  "LEGAL-REVIEW.md does not record that the Terms now name a contracting entity. `src/app/terms/page.tsx:33` identifies \"HoldFi LLC, a Texas limited liability company, whose registered agent is at 5900 Balcones Dr, STE 100, Austin, TX 78731\" as the counterparty. The file's \"Positions taken that need a lawyer's eye\" section discusses the liability cap and the indemnity without noting who they run against, and COMMISHHANDOFF.md:328 and :378 still assert the founder is operating personally with no entity. Whether the cap, the indemnity and the regulatory-characterisation section read the same way against an LLC is a question for counsel.",
+  "LEGAL-REVIEW.md's \"Things that are true today and will stop being true\" list names `src/app/play/page.tsx` and `src/app/privacy/page.tsx` as the devnet-dependent pages (via `scripts/deploy-mainnet.sh:143-145`, which does name exactly those two — verified). It does not mention `src/app/layout.tsx:78-82`, which suppresses search indexing on the same devnet grounds and is handled by a different script (`scripts/mainnet-cutover.sh`, named at `layout.tsx:81`). Two scripts each own part of the mainnet cutover and the review file only names one."
+ ]
+}

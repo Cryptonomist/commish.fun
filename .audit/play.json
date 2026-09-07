@@ -1,0 +1,69 @@
+{
+ "target": "/home/cryptonomist/commish.fun/src/app/play/page.tsx",
+ "findings": [
+  {
+   "quote": "We cannot move it, freeze it or give it back to you as a favour. That is by design, and it means there is nobody to appeal to if you change your mind.",
+   "reality": "True of the current instruction set, false of the current deployment. The program has no admin withdrawal path (programs/commish/src/lib.rs:11-22; `config.paused` blocks pool creation only, lib.rs:95-97), but the program is deployed upgradeable and the operator holds the upgrade key. The site's own Risks page says so in the opposite direction: \"the upgrade authority for the Commish program is a single private key held by us\" (src/app/risk/page.tsx:52), \"Replacement code could be written to move funds out of pool vaults, including yours\" (src/app/risk/page.tsx:57), and \"The non-custodial design of the vaults limits what we can do with the current code. It does not limit what could be done with new code\" (src/app/risk/page.tsx:63). scripts/deploy-mainnet.sh runs `solana program deploy` with no `--final`, and no `set-upgrade-authority` appears anywhere in the repo. LEGAL-REVIEW.md also records that a previously planned multisig \"is no longer planned\".",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Bind the claim to the code rather than to the operator: e.g. \"Under the code deployed today there is no instruction that lets us move, freeze or return the pot.\" Then point at /risk for the upgrade key, the way every other page does. As written this page is the only one of the four that reads as an unconditional custody promise, and it is the one a worried reader is most likely to land on.",
+   "file": "/home/cryptonomist/commish.fun/src/app/play/page.tsx"
+  },
+  {
+   "quote": "One member can choose to pay another member's dues, which the program supports directly, so if somebody offers to cover your buy-in, be as careful about what you owe them as you would be anywhere else.",
+   "reality": "The program supports sponsorship, but only by the commissioner, not by \"one member\". `sponsor_join` takes the commissioner as the signer and the paying authority (programs/commish/src/lib.rs:317-348), and its account struct pins the pool to that signer: `#[account(mut, has_one = commissioner)]` plus `pub commissioner: Signer<'info>` (lib.rs:1254-1266). An ordinary member has no instruction that pays somebody else in. Separately, the deployed app exposes no way to do it at all: src/lib/program.ts encodes twelve instructions (lines 181, 455, 560, 628, 650, 717, 735, 744, 789, 821, 839, 864) and `sponsor_join` is not among them — it survives only in comments (src/components/ClaimPot.tsx:78, src/lib/program.ts:1005).",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Say the commissioner, not \"one member\", and say whether the app offers it. The warning that follows is good and worth keeping, but the dependency it describes is a member owing the commissioner, which is a different and arguably sharper relationship than owing a peer. Also note that the on-chain Member record permanently names who paid (`sponsored_by`, lib.rs:1138).",
+   "file": "/home/cryptonomist/commish.fun/src/app/play/page.tsx"
+  },
+  {
+   "quote": "We do not run public pools that strangers can join. Every pool is private and link only. There is no directory. The only way in is that somebody you know sent you the link.",
+   "reality": "\"There is no directory\" is accurate — Commish publishes none. The rest is not. `join_pool` has no invite, allowlist or permission check of any kind; `check_join_open` tests only that status is OPEN, that member_count < max_members and that the deadline has not passed (programs/commish/src/lib.rs:1105-1123). The share link carries no secret: it is `${origin}/p/${pool}` where `pool` is the pool's public key (src/components/SharePool.tsx:165). Every Pool account is enumerable on chain with a single call — the site's own leaderboard does exactly that (src/lib/leaderboard.ts:124-131), and src/app/api/auth/identity/route.ts:12 makes the same point about Member accounts: \"Every member wallet is enumerable with one `getProgramAccounts` call\". src/app/robots.ts states in its own comment that it \"is not access control and should not be mistaken for it\".",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "\"Unlisted\", not \"private\". Something like: we publish no directory and pools are not advertised, but a pool is a public account on Solana and anyone who has or finds its address can join it while it is open. The practical advice that follows (be careful who you send the link to) then actually matches the mechanism.",
+   "file": "/home/cryptonomist/commish.fun/src/app/play/page.tsx"
+  },
+  {
+   "quote": "Money leaves it only when a winner claims, when a prize slot is claimed in a league, or through the refund path after the refund deadline that was set when the pool was created, which any member who has paid can trigger without our permission or the commissioner's.",
+   "reality": "There are four exit paths, not three. The program's own header documents the fourth: \"the platform fee — to the treasury recorded on the pool at creation\" (programs/commish/src/lib.rs:13-19), and it is a real token transfer out of the vault inside `advance_week` (lib.rs:717-731). It moves nothing today because the rate is zero (scripts/init-config.ts:49 `FEE_BPS = 0`, copied onto each pool at lib.rs:255-256, and forced to zero for $0 and league pools at lib.rs:251-253) — but the sentence says \"only\", and the same page two sections earlier says the fee is zero \"for season one\", which implies the path exists. The permissionless-refund half of the sentence is accurate (`reclaim_dues` needs only the member's own signature, lib.rs:792-863, 1376-1397).",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Add the fee as a fourth path and say it is currently zero, or reword \"only\" to \"the ways money reaches a member are\". The Risks page has the identical three-path omission at src/app/risk/page.tsx:190, so whoever fixes this should fix both.",
+   "file": "/home/cryptonomist/commish.fun/src/app/play/page.tsx"
+  },
+  {
+   "quote": "So the practical position is this: joining is the decision. After that, your only exits are the pool finishing or the refund deadline passing.",
+   "reality": "Incomplete in two directions. (1) In a league with prize slots still pending or finalized, the refund does not open at the refund deadline — it is blocked for a further PRIZE_CLAIM_GRACE_SECS, which is 30 days (programs/commish/src/constants.rs:83), enforced at lib.rs:820-829. (2) \"The pool finishing\" is not an exit for most people: once a pool reaches STATUS_SETTLED, `reclaim_dues` refuses outright (lib.rs:800), so a member who is not a winner in a settled pool has no exit and no refund, permanently.",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Name the 30-day league grace explicitly, and say plainly that a settled pool closes the refund path for everyone who did not win. The second point is the more important one for this page: the sentence currently reads as though the pool ending returns you to neutral.",
+   "file": "/home/cryptonomist/commish.fun/src/app/play/page.tsx"
+  },
+  {
+   "quote": "There is no account to keep, nothing to cancel, and no subscription running in the background. Closing the tab is enough.",
+   "reality": "True for someone who never links an X account, false for anyone who does. Linking (offered on the leaderboard, src/app/leaderboard/page.tsx:160 via src/components/XLink.tsx) writes a durable server-side row keyed by wallet in Cloudflare D1 — wallet, provider, provider_id, handle, avatar_url, listed, linked_at, read_token (db/schema.sql:24-56) — and hands the browser a 180-day httpOnly capability cookie (`READ_COOKIE_MAX_AGE = 180 * 24 * 60 * 60`, src/lib/identity.ts:65). Cancelling it is a real, separate, deliberate action: DELETE /api/auth/identity, gated on a fresh wallet signature, deleting the identity row and the cached standing row (src/app/api/auth/identity/route.ts:138, 176, 179). LEGAL-REVIEW.md itself calls the cookie \"a persistent identifier lasting 180 days\".",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Qualify it: no account is needed to join or play, and closing the tab is enough — unless you linked an X account, in which case there is one record, and unlinking is one signature at /leaderboard. This sits in the \"Stepping away\" section, which is precisely where somebody walking away will look for it.",
+   "file": "/home/cryptonomist/commish.fun/src/app/play/page.tsx"
+  },
+  {
+   "quote": "We should also be honest about a limit on our side. Because there are no accounts, we have no self exclusion tool.",
+   "reality": "The conclusion is correct and verified: nothing in the program or the site can bar a wallet from joining. `check_join_open` has no blocklist (programs/commish/src/lib.rs:1105-1123), and the one operator switch, `config.paused`, blocks pool creation only and is documented as never able to block a claim or refund (lib.rs:95-97). There is no geographic or identity gate anywhere (LEGAL-REVIEW.md, \"No geographic check anywhere\"; no middleware.ts in the repo). The stated reason is what is wrong — there is a per-wallet identity record, as above.",
+   "verdict": "stale",
+   "severity": "low",
+   "fix": "Keep the admission, drop or repair the premise. \"We have no self-exclusion tool: joining a pool needs only a wallet, and nothing on our side can refuse one\" is both true and stronger than the account-based reasoning.",
+   "file": "/home/cryptonomist/commish.fun/src/app/play/page.tsx"
+  }
+ ],
+ "missingDisclosures": [
+  "What the refund actually pays. `reclaim_dues` sets refund_per_member = vault_amount / paid_members and fixes it on the first call (programs/commish/src/lib.rs:833-836; mirrored client-side in src/lib/program.ts:1052-1056). It is a pro-rata share of whatever is left in the vault at that moment, divided across every paid member — not your buy-in back. In a league where prize slots were claimed before the deadline the vault is already smaller, so the refund can be materially less than what you put in. The page describes the refund path three times and never describes the amount.",
+  "The refund path closes permanently once a pool settles. `reclaim_dues` refuses STATUS_SETTLED outright (programs/commish/src/lib.rs:800). Combined with `claim_pot`, which pays only members passing the winner test (lib.rs:747-756), a non-winner in a settled pool has no exit at all, ever. The page's \"your only exits\" framing does not say this.",
+  "Money that never comes back to anyone. Payouts use integer division and the remainder is deliberately left in the vault with no instruction able to release it — \"The dust stays in the vault rather than being handed to whoever claims first\" (programs/commish/src/lib.rs:680-682), and the same division appears in the refund at lib.rs:834. Bounded and tiny (under winners_count micro-USDC), but it is a permanent one-way loss the page does not mention.",
+  "The fee mechanism is live and admin-controlled. Each pool copies fee_bps and fee_cap from a global Config at creation and they are then fixed for that pool's life (programs/commish/src/lib.rs:244-258), but the admin key can change the defaults for pools created later via `update_config` (lib.rs:83-99), and the copied cap is 50 USDC (scripts/init-config.ts:50). The page says only \"We do not take a cut of the pot for season one. The platform fee is set to zero.\" The Risks page carries the caveat (src/app/risk/page.tsx:199); this page does not.",
+  "Browser storage. The arcade writes a longest-run high score to localStorage (src/components/CommishBowl.tsx:271-273) and the sound toggle persists a preference (src/lib/sfx.ts:38, 55). \"Closing the tab is enough\" is the only sentence on the page that speaks to what is left behind on the device, and it is not quite true. Minor, per-browser, and possibly better handled on the Privacy page than here.",
+  "ON THE ARCADE QUESTION — my read is that it is a category error for this page's money claims, with one narrow exception. /arcade takes no wallet, no RPC, no chain and no stake; the route's own header states it \"collects nothing\" and writes only a local high score (src/app/arcade/page.tsx:1-15). Audio is synthesised in-page, gain-capped at 0.08, and off until the visitor explicitly turns it on, with no AudioContext constructed before then (src/lib/sfx.ts:1-21, 30-58) — i.e. it is not an autoplaying reinforcement surface. Nothing on the Playing Responsibly page becomes false because a free game exists, and adding responsible-play language about a stakeless game would dilute the page rather than improve it. The exception is factual, not framing: the browser-storage point above, and the fact that the game is now reachable from every page including this one (src/components/SiteNav.tsx:33-38, src/components/SiteFooter.tsx:16-30), so \"closing the tab is enough\" should be accurate about the arcade too. Whether a game-shaped front door on a money product changes the page's framing is a judgement for whoever owns the framing — and, given the subject matter, plausibly one to put to the lawyer alongside the items already in LEGAL-REVIEW.md. It is not a code/copy mismatch and I am not reporting it as one."
+ ]
+}

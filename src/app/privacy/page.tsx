@@ -86,6 +86,8 @@ export default function Page() {
         <li>{"You sign a message with your wallet, which proves the wallet is yours."}</li>
       </ol>
 
+      <p>{"Storage starts at step one, not step two. The moment X tells us who you are, we write your X id, your handle and your avatar URL to our database and hold them for ten minutes while we wait for your wallet signature. Signing deletes that row. If you walk away instead, it expires, and expired ones are cleared out when the next person starts a link, so on a quiet day an abandoned row can sit there longer than its ten minutes before anything sweeps it up."}</p>
+
       <p>{"If you complete both steps, we store:"}</p>
 
       <ul>
@@ -99,7 +101,7 @@ export default function Page() {
         <li>{"a random token, described below"}</li>
       </ul>
 
-      <p>{"That is the whole of that record. We do not store your X password, and we store no X token at all. We ask X only for permission to read who you are, never for offline access, so X never issues us a refresh token. The one access token X does give us is used for a single request asking who just signed in, and is gone when that request finishes. We never post anything from your account."}</p>
+      <p>{"That is the whole of that record. We do not store your X password, and we store no X token at all. We ask X for two permissions, users.read and tweet.read. The second one sounds broader than it is: X requires it before it will answer a request for a profile, and we never read anyone's posts. We do not ask for offline access, so X never issues us a refresh token. The one access token X does give us is used for a single request asking who just signed in, and is gone when that request finishes. We never post anything from your account."}</p>
 
       <p>{"This record is stored in Cloudflare D1, a database service provided by Cloudflare."}</p>
 
@@ -111,7 +113,7 @@ export default function Page() {
 
       <p>{"It is not a login and it grants nothing else. It cannot list you publicly, unlist you, unlink you, or move anything. Each of those still costs a fresh signature from your wallet over a sentence saying what it does. Unlinking deletes the token along with the record, so the cookie then opens nothing."}</p>
 
-      <p>{"Within a league, linking means other members of that league see your handle and avatar next to your entry instead of a raw wallet address. That is the point of it: it is easier to tell who is who."}</p>
+      <p>{"On its own, linking shows your handle to nobody but you. A pool displays the name you typed when you joined, not your handle, and while you are unlisted the site refuses to answer \"which handle owns this address\" for anyone holding a bare address. Opting into the leaderboard is what lifts that refusal, because the pairing is then on a public page anyway. The one place your handle appears after linking is your own panel on the leaderboard page, which only the browser holding that cookie can open. What linking does is make the next choice available: it is the thing the leaderboard opt-in publishes, if you take it."}</p>
 
       <h2>{"The public leaderboard (a separate, second opt-in)"}</h2>
 
@@ -119,7 +121,7 @@ export default function Page() {
 
       <p>{"Please read this part carefully."}</p>
 
-      <p>{"Linking is scoped to your league. Being listed on the public leaderboard is global and permanent in effect. Once your handle appears next to your wallet in public, anyone can copy that pairing. From that point on:"}</p>
+      <p>{"Linking on its own publishes nothing. Being listed on the public leaderboard is global and permanent in effect. Once your handle appears next to your wallet in public, anyone can copy that pairing. From that point on:"}</p>
 
       <ul>
         <li>{"Anyone can look up that wallet on a public block explorer and see every transaction it has ever made, including transactions that have nothing to do with Commish, football pools, or us."}</li>
@@ -132,6 +134,8 @@ export default function Page() {
 
       <p>{"You can opt out of the leaderboard at any time. We will remove you from the page. We cannot remove the pairing from anyone who already recorded it, and we cannot remove anything from the blockchain."}</p>
 
+      <p>{"Building that page also caches a row for each listed wallet: the address, how many pools it has joined, how many it has won, and how much it has claimed. Every figure in it is read off the blockchain, none of it is anything you told us, and it exists so the page still renders when the Solana node we read from is slow. Opting out takes you off the page and leaves that row behind. It is deleted when you unlink."}</p>
+
       <h2>{"Cookies and local storage"}</h2>
 
       <p>{"This site sets five cookies. All five are set only if you choose to link an X account. Browse the site, join a pool, make picks and claim a pot, and we set none of them."}</p>
@@ -140,11 +144,13 @@ export default function Page() {
 
             <ul>
         <li>{"commish_pkce, commish_state and commish_link_from. Set when you press Connect X. They hold the proof that the sign-in started here, a value that stops somebody replaying another person's sign-in into your browser, and the page to return you to. All three last ten minutes and are deleted the moment you come back from X."}</li>
-        <li>{"commish_link. Set when X tells us who you are, and holds the reference to the pending link that your wallet is about to sign. It lasts ten minutes and is deleted as soon as you sign or the attempt fails."}</li>
+        <li>{"commish_link. Set when X tells us who you are, and holds the reference to the pending link that your wallet is about to sign. It lasts ten minutes and is deleted as soon as you sign. If the attempt fails we do not clear it, so it sits there until the ten minutes are up. It cannot be used to finish a link afterwards: the pending record it points at is single use and runs out on the same clock."}</li>
         <li>{"commish_id. Set when your wallet signature is accepted. It lasts 180 days and is described in its own section above. It is deleted when you unlink."}</li>
       </ul>
 
       <p>{"The wallet library we use also writes to your browser's local storage to remember which wallet you connected, so it can reconnect without asking again. That never leaves your browser and we never read it on our servers."}</p>
+
+      <p>{"The site keeps two values of its own in local storage. commish.sfx remembers whether you turned sound on, which is the speaker button on the home page and in the arcade. commish.bowl.best remembers your longest run in the Commish Bowl game on the arcade page. Both are written by the page in your browser, neither is ever sent to us, and neither says anything about who you are. Clearing site data in your browser removes them."}</p>
 
       <p>{"We set no advertising cookie, no analytics cookie and no tracking cookie, because we run no advertising and no analytics. Vercel and Cloudflare sit in front of this site and may set their own cookies at the network layer for security and routing. Those are theirs, not ours, and we do not read them."}</p>
 
@@ -154,9 +160,9 @@ export default function Page() {
 
       <p>{"Running a website means other companies handle some of the traffic. Here is who, and what they get."}</p>
 
-      <p><strong>{"Helius (Solana RPC)."}</strong>{" When the site reads from or writes to the blockchain, those requests go through Helius. Helius can see the requests we make, which will include wallet addresses and the network address the request comes from."}</p>
+      <p><strong>{"Helius (Solana RPC)."}</strong>{" Helius runs the Solana node our blockchain requests end up at. Your browser does not talk to it directly. Requests go first to a proxy we run on Cloudflare, which rebuilds each one and forwards the blockchain call by itself, with none of your browser's headers on it. So Helius sees the wallet addresses being read and the signed transactions being sent, and it sees our proxy's network address rather than yours. Requests our own servers make, such as building the leaderboard, come from our hosting and not from your browser at all."}</p>
 
-      <p><strong>{"Cloudflare (hosting, DNS and database)."}</strong>{" Cloudflare serves and protects the site and hosts the D1 database that holds X link records. Cloudflare processes technical connection data, including IP addresses, as part of delivering and protecting the site."}</p>
+      <p><strong>{"Cloudflare (hosting, DNS, database and the RPC proxy)."}</strong>{" Cloudflare serves and protects the site, hosts the D1 database, and runs the proxy that every blockchain request from your browser passes through. That last one is worth saying plainly: Cloudflare sees your IP address alongside the wallet addresses you are reading and the transactions you have signed. The database holds three things, all described above: the X link records, the short-lived pending rows for links nobody has signed yet, and a cached standings row for each wallet on the leaderboard. Cloudflare processes technical connection data, including IP addresses, as part of delivering and protecting the site."}</p>
 
       <p><strong>{"Vercel (hosting)."}</strong>{" Vercel hosts the web application. It processes technical connection data, including IP addresses, in order to serve pages."}</p>
 
@@ -164,15 +170,17 @@ export default function Page() {
 
       <p><strong>{"Sleeper (only on request)."}</strong>{" If a commissioner asks us to, we read a Sleeper league's public standings to pre-fill a payout sheet. This only happens when a commissioner supplies a league id. We do not send information about individual members to Sleeper."}</p>
 
-      <p><strong>{"X."}</strong>{" If you use the optional link, X handles the sign-in and knows you authorised our application. X's own privacy policy applies to what X does."}</p>
+      <p><strong>{"X."}</strong>{" If you use the optional link, X handles the sign-in and knows you authorised our application. X's own privacy policy applies to what X does. There is a second, quieter contact with X that has nothing to do with linking: the avatars on our leaderboard are loaded from X's own servers rather than copied to ours, so opening that page asks X for those images and X sees your IP address and the page that asked for them. That happens whether or not you have ever linked anything."}</p>
 
       <p><strong>{"Your wallet provider."}</strong>{" Your wallet is software you chose. It has its own policy and may see the sites you connect to."}</p>
 
+      <p><strong>{"Share buttons and explorer links."}</strong>{" The share buttons on a pool hand that pool's link to X, WhatsApp, Telegram or your phone's messages app, and the explorer links open Solana Explorer. Nothing goes anywhere until you press one, and what travels is the pool address, not anything about you."}</p>
+
       <p>{"An earlier version of this policy named Supabase as a scaffolded but unused provider. It never received any data, and the code that would have talked to it has now been deleted from the project, so there is nothing left to describe."}</p>
 
-      <p>{"We keep no server logs of our own. Vercel and Cloudflare keep their own operational logs, which is ordinary for any hosted site, and those can include your IP address and which pages you asked for. We can read them while troubleshooting. We do not copy them anywhere, we do not join them to anything else, and we do not build any profile from them."}</p>
+      <p>{"The website keeps no server logs of its own. The RPC proxy is the exception, and it is one we should name rather than round off: it runs on Cloudflare with logging switched on, so a record of each blockchain request that passes through it is kept in our Cloudflare account, for as long as Cloudflare keeps it rather than for a period we set. It holds no request bodies and no credentials. Vercel and Cloudflare also keep their own operational logs, which is ordinary for any hosted site, and those can include your IP address and which pages you asked for. We can read all of it while troubleshooting. We do not copy it anywhere, we do not join it to anything else, and we do not build any profile from it."}</p>
 
-      <p>{"Our own code writes log lines only when something has gone wrong, and those lines contain error messages, not wallet addresses and not IP addresses."}</p>
+      <p>{"Our own code writes log lines only when something has gone wrong or a request is refused, and those lines carry error messages and the name of the refused call, not wallet addresses and not IP addresses."}</p>
 
       <p>{"We perform no geographic check. There is no country lookup anywhere in this site, at join time or any other time, so no country or region is recorded or kept by us."}</p>
 
@@ -186,15 +194,19 @@ export default function Page() {
 
       <p>{"No analytics run on this site. Not third-party analytics, not self-hosted analytics, not error reporting, not session recording, not product telemetry. Earlier planning notes considered adding a privacy-preserving one and it was never built. We checked the shipped production build rather than our intentions, and it contains no code from any analytics or monitoring vendor."}</p>
 
+      <p>{"One thing sits close enough to that line to name. Our RPC proxy tags the requests it forwards with the site's name, so that Helius can tell our traffic apart from everybody else's in its own dashboard. It identifies the application, not the person, and there is nothing in it that points back at you."}</p>
+
       <h2>{"How long we keep things"}</h2>
 
       <p><strong>{"X link records."}</strong>{" Kept until you unlink, or until we stop offering the feature. When you unlink we delete the record. The delete is immediate and real: the row goes, along with the cached standings row and the random token, and there is no hidden flag keeping a copy alive. Cloudflare, who run the database, keep their own backups for their own disaster recovery, so a deleted row can persist in those for a period we do not set and cannot shorten. We do not restore backups to recover deleted records."}</p>
 
-      <p><strong>{"Leaderboard listing."}</strong>{" Displayed while you are opted in. Removed from the page when you opt out."}</p>
+      <p><strong>{"Pending links."}</strong>{" The row we write when X tells us who you are lasts ten minutes and is deleted the moment you sign. An abandoned one expires on the same clock, but nothing sweeps it until the next person starts a link, so on a quiet day it can outlast its ten minutes in the table."}</p>
+
+      <p><strong>{"Leaderboard listing."}</strong>{" Displayed while you are opted in. Removed from the page when you opt out. The cached standings row behind it is not deleted then. It goes when you unlink."}</p>
 
       <p><strong>{"On-chain data."}</strong>{" Permanent. Not ours to delete. See below."}</p>
 
-      <p><strong>{"Server and network logs held by our providers."}</strong>{" Retained under Vercel's and Cloudflare's own policies rather than ours. We do not set those periods, we have not asked either provider to keep anything for longer, and we keep no server logs of our own. Our own code writes a log line only when something has gone wrong, and those lines carry error messages, not wallet addresses and not IP addresses."}</p>
+      <p><strong>{"Server and network logs."}</strong>{" Retained under Vercel's and Cloudflare's own policies rather than ours. We do not set those periods and we have not asked either provider to keep anything for longer. The one log surface we operate ourselves is our RPC proxy's, which sits in our Cloudflare account on Cloudflare's retention. Our own code writes a log line only when something has gone wrong or a request is refused, and those lines carry error messages and the name of the refused call, not wallet addresses and not IP addresses."}</p>
 
       <h2>{"Unlinking, and what unlinking cannot undo"}</h2>
 
@@ -241,7 +253,7 @@ export default function Page() {
         </thead>
         <tbody>
           <tr><td>{"Wallet address, as displayed in a pool"}</td><td>{"To run the pool you joined and show its state"}</td><td>{"performance of a contract, because you asked us to link the account and we cannot do it without the record, together with our legitimate interest in running the site"}</td></tr>
-          <tr><td>{"X provider id, handle, avatar URL, linked wallet, timestamp"}</td><td>{"To show your handle in your league instead of a raw address"}</td><td>{"Consent"}</td></tr>
+          <tr><td>{"X provider id, handle, avatar URL, linked wallet, timestamp"}</td><td>{"To hold the proof that this wallet controls this X account, so your own panel can show you what is linked and the leaderboard has something to publish if you opt in"}</td><td>{"Consent"}</td></tr>
           <tr><td>{"Public leaderboard listing"}</td><td>{"To publish a leaderboard you asked to be on"}</td><td>{"Consent, given separately"}</td></tr>
           <tr><td>{"Technical connection data handled by our hosting providers"}</td><td>{"To deliver the site and keep it secure"}</td><td>{"Legitimate interests"}</td></tr>
         </tbody>
@@ -266,7 +278,7 @@ export default function Page() {
 
       <p><strong>{"Sources."}</strong>{" From you and from your wallet directly, from the public blockchain, and from X if you choose to link."}</p>
 
-      <p><strong>{"Purposes."}</strong>{" To run pools, to show handles in leagues where you asked us to, to publish a leaderboard where you asked us to, and to keep the site available and secure."}</p>
+      <p><strong>{"Purposes."}</strong>{" To run pools, to hold an X link where you asked us to make one, to publish a leaderboard where you asked us to put you on it, and to keep the site available and secure."}</p>
 
       <p><strong>{"Sale or sharing."}</strong>{" We do not sell personal information and we do not share it for cross-context behavioural advertising. We have not done so in the preceding twelve months. We do not knowingly sell or share the personal information of consumers under 16."}</p>
 

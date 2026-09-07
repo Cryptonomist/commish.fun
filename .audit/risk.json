@@ -1,0 +1,95 @@
+{
+ "target": "src/app/risk/page.tsx",
+ "findings": [
+  {
+   "quote": "The interface description the program publishes is in our public repository, so a developer can build the same transactions this site builds.",
+   "reality": "The repository is not publicly readable. `git remote -v` gives origin = https://github.com/Cryptonomist/commish.fun; an unauthenticated GET of https://api.github.com/repos/Cryptonomist/commish.fun returns 404 while https://api.github.com/users/Cryptonomist returns 200, and https://github.com/Cryptonomist/commish.fun returns 404 in a browser-shaped request. GitHub returns 404 (not 403) for private repos, so the repo is private, renamed, or moved. Separately, `git status -sb` shows `## main...origin/main [ahead 2]`, so even the pushed copy is two commits behind local. The IDL itself is real and current: src/idl/commish.json is byte-identical to target/idl/commish.json, address Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa, all 18 instructions present.",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Either make the repository public before this sentence ships, or change it to say where the source and IDL can be obtained today. A human should confirm whether the repo is private or simply renamed — this is the one finding I could not settle from inside the repo. The same problem hits src/app/risk/page.tsx:237 (\"The program is already public, the source is already in a public repository ... We are committing to keep a door open, not to build one\") and the /terms and /play equivalents if they make the same claim.",
+   "file": "src/app/risk/page.tsx:133"
+  },
+  {
+   "quote": "Under the current code, the only ways money leaves a vault are a winner's claim, a prize-slot claim in a league, and a pro-rata refund after the refund deadline.",
+   "reality": "There is a fourth path: the platform fee. programs/commish/src/lib.rs:717-731 transfers `fee_to_pay` out of the vault to `fee_treasury_ata` inside `advance_week`, signed by the pool PDA. The program's own module doc enumerates four paths, not three (lib.rs:13-19: \"Funds leave by exactly four paths ... the platform fee — to the treasury recorded on the pool at creation\"). The fee is currently zero (devnet Config PDA 8ZKbU7eq3Fb3jZ5AbbQHGiEwRNWHDxd3CCMBjMa9qqSr reads default_fee_bps = 0), but zero is a config value the admin key can change (lib.rs:83-99), not a property of the instruction set — and this sentence is the exhaustive enumeration in the section headed \"We cannot freeze, reverse, seize or redirect funds\".",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Say four paths and name the fee one, e.g. \"...a pro-rata refund after the refund deadline, and the platform fee to the treasury recorded on the pool, which is zero today.\" The Fees section already discloses the mechanism; this sentence just contradicts it.",
+   "file": "src/app/risk/page.tsx:191"
+  },
+  {
+   "quote": "Claiming a pot, taking a refund after the deadline, settling a member and advancing a week can each be triggered by anybody, and the program checks the rules itself rather than asking us.",
+   "reality": "Two of the four cannot be triggered by anybody. `ClaimPot` requires `pub wallet: Signer<'info>` with `has_one = wallet` on the member PDA (lib.rs:1354-1366), and `ReclaimDues` does the same (lib.rs:1377-1389) — only the member themselves can claim their own pot or take their own refund. Genuinely permissionless are `settle_member` (lib.rs:1318-1330, no signer), `advance_week` (lib.rs:1331-1352, no signer) and the `CrankPool` instructions finalize_week / lock_dues / finalize_sheet (lib.rs:1312-1316).",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Split the sentence: settling a member and advancing a week can be triggered by anybody; claiming a pot and taking a refund need a signature from the wallet that owns them and nobody else's — including ours. The point being made (\"nothing requires our signature\") survives intact and the corrected version is more reassuring, not less.",
+   "file": "src/app/risk/page.tsx:131"
+  },
+  {
+   "quote": "The pool simply sits there until the refund deadline set when it was created, at which point any paid member can trigger a pro-rata refund and everyone gets their share of the pot back regardless of what happened on the field.",
+   "reality": "Not always at the refund deadline. In a league pool with any prize slot still in state SLOT_PENDING or SLOT_FINALIZED, `reclaim_dues` additionally requires `now >= refund_deadline_ts + PRIZE_CLAIM_GRACE_SECS` (lib.rs:820-829), and PRIZE_CLAIM_GRACE_SECS is 30 days (programs/commish/src/constants.rs:83). So the real exit for a league whose sheet was posted can be the published deadline plus 30 days. The plain-veto-deadlock case the paragraph describes is unaffected, because a vetoed sheet resets its slots to SLOT_UNASSIGNED (lib.rs:494-499).",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Add the league carve-out to this paragraph and to \"Check the refund deadline before you join ... its date is fixed at creation\" (line 185): in a league with unclaimed prizes outstanding, the refund opens 30 days after that date.",
+   "file": "src/app/risk/page.tsx:183"
+  },
+  {
+   "quote": "There is no grace period, no late allowance, and no manual override.",
+   "reality": "The program contains a named grace period. constants.rs:77-83 defines PRIZE_CLAIM_GRACE_SECS = 30 * 24 * 60 * 60 (\"How long a finalized prize blocks the deadman refund\"), enforced at lib.rs:824-828. The preceding sentence on the page (line 137) puts \"claim windows and the refund deadline\" inside the scope of this claim, so the unqualified \"no grace period\" is wrong about the refund deadline. It remains true of pick deadlines: `submit_pick` requires `now < lock` with no allowance (lib.rs:381-382).",
+   "verdict": "false",
+   "severity": "low",
+   "fix": "Scope the sentence to picks and postings, where it is exactly true, and let the refund paragraph carry the 30-day grace.",
+   "file": "src/app/risk/page.tsx:139"
+  },
+  {
+   "quote": "Look those up in any Solana explorer, or run solana program show on the first address.",
+   "reality": "All three addresses exist only on devnet, and neither an explorer nor the Solana CLI defaults to devnet. I confirmed getAccountInfo for Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa against https://api.mainnet-beta.solana.com returns null, while the ProgramData account resolves on https://api.devnet.solana.com. A reader on default settings gets \"account not found\" for every address on the page. The cluster qualifier appears to have been edited out at some point: scripts/mainnet-copy.mjs:104-105 still carries replacements for the strings \"--url devnet\" and \"any Solana explorer set to devnet\", neither of which exists in the page any more, so those two rewrites are now dead no-ops.",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Restore the cluster: \"any Solana explorer set to devnet\" and \"solana program show --url devnet Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa\". That also re-arms the two mainnet-copy.mjs replacements that are currently matching nothing.",
+   "file": "src/app/risk/page.tsx:70"
+  },
+  {
+   "quote": "Listing yourself on the public leaderboard is permanent and global, and de-anonymises that wallet to anyone who reads the page.",
+   "reality": "Listing is reversible in the software. src/app/api/auth/listing/route.ts:80 calls `setListed(wallet, list)` in both directions behind a signature over direction-specific text, and DELETE /api/auth/identity hard-deletes the row and the cached standings row (src/app/api/auth/identity/route.ts:176-179). The privacy page states the opposite of this sentence outright: \"You can opt out of the leaderboard at any time. We will remove you from the page\" (src/app/privacy/page.tsx:133). What is permanent is the disclosure, not the listing — which is how privacy/page.tsx:122 and :131 phrase it (\"global and permanent in effect ... You cannot undo that in the real world, even though you can remove yourself from our page\").",
+   "verdict": "false",
+   "severity": "low",
+   "fix": "Match the privacy page's phrasing: the pairing is permanent in effect once anyone has seen it, even though you can remove yourself from the page at any time. As written, the risk page and the privacy page contradict each other on a point of fact.",
+   "file": "src/app/risk/page.tsx:223"
+  },
+  {
+   "quote": "Being eliminated does not entitle you to your buy-in back. Your money stays in the pot and goes to whoever ends up claiming it.",
+   "reality": "Two exceptions in the code. (1) `reclaim_dues` gates on `member.paid` and `!member.claimed` only — never on being alive (lib.rs:805-806) — so an eliminated member does get a pro-rata refund if the pool is never settled and the refund deadline passes; the page itself says so at line 183. (2) When every remaining member is eliminated in the same week, `advance_week` sets winners_week to that week and winners_count to `alive_at_week_start` (lib.rs:658-660), and `claim_pot` then pays exactly the members eliminated that week (lib.rs:750-754).",
+   "verdict": "false",
+   "severity": "low",
+   "fix": "Qualify with \"unless the pool is never settled and reaches its refund deadline, or everyone is eliminated in the same week\" — both are already true of the code and one of them is described elsewhere on the page.",
+   "file": "src/app/risk/page.tsx:145"
+  },
+  {
+   "quote": "each pool records an absolute ceiling in tokens chosen when the pool is created",
+   "reality": "Neither number is chosen by whoever creates the pool. `create_pool` takes no fee arguments (lib.rs:110-124) and copies both from the platform Config: `pool.fee_bps = cfg.default_fee_bps; pool.fee_cap = cfg.default_fee_cap` (lib.rs:255-256), except for league and zero-buy-in pools which are forced to 0/0 (lib.rs:251-254). The values are fixed at creation — that part is accurate — but they are the operator's defaults at that moment. Today, on devnet, default_fee_cap is 50,000,000 (50 USDC) and default_fee_bps is 0.",
+   "verdict": "false",
+   "severity": "low",
+   "fix": "\"...records the absolute ceiling in tokens that our platform default was set to at the moment the pool was created\" — the freezing-at-creation protection you are describing is real and worth keeping; only the word \"chosen\" attributes it to the wrong party.",
+   "file": "src/app/risk/page.tsx:197"
+  },
+  {
+   "quote": "Sharing it across several holders sits between those. We have not decided, no option is promised, and no date is attached.",
+   "reality": "The repo's own records say the sharing option was specifically dropped, not left open: programs/commish/src/state.rs:36-38 (\"a multisig migration was the obvious candidate and is no longer planned\"), HANDOFF.md:167 (\"A multisig was the plan of record and is not any more\"), PROGRAM.md:170-171 (\"No option is committed to; a 2-of-3 multisig was the plan of record and is not any more\"), and LEGAL-REVIEW.md:51-52 flags that internal notes had leaned on the planned multisig for the \"no control\" argument. \"No option is promised\" is consistent with PROGRAM.md; presenting all three options as equally live is not.",
+   "verdict": "stale",
+   "severity": "low",
+   "fix": "Either drop the sentence or say plainly that a multisig was the plan of record and has been dropped. Worth a lawyer's eye rather than mine — LEGAL-REVIEW.md:46-52 records that the dropped multisig weakens a regulatory-characterisation argument the Terms rely on.",
+   "file": "src/app/risk/page.tsx:66"
+  }
+ ],
+ "missingDisclosures": [
+  "THE PUBLISHED KEY IS ALSO THE ADMIN KEY AND THE FEE TREASURY. The page describes HoYb6BCszJUY89WhKt2itTpxtLHMJKuoEwXwQPdbhtVu only as the upgrade authority. Reading the devnet Config PDA 8ZKbU7eq3Fb3jZ5AbbQHGiEwRNWHDxd3CCMBjMa9qqSr shows admin = HoYb6BCszJUY... and fee_treasury = HoYb6BCszJUY... — the same single key holds all three roles. So the key that can replace the code is also the key that receives any fee and the key that controls the on-chain Config. This concentrates the risk the page already calls \"the most serious risk in the product\" and is nowhere stated.",
+  "THE ADMIN KEY CAN PAUSE POOL CREATION WITHOUT AN UPGRADE. `update_config` sets `c.paused` (lib.rs:83-99) and `create_pool` refuses while paused (lib.rs:128). It is currently 0 on devnet. This does not touch existing money — the code comment at lib.rs:94-96 is explicit that paused can never block a claim or refund, which is worth saying too — but the page's framing is that our only power is the upgrade key, and that is not quite so. Pausing needs no new code and no notice.",
+  "THE FEE CAN BE RAISED FOR FUTURE POOLS WITHOUT AN UPGRADE. The page says \"because the upgrade authority can deploy new code, you should not treat a zero fee as permanent\" and separately \"We can change the defaults for pools created in the future.\" It never joins the two: `update_config` (lib.rs:83-99) changes default_fee_bps and default_fee_cap with one admin signature and no redeploy, and every pool created afterwards inherits them (lib.rs:255-256). The current on-chain values are 0 bps and a 50 USDC cap. Naming the 50 USDC cap would also make the \"cap\" paragraph concrete instead of abstract.",
+  "A LEAGUE PRIZE CAN BE REFUNDED OUT FROM UNDER ITS WINNER. constants.rs:77-83 and lib.rs:815-829: 30 days after the refund deadline, the block on `reclaim_dues` expires even with prizes still outstanding, and unclaimed prizes rejoin the pro-rata split. `claim_prize` then pays `amount.min(vault.amount)` — possibly zero — while still marking the slot SLOT_CLAIMED (lib.rs:1025-1043). That is a concrete way to win a league prize and receive nothing, and the page's \"claim windows are enforced on-chain\" sentence is the closest it comes to mentioning it.",
+  "DUST IS STRANDED IN THE VAULT BY DESIGN. `pot_per_winner = payable / winners_count` (lib.rs:682) and `refund_per_member = vault_amount / paid_members` (lib.rs:834) are integer divisions, and the remainder has no instruction that can move it — permanently. It is deliberate and bounded at micro-USDC per winner (documented at PROGRAM.md:158-161 and in the lib.rs:680-681 comment), but the page tells readers that funds becoming permanently unclaimable would be a bug, and here the design does a small amount of it on purpose.",
+  "JOINING AND CREATING COST SOL RENT, NOT JUST A NETWORK FEE. The page lists only \"Insufficient SOL in your wallet to pay the network fee.\" Joining also allocates a 201-byte Member PDA paid by the joiner (lib.rs:1231-1241; size pinned in state.rs:244-246), and creating a pool allocates a 1,616-byte Pool account plus the vault ATA paid by the commissioner (lib.rs:1201-1219). Member rent is recoverable via `close_member` after the pool settles or is abandoned (lib.rs:1050-1064); the pool account's rent is not recoverable by anything in the instruction set.",
+  "SETTLEMENT DEPENDS ON A TOKEN ACCOUNT THE OPERATOR HAS TO CREATE. `AdvanceWeek` names `fee_treasury_ata` as a required, constrained account on every call including at a zero fee, because an Anchor account list is static (lib.rs:1331-1352). If that account does not exist, no pool can settle — scripts/deploy-mainnet.sh:142-150 calls this \"the one that bites\" and scripts/mainnet-cutover.sh:69-72 says \"NO POOL CAN EVER SETTLE\". Anyone can create an ATA for any owner, so it is recoverable by a third party, but it is an operator-created dependency sitting in the settlement path and the page does not mention it.",
+  "TWO THIRD PARTIES ARE MISSING FROM THE THIRD-PARTY LIST. \"We read public NFL scores from ESPN ... standings from a Sleeper league. We route RPC traffic through Helius and host data with Cloudflare\" omits Vercel, which hosts the web application (disclosed at src/app/privacy/page.tsx:161, and implicitly conceded by this page's own \"a hosting failure\"), and X, which the site calls at api.x.com for the optional account link (src/lib/xauth.ts:103 and :143). Both are named on the privacy page; the risk page's list should match it."
+ ]
+}

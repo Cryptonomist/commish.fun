@@ -1,0 +1,88 @@
+{
+ "target": "src/app/privacy/page.tsx",
+ "findings": [
+  {
+   "quote": "Within a league, linking means other members of that league see your handle and avatar next to your entry instead of a raw wallet address. That is the point of it: it is easier to tell who is who.",
+   "file": "src/app/privacy/page.tsx:114",
+   "reality": "No pool or league screen anywhere in the app renders an X handle or avatar. The only two places a handle/avatar is displayed are (1) the PUBLIC leaderboard, which reads only rows with listed = 1 (src/lib/leaderboard.ts:210 `SELECT wallet, handle, avatar_url FROM identity WHERE listed = 1`; rendered at src/app/leaderboard/page.tsx:119-133), and (2) the owner's own panel, which is mounted only on /leaderboard (src/components/XLink.tsx:250-262, mounted at src/app/leaderboard/page.tsx:160). The identity API deliberately refuses to answer 'which handle owns this address' unless the row is already listed=1 or the caller holds the commish_id capability cookie (src/app/api/auth/identity/route.ts:56-68), so a league-mate literally cannot resolve another member's handle. The pool page shows the on-chain displayName instead (src/app/p/[pool]/page.tsx:445; src/components/LeaguePanel.tsx:111). A repo-wide grep for `handle` across src/app and src/components returns hits only in leaderboard/page.tsx and XLink.tsx.",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Either delete this sentence and the 'Linking is scoped to your league' sentence at line 122, or replace them with what the code does: linking on its own shows your handle back to you in your own panel and nothing else; the handle becomes visible to anyone only if you take the second opt-in and appear on the public leaderboard. Note this also removes the only stated benefit of linking, which is a product question, and it undercuts the 'Consent' purpose in the GDPR table — worth a lawyer's eye before rewording."
+  },
+  {
+   "quote": "The wallet library we use also writes to your browser's local storage to remember which wallet you connected, so it can reconnect without asking again. That never leaves your browser and we never read it on our servers.",
+   "file": "src/app/privacy/page.tsx:147",
+   "reality": "This is the entire local-storage disclosure and it attributes all of it to a third-party library. The site's own code writes two localStorage keys: `commish.sfx` (src/lib/sfx.ts:23, written at src/lib/sfx.ts:55) and `commish.bowl.best` (src/components/CommishBowl.tsx:72, written at src/components/CommishBowl.tsx:273). `commish.sfx` is not arcade-only — the sound toggle that writes it sits in AttractCabinet (src/components/AttractCabinet.tsx:129) which is mounted on the landing page (src/app/page.tsx:198), so 'browse the site' does write site storage. Both were added after the privacy page's last edit: the page was last touched in b764d1e, while sound landed in b9ed987/9af94c0 and the arcade in 29ce1a7.",
+   "verdict": "stale",
+   "severity": "high",
+   "fix": "Add to the 'Cookies and local storage' section: the site itself stores two values in your browser's local storage — whether you switched sound on (commish.sfx, set by the sound toggle on the home page and in the arcade) and your longest run in the Commish Bowl game (commish.bowl.best). Neither is sent to us and neither identifies you."
+  },
+  {
+   "quote": "X provider id, handle, avatar URL, linked wallet, timestamp",
+   "file": "src/app/privacy/page.tsx:244",
+   "reality": "This is the 'What' column of the GDPR table; its 'Why' column reads 'To show your handle in your league instead of a raw address'. As established above, no league view resolves handles — src/app/api/auth/identity/route.ts:56-68 refuses to map an address to a handle for anyone but the row's own holder or for rows already public, and no component outside src/app/leaderboard/page.tsx and src/components/XLink.tsx renders a handle. The stated purpose of the processing does not match what the software does.",
+   "verdict": "false",
+   "severity": "high",
+   "fix": "Correct the 'Why' cell to the actual purpose (holding the proof that this wallet controls this X account, so that the leaderboard opt-in has something to publish and so your own panel can show you what is linked). Because this cell is the stated purpose behind a consent legal basis, have a lawyer confirm the rewrite rather than editing it as copy."
+  },
+  {
+   "quote": "When the site reads from or writes to the blockchain, those requests go through Helius. Helius can see the requests we make, which will include wallet addresses and the network address the request comes from.",
+   "file": "src/app/privacy/page.tsx:157",
+   "reality": "The browser no longer talks to Helius. NEXT_PUBLIC_RPC_URL is a Cloudflare Worker (.env.example:36 `NEXT_PUBLIC_RPC_URL=https://commish-rpc.therealcryptonomist.workers.dev`), read as the connection endpoint at src/components/Providers.tsx:35. The worker forwards a rebuilt request upstream and explicitly does not pass the caller's headers on: workers/rpc-proxy/src/index.ts:303-313 sends only `content-type` and `solana-client: commish.fun`. So Helius sees the Worker's IP, not the visitor's — the worker's own comment at line 309-311 says the header exists precisely because 'everything arrives from one worker IP'. Server-side leaderboard reads go direct via RPC_URL (src/lib/leaderboard.ts:97), i.e. from a Vercel function IP. Neither path exposes a visitor's network address to Helius. This sentence dates from bf82c66, before the proxy existed (e01cddb), and survived the page's later edit in b764d1e.",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Say that blockchain requests from your browser go first to a Cloudflare Worker we operate, which forwards them to Helius without your IP or browser headers; Helius sees the wallet addresses and transactions in the request and our worker's network address, not yours. Then disclose the worker itself (see missing disclosures)."
+  },
+  {
+   "quote": "Cloudflare (hosting, DNS and database). Cloudflare serves and protects the site and hosts the D1 database that holds X link records. Cloudflare processes technical connection data, including IP addresses, as part of delivering and protecting the site.",
+   "file": "src/app/privacy/page.tsx:159",
+   "reality": "The enumeration is now incomplete in two ways. (1) Cloudflare also runs the RPC proxy Worker that every browser blockchain request passes through (workers/rpc-proxy/src/index.ts; .env.example:36), so Cloudflare sees your IP together with the wallet addresses and signed transactions in those requests — a materially different category from 'delivering and protecting the site'. (2) The D1 database holds three tables, not just link records: `identity`, `nonce` (pending, unbound X identities) and `standing` (a per-wallet cache of pools joined, pools won and amount claimed) — db/schema.sql:72, db/schema.sql:94.",
+   "verdict": "stale",
+   "severity": "medium",
+   "fix": "Extend the Cloudflare entry to name the RPC proxy Worker and say what it sees, and to describe the D1 contents as link records, short-lived pending-link rows, and a cached standings row per listed wallet."
+  },
+  {
+   "quote": "We keep no server logs of our own. Vercel and Cloudflare keep their own operational logs, which is ordinary for any hosted site, and those can include your IP address and which pages you asked for.",
+   "file": "src/app/privacy/page.tsx:173",
+   "reality": "We do operate one logging surface of our own: the RPC proxy Worker has Cloudflare Workers observability switched on in its committed config (workers/rpc-proxy/wrangler.jsonc:17-18 `\"observability\": { \"enabled\": true }`), which retains invocation logs for that worker in our Cloudflare account, and the worker writes its own log lines (workers/rpc-proxy/src/index.ts:288 refused-method logging, and the upgrade-failure logs around lines 258-268). That worker is on the path of every browser RPC call, so its logs are keyed to visitor requests rather than to our own server-to-server traffic. The same sentence is repeated verbatim in the retention section at line 197.",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Replace 'no server logs of our own' with an accurate statement: our RPC proxy runs on Cloudflare with observability enabled, so request metadata for blockchain calls is retained in our Cloudflare account under Cloudflare's retention; it records no request bodies and no credentials. Fix both line 173 and line 197."
+  },
+  {
+   "quote": "If you complete both steps, we store:",
+   "file": "src/app/privacy/page.tsx:89",
+   "reality": "Storage begins at step 1, not after step 2. As soon as X answers, the callback writes a row to the D1 `nonce` table holding provider, provider_id (your numeric X account id), handle, avatar_url, issued_at and expires_at (src/app/api/auth/x/callback/route.ts:93-98 calling src/lib/identity.ts:132-169; table at db/schema.sql:72-81). Someone who signs in to X and then abandons the wallet signature has had their X id, handle and avatar URL written to our database. Expired rows are swept only opportunistically, on the next issueNonce call (src/lib/identity.ts:152), so on a quiet site an abandoned row can persist indefinitely. The following sentence at line 102, 'That is the whole of that record', is accurate about the `identity` row (it matches db/schema.sql:24-59 column for column) but the page never mentions the nonce row at all, and the retention section at line 191 does not cover it either.",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "Add a short paragraph: when X tells us who you are, we store your X id, handle and avatar URL for up to ten minutes while we wait for your wallet signature. It is deleted the moment you sign, and expired ones are cleared when the next person starts a link. Add a matching line to 'How long we keep things'."
+  },
+  {
+   "quote": "We ask X only for permission to read who you are, never for offline access, so X never issues us a refresh token.",
+   "file": "src/app/privacy/page.tsx:102",
+   "reality": "The authorize request asks for two scopes: `authorize.searchParams.set(\"scope\", \"users.read tweet.read\")` at src/app/api/auth/x/start/route.ts:71. `tweet.read` is a permission to read posts, and it is what X's consent screen will show the user, so 'only... who you are' overstates the narrowness. The rest of the sentence is accurate: no `offline.access` is requested (same line), so no refresh token is issued, and the access token is used for exactly one call and never stored (src/lib/xauth.ts:141-162, src/app/api/auth/x/callback/route.ts:90-91).",
+   "verdict": "false",
+   "severity": "medium",
+   "fix": "State both scopes and why: we ask X for users.read and tweet.read — the second is X's own prerequisite for reading a user profile, and we never read anyone's posts. Keep the offline-access and no-token sentences, which are correct."
+  },
+  {
+   "quote": "commish_link. Set when X tells us who you are, and holds the reference to the pending link that your wallet is about to sign. It lasts ten minutes and is deleted as soon as you sign or the attempt fails.",
+   "file": "src/app/privacy/page.tsx:143",
+   "reality": "The bind route clears the cookie only on the success path (src/app/api/auth/bind/route.ts:117). Every failure return leaves it in the browser: no cookie (lines 34-39), missing wallet or signature (49-54), expired or wrong-provider nonce (74-79), and bad signature (90-98) all return a bare NextResponse.json with no cookie clear. The cookie survives until its 10-minute maxAge lapses. It is inert — the server-side nonce row is burned before verification at line 82 — but it is not deleted as the page states.",
+   "verdict": "false",
+   "severity": "low",
+   "fix": "Either change the sentence to 'deleted as soon as you sign, and it expires ten minutes after it is set in any case', or clear READ/NONCE cookie on the failure returns in src/app/api/auth/bind/route.ts so the page becomes true as written."
+  }
+ ],
+ "missingDisclosures": [
+  "The /arcade page and the game on it are never mentioned. The page is accurate that it collects nothing (src/app/arcade/page.tsx makes no network call and touches no wallet), but it writes a high score to localStorage under `commish.bowl.best` (src/components/CommishBowl.tsx:72, 273) and the sound toggle there writes `commish.sfx` (src/lib/sfx.ts:55). Neither key is disclosed anywhere on the privacy page.",
+  "The Cloudflare Worker RPC proxy is not disclosed as an intermediary at all. Every blockchain read and write the browser makes goes to a worker we operate (.env.example:36; src/components/Providers.tsx:35; workers/rpc-proxy/src/index.ts), which therefore sees the visitor's IP, Origin, the wallet addresses being queried, and the raw signed transactions being submitted. The 'Third parties, and what they see' section attributes all of that to Helius instead.",
+  "The proxy attaches a `solana-client: commish.fun` header specifically so Helius can attribute traffic in its own analytics dashboard (workers/rpc-proxy/src/index.ts:309-312). It identifies the application rather than the person, but the page's 'No analytics run on this site... not product telemetry' paragraph (line 187) makes no room for it.",
+  "The D1 `nonce` table is undisclosed. It holds a verified-but-unbound X identity — provider_id, handle, avatar_url — for anyone who completes X sign-in and then abandons the wallet signature (db/schema.sql:72-81; src/lib/identity.ts:132-169). Expiry is enforced only by an opportunistic sweep on the next link attempt (src/lib/identity.ts:152), so it has no guaranteed deletion time.",
+  "The D1 `standing` table is undisclosed as a stored record. It holds wallet, pools_joined, pools_won, claimed_base and updated_at for every listed wallet (db/schema.sql:94-100), written through on each successful leaderboard build (src/lib/leaderboard.ts:256-272). It appears on the page only in passing, as 'the cached standings row' inside the unlink retention paragraph.",
+  "Opting out of the leaderboard does not delete the cached standings row. The listing route only flips the flag (`setListed(wallet, list)`, src/app/api/auth/listing/route.ts:81); the standing row is deleted only on full unlink (src/app/api/auth/identity/route.ts:179). The retention entry 'Leaderboard listing. Displayed while you are opted in. Removed from the page when you opt out' (line 193) is true about display but silent about the row that survives.",
+  "X avatars are hot-linked directly from X's CDN. The public leaderboard renders `<img src={r.avatarUrl}>` with the pbs.twimg.com URL (src/app/leaderboard/page.tsx:119-127), and XLink does the same (src/components/XLink.tsx:250-256). Every visitor to /leaderboard — including people who never linked anything — sends their IP and a referring URL to X. The 'X' entry in the third-party list (line 167) covers only sign-in for people who opt in.",
+  "If NEXT_PUBLIC_RPC_URL is ever unset in a deployment, the browser falls back to Solana Labs' public devnet endpoint via `clusterApiUrl(\"devnet\")` (src/components/Providers.tsx:35), i.e. api.devnet.solana.com — a third party named nowhere on the page. Worth either disclosing or removing the fallback so the failure is loud.",
+  "Outbound share and explorer links pass a pool address to third parties when a user clicks them: x.com/intent/tweet, wa.me, t.me and an sms: link (src/components/SharePool.tsx:101-133), and explorer.solana.com (src/app/p/[pool]/page.tsx:369; src/app/pools/new/page.tsx:66). These are user-initiated, so they may not need a listing, but they are not covered by the 'It does not cover... any league platform you use elsewhere' carve-out either."
+ ]
+}

@@ -41,15 +41,26 @@ export default function Page() {
 
       <p>{"The second is a program deployed on the Solana blockchain. When a pool has a buy-in, the program creates a token account that belongs to that pool and holds the members' dues until the pool's own rules release them."}</p>
 
-      <p>{"There are three modes:"}</p>
+      <p>{"There are three modes. The program has nine pool types written into it and refuses the other six outright, so a half-built mode can never take money."}</p>
 
       <ul>
-        <li><strong>{"Survivor."}</strong>{" Each week you pick one team you think will win. A wrong pick normally ends your run."}</li>
+        <li><strong>{"Survivor."}</strong>{" Each week you pick one team you think will win. A wrong pick normally ends your run, and the exceptions are just below."}</li>
         <li><strong>{"Loser."}</strong>{" The same shape, inverted: you pick a team you think will lose."}</li>
-        <li><strong>{"League dues."}</strong>{" The season itself is played somewhere else entirely, for example on ESPN or Sleeper. Commish only holds the pot and records the payout sheet that the commissioner posts."}</li>
+        <li><strong>{"League dues."}</strong>{" The season itself is played somewhere else entirely, for example on ESPN or Sleeper. Commish only holds the pot and records the payout sheet that the commissioner posts. A league has at most eight prize slots, set when the pool is created, and they must add up to exactly one hundred per cent."}</li>
       </ul>
 
-      <p>{"Pools are private. They are joined by link. There is no public directory, no matchmaking, and no way for us or anyone else to browse for a pool to join. Pools may be created with a buy-in of zero, in which case nothing is held at all."}</p>
+      <p>{"Four things about a Survivor or Loser pool are worth knowing before you join, because the program is strict about all four:"}</p>
+
+      <ul>
+        <li>{"No pick counts as a wrong pick. If you have not picked when the week is finalized, you are out. There is no grace."}</li>
+        <li>{"A team can be used only once in a season, and a team on a bye cannot be picked at all."}</li>
+        <li>{"A tie counts as a win for neither team, and the two modes take that differently: it knocks you out of a Survivor pool and carries you in a Loser pool. A cancelled or voided game is a push: it carries whoever picked either team, but that team is still spent for the season."}</li>
+        <li>{"There is not always a single winner. If everyone still alive is knocked out in the same week, the pot splits among the people who were alive when that week began. If more than one member is still standing after week 18, they split it. Only the last-one-left case is winner-take-all."}</li>
+      </ul>
+
+      <p>{"A pool takes between 2 and 500 members."}</p>
+
+      <p>{"Pools are unlisted rather than private, and the difference matters. Joining is by link, we publish no directory and we run no matchmaking. But a pool is an ordinary public account on a public blockchain. Every pool record and every member record can be read straight off Solana by anyone, with one ordinary request to a public node, and our own leaderboard is built exactly that way. Nothing in the program asks for an invitation either: an open pool can be joined by anyone who finds it. The link is a convenience, not a lock. Pools may be created with a buy-in of zero, in which case nothing is held at all."}</p>
 
       <h2>{"What Commish is not"}</h2>
 
@@ -59,7 +70,7 @@ export default function Page() {
 
       <p>{"We take no share of any pot in season one: the platform fee is set to zero. A fee mechanism exists in the program and is described under Fees below, so if that ever changes this sentence changes with it. "}{"We do commit to that, and so does the program. A pool records its own fee rate and its own ceiling at the moment it is created, and neither can be changed afterwards by us or by anyone. A fee we set in future reaches only pools created after we set it. The deal you joined is the deal that pays out."}</p>
 
-      <p>{"We never receive, hold or control your funds at any point. Money moves from a member's wallet into an account owned by the pool's own program address, and out again only by the paths listed below. It does not pass through us, and there is no moment at which we could stop it, take it or send it somewhere else."}</p>
+      <p>{"We never receive, hold or control your funds at any point. Money moves from a member's wallet into an account owned by the pool's own program address, and out again only by the paths listed below. It does not pass through us, and there is no moment at which we could take it or send it somewhere else. There is one way we could delay a winner's claim, and we set it out under How money leaves a vault rather than leave you to find it."}</p>
 
       <p>{"The word \"escrow\" on this site describes what the program's code does. We are describing our conduct, not claiming any particular regulatory status for ourselves. "}{"To be explicit about what we are not: we are not a bank, a money transmitter, a money services business, a broker, a custodian, a trustee or a payment processor, and nothing in these terms should be read as us accepting any of those roles. We never hold your funds at any point. Whether a particular regulator in a particular place agrees with that characterisation is not something we can settle on your behalf, and if you are running a pool at a size where it matters, take your own advice."}</p>
 
@@ -97,9 +108,13 @@ export default function Page() {
 
       <p>{"Network fees are payable to the Solana network, not to us."}</p>
 
+      <p>{"Creating a pool also locks up a rent deposit in SOL, for the pool's own account and for its vault, paid by the commissioner. Nothing in the program closes a pool, so that deposit stays locked for good. Members fare better: once a pool has settled or been abandoned, a member who has taken their money or was never owed any can close their own member account and recover that rent."}</p>
+
       <h2>{"How money is held"}</h2>
 
       <p>{"When a pool has a buy-in, members pay USDC into a vault. That vault is the pool's own token account, derived by the program itself (a program derived address). It is not our account and it is not the commissioner's account."}</p>
+
+      <p>{"The token is fixed. One USDC mint is compiled into the program and every other mint is refused when a pool is created, so a pool cannot be denominated in anything else."}</p>
 
       <p>{"We do not hold, control, or have the ability to move member funds. Neither does the commissioner. This is a property of how the program is built, not a policy we have adopted, and it cuts both ways: it means nobody can take the pot, and it also means nobody can put a mistake right for you."}</p>
 
@@ -110,23 +125,27 @@ export default function Page() {
       <ul>
         <li><strong>{"A winner's claim."}</strong>{" In a Survivor or Loser pool, a member who passes the pool's winner test claims from a settled pool."}</li>
         <li><strong>{"A prize slot claim."}</strong>{" In a league, the member assigned to a finalized slot on the payout sheet claims that slot."}</li>
-        <li><strong>{"A refund."}</strong>{" After the pool's refund deadline has passed, any paid member can trigger a pro rata refund of the vault to the paid members. They do not need our permission or the commissioner's. In a league there is one exception, described under Refunds below: a refund waits while a prize slot is still owed."}</li>
-        <li><strong>{"A platform fee"}</strong>{", if one is set on that pool, to the treasury address recorded on the pool when it was created. See Fees below."}</li>
+        <li><strong>{"A refund."}</strong>{" After the pool's refund deadline has passed, any paid member can reclaim their own pro rata share of the vault. They do not need our permission or the commissioner's. Each member has to call it for themselves, and the mechanics are under Refunds below. In a league there is one exception, also described there: a refund waits while a prize slot is still owed."}</li>
+        <li><strong>{"A platform fee"}</strong>{", to the treasury address recorded on the pool when it was created. It is zero on every pool created today. See Fees below."}</li>
       </ul>
 
-      <p>{"There is no administrative withdrawal path, no sweep and no emergency route in the program as deployed. Using the site, we cannot freeze, reverse, seize, redirect or recover funds in a vault, for anyone, for any reason."}</p>
+      <p>{"There is no administrative withdrawal path, no sweep and no emergency route in the program as deployed. We cannot reverse, seize, redirect or recover funds in a vault, for anyone, for any reason. Two limits on that sentence follow, and both of them are ours: the upgrade key, and one way we could hold up a winner's claim."}</p>
 
       <p>{"That statement has one important limit, and we would rather state it than let you discover it. The program's upgrade authority is currently a single key that we hold. While that is true, we are not powerless over the code in the way the paragraph above might suggest: new program code could in principle be deployed, and new code could behave differently. We are not promising to change that. Once the program has been audited we will decide what happens to the key, and the honest options are to keep it, to discard it so that the program can never be changed again, or to share it. We have not chosen, there is no date, and you should treat the single key as the state of the world rather than as a stage we are passing through. See the Risks page, which spells out what that key could do in the worst case. "}{" If we were ever ordered by a court to use that key, we would comply with a valid order, and we would say publicly that we had been ordered to do something unless the order forbade us from saying so. We would rather you knew that now than assumed otherwise."}</p>
+
+      <p>{"There is a second limit, smaller but more immediate. Closing a week in a Survivor or Loser pool requires a USDC account belonging to our fee treasury to exist. The program names that account every time, whether or not a fee is charged, and season one charges none. Settling the pool is what opens the winner's claim, so if that account is missing, no Survivor or Loser pool can settle and no winner can claim until it exists again. It does not put the money within our reach: the pro rata refund after the refund deadline still works, and would then be the only way out. It is a dependency on us, and you should know it is there. A league never runs that step and is not affected."}</p>
 
       <h2>{"Refunds"}</h2>
 
       <p>{"Every pool sets a refund deadline when it is created. Once that time has passed, the refund path above becomes available to any paid member."}</p>
 
-      <p>{"Two things to understand about it:"}</p>
+      <p>{"Four things to understand about it:"}</p>
 
       <ul>
         <li>{"The refund is "}<strong>{"pro rata across paid members"}</strong>{", not a return of your own payment specifically, and it splits whatever is actually left in the vault at the time."}</li>
+        <li>{"You have to reclaim your own share. Nobody's refund pays anybody else. The first person to reclaim fixes the per-member figure for everyone, and a member who never calls it is never paid."}</li>
         <li>{"In a league, a refund is blocked while a prize slot is pending or finalized, so that a slow winner is not refunded out from under. That block expires 30 days after the refund deadline, after which unclaimed prizes rejoin the pro rata split."}</li>
+        <li>{"The refund path closes for good once a pool has settled. In a Survivor or Loser pool that is the moment the winners are decided, so a winner who never claims leaves their share in the vault with no way out for anyone. That is how the program is built, not a fault in it."}</li>
       </ul>
 
       <p>{"Small remainders from integer division stay in the vault. These are fractions of a cent."}</p>
@@ -138,14 +157,16 @@ export default function Page() {
       <p>{"Every pool has a commissioner, who is the person who created it. The commissioner:"}</p>
 
       <ul>
-        <li>{"sets the pool's rules, buy-in, schedule, prize structure, refund deadline and dispute window at creation, and cannot change several of them afterwards;"}</li>
-        <li>{"decides who is invited, by sharing the join link;"}</li>
+        <li>{"chooses the pool's name, mode, buy-in, member cap and dispute window, plus the start week in a Survivor or Loser pool, or the dues deadline and the prize split in a league. The weekly lock schedule and the refund deadline are not theirs to set: this site fixes both. None of it can be changed once the pool exists, because the program has no instruction that edits a pool;"}</li>
+        <li>{"decides who is invited, by sharing the join link, and can also pay someone else's buy-in for them, which creates that person's membership with only the commissioner signing. A wallet can therefore end up in a pool it never signed for, and that membership records who paid for it until the member closes it;"}</li>
         <li>{"posts the week's results, or in a league posts the payout sheet."}</li>
       </ul>
 
       <p><strong>{"The commissioner alone posts results."}</strong>{" We do not verify them. The site may display scores from ESPN's public endpoint, and standings from a Sleeper league when a commissioner asks for them, as a convenience. That information is provided by third parties, may be wrong, late or unavailable, and does not decide anything. What the pool acts on is what the commissioner posts to the program."}</p>
 
-      <p>{"A commissioner is a member like anyone else. They cannot move funds, cannot pay themselves, and cannot remove a member's ability to claim or to trigger a refund."}</p>
+      <p>{"Be clear about how much that is. A commissioner cannot move funds to an address of their choosing, and cannot remove a member's ability to claim or to trigger a refund. What they can do is decide who gets paid. In a league they fill in the payout sheet, and nothing stops them putting their own wallet in a slot: the program only checks that the assignee is a paid member of that pool, and a commissioner who joined their own league is one. In a Survivor or Loser pool they are the sole author of the results that decide who is eliminated and who is left to claim. Three instructions are theirs alone, and no other member has them: posting results, posting the payout sheet, and paying someone else's buy-in."}</p>
+
+      <p>{"The member veto below is the only check on any of that. There is no other."}</p>
 
       <p>{"If you do not trust a person to post results honestly, do not join their pool. That judgement is yours and we do not make it for you."}</p>
 
@@ -155,10 +176,11 @@ export default function Page() {
 
       <ul>
         <li>{"Results cannot be posted until at least three hours after the week's lock time."}</li>
-        <li>{"Once posted, they sit for the pool's "}<strong>{"dispute window"}</strong>{". The window is chosen when the pool is created, must be between one hour and seven days, and is 48 hours if the pool does not choose."}</li>
-        <li>{"During that window, members can veto the posting. A "}<strong>{"strict majority"}</strong>{" of the electorate (members still alive in a Survivor or Loser pool, all paid members in a league) clears the posting and returns the pool to its locked state."}</li>
-        <li>{"A cleared posting can be re-posted. A re-post is a new vote: everyone gets to vote on it again."}</li>
-        <li>{"If the window passes without a clearing majority, the results are finalized and the pool moves on. Finalized results cannot be reopened by anyone, including us."}</li>
+        <li>{"Once posted, they sit for the pool's "}<strong>{"dispute window"}</strong>{". The window is chosen when the pool is created, and 48 hours is what the form offers if you leave it alone. The program takes anything from one hour to seven days, but a Survivor or Loser pool cannot reach the top of that range: every week has to leave room to post results and finalize them before the next week locks, which on the season schedule caps the window a little under six days. Seven days is only reachable in a league, which has no lock schedule."}</li>
+        <li>{"Members can veto the posting. A "}<strong>{"strict majority"}</strong>{" of the electorate (members still alive in a Survivor or Loser pool, all paid members in a league) clears the posting and returns the pool to its locked state."}</li>
+        <li>{"The window is a guaranteed minimum, not a deadline. Nothing can be finalized before it closes, and the program goes on accepting votes after it closes, right up until somebody runs the finalize step."}</li>
+        <li>{"A cleared posting can be re-posted. A re-post is a new vote: everyone gets to vote on it again. Nothing limits how many times a commissioner may post again, so beating a posting you disagree with means mustering a fresh majority every single time."}</li>
+        <li>{"Once the window has passed without a clearing majority, anyone can run the step that finalizes the results and moves the pool on. It is not automatic and it is not the commissioner's alone: somebody has to run it. A pool nobody runs simply sits where it is, and what is left is the refund after the refund deadline. Finalized results cannot be reopened by anyone, including us."}</li>
       </ul>
 
       <p>{"That is the whole of it. It is a blunt instrument and it depends on members paying attention during the window. Watch your pool."}</p>
@@ -218,7 +240,7 @@ export default function Page() {
 
       <h2>{"Your data"}</h2>
 
-      <p>{"No account, password or email address is required to use a pool. What we collect, including the optional X account link and the separate, off by default choice to appear on a public leaderboard, is described in our Privacy Policy, which forms part of these terms. Please read it, and read the leaderboard section of it particularly carefully before you opt in: that choice is public, global and permanent."}</p>
+      <p>{"No account, password or email address is required to use a pool. What we collect, including the optional X account link and the separate, off by default choice to appear on a public leaderboard, is described in our Privacy Policy, which forms part of these terms. Please read it, and read the leaderboard section of it particularly carefully before you opt in. You can turn the listing off again whenever you like and we will take you off the page. What cannot be undone is the pairing of your handle with your wallet once it has been public: anyone who saw it can keep it, and we cannot take it back from them."}</p>
 
       <p>{"Wallet addresses and transactions on Solana are public by the nature of the network. We cannot make them private and neither can you."}</p>
 
@@ -226,9 +248,9 @@ export default function Page() {
 
       <p>{"We may change, suspend or withdraw the site, or any part of it, at any time. We may block access to the site from a particular address, region or wallet, and we may stop new pools being created."}</p>
 
-      <p>{"Be clear about what that does and does not mean. Ending your access to the website does not end your access to the program. The program is deployed on a public blockchain and can be used without us. Your ability to claim a prize, or to trigger a refund after the refund deadline, does not depend on our site being available or on our permission. That is deliberate."}</p>
+      <p>{"Be clear about what that does and does not mean. Ending your access to the website does not end your access to the program. The program is deployed on a public blockchain and can be used without us. Your ability to claim a prize, or to reclaim your share after the refund deadline, does not depend on our site being available or on our permission. That is deliberate, with the one exception set out next."}</p>
 
-      <p>{"We can pause the creation of new pools. We cannot pause a claim or a refund on a pool that already exists."}</p>
+      <p>{"The pause on new pools is worth being exact about. It is a switch in the program itself, not a change to this website: while it is on, nobody can create a pool through the program, here or anywhere else. It does not reach a pool that already exists. We cannot pause a refund, and we cannot pause a claim in a league. The one claim we could hold up is a winner's claim in a Survivor or Loser pool, for the reason set out under How money leaves a vault."}</p>
 
       <p>{"You end this agreement by stopping using the site."}</p>
 

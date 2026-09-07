@@ -44,7 +44,9 @@ export default function Page() {
 
       <p>{"If losing your buy-in would change your month, it is too much. If you would need to explain it to someone, it is too much. If you are putting in money that is meant for rent, food, debts or anyone else in your household, do not join the pool."}</p>
 
-      <p>{"The pot is held by the pool's own vault on Solana. We cannot move it, freeze it or give it back to you as a favour. That is by design, and it means there is nobody to appeal to if you change your mind."}</p>
+      <p>{"The pot is held by the pool's own vault on Solana. Under the code deployed today there is no instruction that lets us move it, freeze it or give it back to you as a favour. That is by design, and it means there is nobody to appeal to if you change your mind."}</p>
+
+      <p>{"One limit on that, because you should hear it from us rather than find it later. We currently hold the single key that can replace the program with different code, and different code could behave differently. What we cannot do is reach into a vault with the code that is running now. The Risks page spells out what that key could do in the worst case."}</p>
 
       <h2>{"This is not an investment and not a way to make money"}</h2>
 
@@ -86,22 +88,30 @@ export default function Page() {
       <h2>{"What we do not do"}</h2>
 
       <ul>
-        <li>{"We do not extend credit. There is no borrowing, no deferred buy-in, no paying later. We do not lend, and there is no credit anywhere in this product. One member can choose to pay another member's dues, which the program supports directly, so if somebody offers to cover your buy-in, be as careful about what you owe them as you would be anywhere else."}</li>
+        <li>{"We do not extend credit. There is no borrowing, no deferred buy-in, no paying later. We do not lend, and there is no credit anywhere in this product. The program does let a commissioner pay somebody's buy-in for them, though this site offers no way to do it today. If your commissioner offers to cover you, be as careful about what you owe them as you would be anywhere else, and know that your seat records who paid for it. You can close that record yourself once the pool has settled and you have taken anything you were owed, but the transaction that created it stays on the chain."}</li>
         <li>{"We do not offer bonuses, free entries, deposit matches, loyalty rewards or anything else designed to get you to put in more."}</li>
         <li>{"We do not send promotional messages telling you to play again. We do not ask for your email address and we have no way of sending you one."}</li>
-        <li>{"We do not run public pools that strangers can join. Every pool is private and link only. There is no directory. The only way in is that somebody you know sent you the link."}</li>
-        <li>{"We do not take a cut of the pot for season one. The platform fee is set to zero."}</li>
+        <li>{"We do not advertise pools and we publish no directory of them. There is no matchmaking here and no way to browse for a game on this site. The way in is a link somebody sends you. Be careful who you send yours to, though, because the link is not a secret: a pool is a public account on Solana, the link is simply its address, and the program has no invite list and no approval step. Anybody who has the address, or who goes looking for pools on chain, can join while the pool is still open."}</li>
+        <li>{"We do not take a cut of the pot for season one. The platform fee is set to zero. The mechanism is real, though, so be precise about what zero means: a pool copies the rate and the cap in force the moment it is created and keeps those two numbers for its whole life, and we can change the default for pools made after that. A league, and any pool with no buy-in, records zero for both instead, because no fee can ever be charged on either. Zero is the setting today rather than a promise. The Risks page goes into it."}</li>
       </ul>
 
       <h2>{"Stepping away"}</h2>
 
-      <p>{"The easiest way to step away is to not join. There is no account to keep, nothing to cancel, and no subscription running in the background. Closing the tab is enough."}</p>
+      <p>{"The easiest way to step away is to not join. Playing needs no account, so there is nothing to cancel and no subscription running in the background. Closing the tab is enough."}</p>
 
-      <p>{"Once you have joined a pool and paid in, it is different. Your buy-in is in the pool's vault and you cannot pull it back out at will. The pool runs to its end. Money leaves it only when a winner claims, when a prize slot is claimed in a league, or through the refund path after the refund deadline that was set when the pool was created, which any member who has paid can trigger without our permission or the commissioner's."}</p>
+      <p>{"One exception, if you took it. Linking an X account to your wallet on the leaderboard is optional and off by default, and it is the only record here you put there on purpose: a row keyed to your wallet, and a cookie in your browser that lasts 180 days. Closing the tab does not clear it. Unlinking does, and it is one deliberate act: open the leaderboard in the browser you linked from, connect that wallet, use Unlink and sign the message it asks for."}</p>
 
-      <p>{"So the practical position is this: joining is the decision. After that, your only exits are the pool finishing or the refund deadline passing. Please decide before you pay, not after."}</p>
+      <p>{"The browser matters there, and we would rather say so than let you find out. That cookie is what proves the wallet is yours. From a browser that never held it, or after you clear your cookies, or once the 180 days have run out, the Unlink button still appears but the request behind it is refused, and you have to link through X again before you can unlink. That is a rough edge in something meant to be one click, and it is ours, not yours."}</p>
 
-      <p>{"We should also be honest about a limit on our side. Because there are no accounts, we have no self exclusion tool. We cannot stop you joining a pool, and we cannot block your wallet from being invited to one. If you want a hard stop, it has to come from you and from the people around you, not from us."}</p>
+      <p>{"Your browser also keeps a few small things of its own that never leave the device, like which wallet you last connected, whether you turned sound on, and your best run in the arcade. And separately from anything you chose: our hosting and our blockchain proxy keep ordinary logs, the way any website does. That is a record you leave by visiting rather than by linking, and the Privacy Policy sets out what it holds and how long it lasts."}</p>
+
+      <p>{"Once you have joined a pool and paid in, it is different. Your buy-in is in the pool's vault and you cannot pull it back out at will. The pool runs to its end. Money leaves a vault by four paths and no others: a winner's claim, a prize slot claimed in a league, the pro-rata refund after the refund deadline that was set when the pool was created, and the platform fee to the treasury recorded on the pool, which is zero today. Three of those four you set off yourself by signing for them, and nothing is ever pushed to you: a winner claims, an assignee claims, and any member who paid can claim the refund. What is different about the refund is that it waits on nobody. A winner cannot claim until the commissioner has posted the result and a prize cannot be claimed until the commissioner has finalised the sheet, but the refund needs only the deadline to pass, and neither our permission nor the commissioner's."}</p>
+
+      <p>{"That refund is not your buy-in back, and the difference can be large. It is whatever is sitting in the vault at that moment, divided by everyone who paid in, and the first person to claim it fixes that figure for the rest. In a league where prizes were claimed before the deadline the vault is already smaller, so your share is smaller too. A little is also left behind on purpose: payouts divide in whole units and the remainder stays in the vault, where no instruction can release it. It is a fraction of a cent, so it will not change your day, but it never comes back to anyone."}</p>
+
+      <p>{"So the practical position is this: joining is the decision. Please decide before you pay, not after. And the exits are fewer than they sound. If the pool settles, only the winners are paid, and settling closes the refund path for good: if you did not win there is nothing left to claim, ever. If the pool never settles, the refund opens at the refund deadline, except in a league with prizes still outstanding, where it is held back a further thirty days first."}</p>
+
+      <p>{"We should also be honest about a limit on our side. We have no self exclusion tool. Joining a pool needs only a wallet, and with the code that is running there is nothing that would turn one away: no blocklist in the program, and no age, identity or location check anywhere in the product. We cannot stop you joining a pool, and we cannot block your wallet from being invited to one. If you want a hard stop, it has to come from you and from the people around you, not from us."}</p>
 
       <p>{"If you want to leave a group but not the friendship, telling the commissioner you are out for the season is usually the whole of it. Most commissioners will not ask why."}</p>
 
@@ -122,7 +132,7 @@ export default function Page() {
 
       <p>{"This page is not legal, medical or financial advice, and it is not a promise about anything. It does not change the Terms of Service or the Privacy Policy, and it is not a statement about whether Commish or any pool on it is lawful where you are. That remains your responsibility to work out. We make no representation about legality anywhere."}</p>
 
-      <p>{"If you want to raise something with us, including a concern about your own use of Commish or someone else's, you can reach us at "}{"hello@commish.fun"}{". We cannot move funds, and we cannot remove someone from a pool, so please be aware of what we can and cannot help with before you write."}</p>
+      <p>{"If you want to raise something with us, including a concern about your own use of Commish or someone else's, you can reach us at "}{"hello@commish.fun"}{". With the code that is running we cannot move funds, and we cannot remove someone from a pool, so please be aware of what we can and cannot help with before you write."}</p>
 
       <p>{"Commish is operated by "}{"HoldFi LLC, a Texas limited liability company, whose registered agent is at 5900 Balcones Dr, STE 100, Austin, TX 78731"}{"."}</p>
 

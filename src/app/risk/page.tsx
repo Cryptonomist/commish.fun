@@ -63,11 +63,13 @@ export default function Page() {
 
       <p>{"You are therefore trusting us, and trusting our operational security, whether or not you want to. The non-custodial design of the vaults limits what we can do with the current code. It does not limit what could be done with new code."}</p>
 
-      <p>{"We are not promising to change this. There is a decision to make about that key and it belongs after an audit rather than before one, because the audit changes which answer is right. Keeping it means someone can fix a bug and you are trusting us not to misuse it. Discarding it means the program is frozen exactly as written, including any bug an audit did not catch, and nobody can ever repair it. Sharing it across several holders sits between those. We have not decided, no option is promised, and no date is attached. Treat the single key as the live state of the world unless and until we publish, verifiably, that it has changed."}</p>
+      <p>{"That same key wears two other hats, and you should know about both. It is also the admin on the program's configuration account, and it is the address any platform fee would be paid to. One key, three roles. Two things follow, and neither of them needs new code: with a single signature we can pause the creation of new pools, and we can change the default fee and the default cap that new pools copy when they are created. What that key cannot do without new code is reach a pool that already exists. The pause flag blocks creation only, and the program gives it no way to stop a claim or a refund."}</p>
+
+      <p>{"We are not promising to change this. There is a decision to make about that key and it belongs after an audit rather than before one, because the audit changes which answer is right. Keeping it means someone can fix a bug and you are trusting us not to misuse it. Discarding it means the program is frozen exactly as written, including any bug an audit did not catch, and nobody can ever repair it. Sharing it across several holders sits between those, and that option has a history worth stating: a two-of-three multisig was our plan of record and it is not any more, and nothing has replaced it. We have not decided, no option is promised, and no date is attached. Treat the single key as the live state of the world unless and until we publish, verifiably, that it has changed."}</p>
 
       <p>{"You do not have to take our word for any of this. The program is deployed on Solana devnet at Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa, its program data account is 6dMgvhEnxv8QvHWffRTDcB5F5AUe3t9WGMUJLtUUzR4h, and the upgrade authority is HoYb6BCszJUY89WhKt2itTpxtLHMJKuoEwXwQPdbhtVu."}</p>
 
-      <p>{"Look those up in any Solana explorer, or run solana program show on the first address. If the authority ever changes, or is removed so that the program can never be altered again, the chain will show that before we do."}</p>
+      <p>{"Look those up in any Solana explorer set to devnet, or run solana program show --url devnet Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa. The configuration account that records the admin and the fee treasury is a program address anyone can derive and read, and it will show you the same key again. If the authority ever changes, or is removed so that the program can never be altered again, the chain will show that before we do."}</p>
 
       <h2>{"Smart contract risk more generally"}</h2>
 
@@ -120,7 +122,7 @@ export default function Page() {
         <li>{"Your RPC connection failing. We route through Helius, a third-party provider. If Helius is down or rate-limiting, the site may not be able to submit or confirm your transaction."}</li>
         <li>{"Your wallet software or extension failing, or a wallet update breaking signing."}</li>
         <li>{"Your own connectivity, your phone, your browser."}</li>
-        <li>{"Insufficient SOL in your wallet to pay the network fee, which will simply cause the transaction to fail."}</li>
+        <li>{"Insufficient SOL in your wallet, which will simply cause the transaction to fail. Every transaction costs a network fee, and joining or creating a pool costs more than that, because the program has to create accounts on chain and you pay the rent on them. There is more on that under Fees."}</li>
         <li>{"The commish.fun website itself being unavailable, whether through an outage, a hosting failure, or because we have taken it down."}</li>
       </ul>
 
@@ -128,21 +130,25 @@ export default function Page() {
 
       <p>{"Yes, and this is the most important thing on this page. Your money sits in a Solana program, not on our servers. If commish.fun is slow, broken, gone, or refusing to serve you, the program keeps working and your funds stay reachable."}</p>
 
-      <p>{"Anyone with a wallet and any Solana node can send that program instructions. Nothing requires our signature or our permission. Claiming a pot, taking a refund after the deadline, settling a member and advancing a week can each be triggered by anybody, and the program checks the rules itself rather than asking us."}</p>
+      <p>{"Anyone with a wallet and any Solana node can send that program instructions. Nothing requires our signature or our permission. Settling a member, advancing a week and the other cranks can be triggered by anybody at all, and the program checks the rules itself rather than asking us. Claiming a pot and taking a refund are narrower, and in your favour: each needs a signature from the wallet that owns it, and nobody else can sign for you, including us."}</p>
 
-      <p>{"Every address involved is worked out from public information rather than handed to you by us. The pool address comes from the commissioner's wallet and the pool's number, your member address comes from the pool and your wallet, and the vault is the pool's own token account. The interface description the program publishes is in our public repository, so a developer can build the same transactions this site builds."}</p>
+      <p>{"Every address involved is worked out from public information rather than handed to you by us. The pool address comes from the commissioner's wallet and the pool's number, your member address comes from the pool and your wallet, and the vault is the pool's own token account. The interface description the program was built from ships inside this site's own JavaScript, so a developer can read it out of the page and build the same transactions this site builds."}</p>
 
-      <h2>{"Deadlines are enforced by the program, and there is no grace period"}</h2>
+      <h2>{"Deadlines are enforced by the program, and a pick gets no grace period"}</h2>
 
       <p>{"Pick deadlines, claim windows and the refund deadline are enforced on-chain by the program itself, against the blockchain's own clock. They are not enforced by us, so we cannot bend them."}</p>
 
-      <p>{"There is no grace period, no late allowance, and no manual override. Nobody, including us and including your commissioner, can accept a pick after the deadline, reopen a closed week, or make an exception because your wallet failed or your internet dropped. If the transaction has not confirmed by the deadline, it did not happen."}</p>
+      <p>{"For a pick or a posting there is no grace period, no late allowance, and no manual override. Nobody, including us and including your commissioner, can accept a pick after the deadline, reopen a closed week, or make an exception because your wallet failed or your internet dropped. If the transaction has not confirmed by the deadline, it did not happen."}</p>
+
+      <p>{"The refund deadline is the one place the program does hold a grace period, and it is written into the code rather than granted by us. It is described under deadlock, below."}</p>
 
       <p>{"Do not submit a pick in the last minutes before a deadline. Assume you will need to retry at least once."}</p>
 
       <h2>{"A missed pick eliminates you"}</h2>
 
       <p>{"In Survivor and Loser pools, failing to submit a valid pick before the deadline eliminates you from the pool in the same way a wrong pick does. Being eliminated does not entitle you to your buy-in back. Your money stays in the pot and goes to whoever ends up claiming it."}</p>
+
+      <p>{"There are two exceptions, and both are in the program rather than in anybody's discretion. If the pool never settles and reaches its refund deadline, being eliminated does not cost you the refund: every member who paid takes a pro-rata share, alive or not. And if everybody still standing is eliminated in the same week, the pot goes to the people who were alive when that week started, which is to say the people who all just lost."}</p>
 
       <p>{"This applies however good your reason was. Illness, travel, a dead phone, a network outage, a wallet that would not connect: the program cannot see any of it."}</p>
 
@@ -164,7 +170,7 @@ export default function Page() {
 
       <p>{"Commissioners are ordinary people. They can make an honest mistake, read a scoreboard wrong, apply a house rule inconsistently, go quiet halfway through the season, or act dishonestly. We do not vet commissioners, we do not supervise them, and we cannot correct what one of them posts."}</p>
 
-      <p>{"If your commissioner posts a wrong result, the veto is the only remedy the software gives you. There is no appeal to us. We cannot overturn a result, we cannot pay you what you think you were owed, and we cannot move funds out of a vault under any circumstances."}</p>
+      <p>{"If your commissioner posts a wrong result, the veto is the only remedy the software gives you. There is no appeal to us. We cannot overturn a result, we cannot pay you what you think you were owed, and we cannot move funds out of a vault to an address of our choosing. No instruction in the program does that."}</p>
 
       <p>{"Only join pools run by people you already know and are willing to trust with money."}</p>
 
@@ -180,29 +186,39 @@ export default function Page() {
 
       <p>{"The veto is a blunt instrument. If enough members veto repeatedly, the pool cannot settle: results never stand, so nobody can claim, and the pot stays in the vault."}</p>
 
-      <p>{"Nothing breaks that deadlock. We cannot step in and decide who was right. There is no arbitrator. The pool simply sits there until the refund deadline set when it was created, at which point any paid member can trigger a pro-rata refund and everyone gets their share of the pot back regardless of what happened on the field. That may be months away, depending on the deadline the pool's creator chose."}</p>
+      <p>{"Nothing breaks that deadlock. We cannot step in and decide who was right. There is no arbitrator. The pool simply sits there until the refund deadline set when it was created, at which point any paid member can trigger a pro-rata refund and everyone who paid gets their share of the pot back regardless of what happened on the field. That may be months away, depending on the deadline the pool's creator chose."}</p>
 
-      <p>{"Check the refund deadline before you join. It is the only exit the software provides, and its date is fixed at creation."}</p>
+      <p>{"A league dues pool with a prize still outstanding is the exception, and it is worth knowing before you join one. If a payout sheet has been posted and a slot is still waiting to be claimed, the program holds the refund back for thirty days past the refund deadline, so that a slow winner does not have their prize split among everybody else. After those thirty days the block expires and any prize still unclaimed falls into the pro-rata split. A sheet that gets vetoed does not trigger this, because striking one down puts its slots back to unassigned."}</p>
+
+      <p>{"That protection runs both ways, so read this part if you win a league prize. Once the thirty days are up, a refund can empty the vault before you claim. The claim then pays what is actually in the vault, which can be nothing, and it still marks your slot as claimed. Claim what you win."}</p>
+
+      <p>{"Check the refund deadline before you join. It is the only exit the software provides, its date is fixed at creation, and in a league with a prize left outstanding it is that date plus thirty days."}</p>
 
       <h2>{"We cannot freeze, reverse, seize or redirect funds"}</h2>
 
       <p>{"We say this elsewhere as a feature. On this page you should read it as a limitation, because it cuts both ways."}</p>
 
-      <p>{"If you are defrauded by a commissioner, argued out of a prize, or send funds you did not mean to send, we cannot help. There is no button on our side. There is no account to suspend, no payment to reverse, no balance to restore. Under the current code, the only ways money leaves a vault are a winner's claim, a prize-slot claim in a league, and a pro-rata refund after the refund deadline."}</p>
+      <p>{"If you are defrauded by a commissioner, argued out of a prize, or send funds you did not mean to send, we cannot help. There is no button on our side. There is no account to suspend, no payment to reverse, no balance to restore. Under the current code, money leaves a vault by exactly four paths: a winner's claim, a prize-slot claim in a league, a pro-rata refund after the refund deadline, and the platform fee to the treasury recorded on the pool, which is zero today. Each of those names its own recipient. There is no fifth path and no destination anybody gets to choose."}</p>
+
+      <p>{"One consequence of that list, since this page tells you elsewhere that funds becoming permanently unclaimable would be a bug. The pot split and the refund split are integer divisions, and the remainder stays in the vault with no instruction anywhere that can move it. That much is stuck for good, on purpose. It is bounded at millionths of a dollar per person, and it is the one place where the design does deliberately what a bug would do by accident."}</p>
 
       <p>{"The one exception to our powerlessness is the upgrade key described above, and that is a risk to you rather than a protection for you."}</p>
 
       <h2>{"Fees"}</h2>
 
-      <p>{"Season one charges a zero platform fee. The fee mechanism exists in the program and is currently set to zero. Being precise about \"capped\", because it matters: each pool records an absolute ceiling in tokens chosen when the pool is created, and the fee can never exceed that or the amount actually in the vault. The percentage rate itself is only validated against a 100 percent ceiling in the code, so the protection that matters is the per pool absolute cap and the zero rate, not a low maximum rate. We are not promising a hard rate ceiling in a future version of the program. If one is ever added, this page will say so and will state the number."}</p>
+      <p>{"Season one charges a zero platform fee. The fee mechanism exists in the program and is currently set to zero. Being precise about \"capped\", because it matters: each pool records an absolute ceiling in tokens, copied from our platform default at the moment that pool was created, and the fee can never exceed that or the amount actually in the vault. The percentage rate itself is only validated against a 100 percent ceiling in the code, so the protection that matters is the per pool absolute cap and the zero rate, not a low maximum rate. We are not promising a hard rate ceiling in a future version of the program. If one is ever added, this page will say so and will state the number."}</p>
 
       <p>{"Because a fee mechanism exists and can be configured, and because the upgrade authority can deploy new code, you should not treat a zero fee as permanent or as a guarantee. Separately, every transaction you send costs Solana network fees in SOL, which are paid to the network and not to us."}</p>
 
-      <p>{"Being precise about this, because the word cap can be read more reassuringly than it deserves. Every pool records its own fee rate and its own absolute ceiling in tokens at the moment it is created, and those two numbers are fixed for that pool for its whole life. The fee taken can never exceed the ceiling recorded on the pool, and it can never exceed what is actually in the vault."}</p>
+      <p>{"There is a second cost in SOL, and it is not a fee to anybody. Solana charges rent for the space an account takes up, and both joining and creating pay it. Joining allocates a 201-byte account that records your membership, paid for by you; once the pool has settled or been abandoned and you have claimed, you can sign to close that account and the rent comes back to you. Creating a pool allocates a 1,616-byte pool account and the vault's token account, both paid for by the commissioner, and nothing in the program can close a pool, so that rent stays where it is."}</p>
+
+      <p>{"Being precise about this, because the word cap can be read more reassuringly than it deserves. Every pool records its own fee rate and its own absolute ceiling in tokens at the moment it is created, both copied from our platform defaults as they stood at that moment, and those two numbers are fixed for that pool for its whole life. Today those defaults are a zero rate and a ceiling of 50 USDC. A league pool and a pool with no buy-in record zero for both, because no fee can ever be charged on either. The fee taken can never exceed the ceiling recorded on the pool, and it can never exceed what is actually in the vault."}</p>
 
       <p>{"The protection that actually binds you is that pair of numbers being copied at creation, plus the fact that the rate is currently zero. The program itself only refuses a rate above one hundred percent, so do not read the existence of a ceiling as meaning the ceiling is low."}</p>
 
-      <p>{"We can change the defaults for pools created in the future. We cannot change them for a pool that already exists, and that is enforced by the program rather than promised by us. The deal you joined is the deal that pays out."}</p>
+      <p>{"We can change the defaults for pools created in the future, and doing it is easier than the rest of this page might suggest: one signature from our admin key, no new code, no redeploy, and every pool created after that copies the new numbers. We cannot change them for a pool that already exists, and that is enforced by the program rather than promised by us. The deal you joined is the deal that pays out."}</p>
+
+      <p>{"One piece of plumbing belongs here, because it can stop a pool settling. Advancing a week names the fee treasury's token account as a required account on every single call, including at a zero fee, so if that account does not exist no pool can settle. We create it. If it were ever missing, anyone at all could create it, because a token account can be made for any owner by anybody. But it sits in the settlement path, and you should know it is there."}</p>
 
       <h2>{"Legality is your problem, not ours"}</h2>
 
@@ -220,11 +236,11 @@ export default function Page() {
 
       <p>{"Your wallet address and every transaction it makes are public by the nature of the blockchain. Anyone who learns your address can see your entire history with it, on Commish and everywhere else."}</p>
 
-      <p>{"Linking an X account, and separately opting in to the public leaderboard, each make it easier for others to connect that address to you personally. Listing yourself on the public leaderboard is permanent and global, and de-anonymises that wallet to anyone who reads the page. Think carefully before opting in, and read the privacy policy first."}</p>
+      <p>{"Linking an X account, and separately opting in to the public leaderboard, each make it easier for others to connect that address to you personally. Listing yourself on the public leaderboard is global, and it de-anonymises that wallet to anyone who reads the page. You can take yourself off the page at any time and we will remove you. What you cannot take back is the disclosure: anyone who saw your handle next to your wallet can keep that pairing, and nothing we do reaches them. In that sense it is permanent in effect the moment it is seen. Think carefully before opting in, and read the privacy policy first."}</p>
 
       <h2>{"Third parties we depend on"}</h2>
 
-      <p>{"We read public NFL scores from ESPN's public endpoint, and, only when a commissioner asks for it, public standings from a Sleeper league. We route RPC traffic through Helius and host data with Cloudflare."}</p>
+      <p>{"We read public NFL scores from ESPN's public endpoint, and, only when a commissioner asks for it, public standings from a Sleeper league. We route RPC traffic through Helius, host this website with Vercel, and host data with Cloudflare. If you use the optional X link, we call X to sign you in. The privacy policy says what each of them sees."}</p>
 
       <p>{"Any of these can change, break, rate-limit us, return wrong data, or stop being available. We are not affiliated with, endorsed by or sponsored by the NFL, any team, ESPN, Yahoo or Sleeper. We do not control what they publish and we cannot promise the scores we display are correct or current."}</p>
 
@@ -234,7 +250,7 @@ export default function Page() {
 
       <p>{"If we stop running this site, we will publish the program's source code and instructions for calling it directly, so that anyone with funds in a pool can reach them without us."}</p>
 
-      <p>{"That is a cheap promise for us to make, and we would rather say so than dress it up. The program is already public, the source is already in a public repository, and the instructions describe something that already works today. We are committing to keep a door open, not to build one."}</p>
+      <p>{"That is a cheap promise for us to make, and we would rather say so than dress it up. Most of the door is already open: the program is on chain where anybody can read it, the interface description ships inside this site's own JavaScript, and the instructions describe something that works today. The one part that is still a promise is the source itself, which is not in a public repository at the moment. Publishing it is a thing we would have to do, not a thing that is already done."}</p>
 
       <h2>{"No warranty, and limits on what we owe you"}</h2>
 
