@@ -1,87 +1,144 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 500" width="1500" height="500">
-  <defs>
-    <radialGradient id="flood" cx="50%" cy="-10%" r="75%">
-      <stop offset="0%" stop-color="#E9C258" stop-opacity="0.10"/>
-      <stop offset="100%" stop-color="#E9C258" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 500" width="1500" height="500" role="img" aria-label="Commish dot fun">
   <rect width="1500" height="500" fill="#24492E"/>
-  <rect width="1500" height="500" fill="url(#flood)"/>
-  <rect x="75.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="69.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="69.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="150.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.18"/>
-  <rect x="144.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="144.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="225.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="219.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="219.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="300.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.18"/>
-  <rect x="294.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="294.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="375.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="369.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="369.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="450.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.18"/>
-  <rect x="444.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="444.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="525.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="519.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="519.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="600.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.18"/>
-  <rect x="594.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="594.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="675.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="669.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="669.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="750.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.18"/>
-  <rect x="744.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="744.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="825.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="819.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="819.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="900.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.18"/>
-  <rect x="894.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="894.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="975.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="969.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="969.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1050.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.18"/>
-  <rect x="1044.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1044.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1125.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="1119.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1119.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1200.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.18"/>
-  <rect x="1194.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1194.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1275.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="1269.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1269.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1350.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.18"/>
-  <rect x="1344.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1344.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1425.0" y="0" width="1" height="500" fill="#FFFFFF" opacity="0.09"/>
-  <rect x="1419.0" y="150.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <rect x="1419.0" y="350.0" width="13" height="1" fill="#FFFFFF" opacity="0.14"/>
-  <text x="150.0" y="71.9" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">10</text>
-  <text x="150.0" y="475.0" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">10</text>
-  <text x="300.0" y="71.9" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">20</text>
-  <text x="300.0" y="475.0" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">20</text>
-  <text x="450.0" y="71.9" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">30</text>
-  <text x="450.0" y="475.0" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">30</text>
-  <text x="600.0" y="71.9" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">40</text>
-  <text x="600.0" y="475.0" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">40</text>
-  <text x="750.0" y="71.9" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">50</text>
-  <text x="750.0" y="475.0" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">50</text>
-  <text x="900.0" y="71.9" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">40</text>
-  <text x="900.0" y="475.0" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">40</text>
-  <text x="1050.0" y="71.9" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">30</text>
-  <text x="1050.0" y="475.0" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">30</text>
-  <text x="1200.0" y="71.9" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">20</text>
-  <text x="1200.0" y="475.0" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">20</text>
-  <text x="1350.0" y="71.9" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">10</text>
-  <text x="1350.0" y="475.0" font-family="Anton" font-size="62.5" fill="#FFFFFF" opacity="0.16" text-anchor="middle" letter-spacing="5.0">10</text>
-  <text x="750" y="303.2" text-anchor="middle" font-family="Anton" font-size="152" letter-spacing="2.28" fill="#F0F2EC">COMMISH<tspan fill="#FF6A2B">.FUN</tspan></text>
-  
+  <rect x="75" y="0" width="150" height="500" fill="#1B3724"/>
+  <rect x="375" y="0" width="150" height="500" fill="#1B3724"/>
+  <rect x="675" y="0" width="150" height="500" fill="#1B3724"/>
+  <rect x="975" y="0" width="150" height="500" fill="#1B3724"/>
+  <rect x="1275" y="0" width="150" height="500" fill="#1B3724"/>
+  <rect x="0" y="25" width="1500" height="5" fill="#FBFDF8" opacity="0.32"/>
+  <rect x="0" y="470" width="1500" height="5" fill="#FBFDF8" opacity="0.32"/>
+  <rect x="75" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="225" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="375" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="525" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="675" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="825" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="975" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="1125" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="1275" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="1425" y="25" width="5" height="445" fill="#FBFDF8" opacity="0.2"/>
+  <rect x="25" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="25" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="50" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="50" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="75" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="75" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="100" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="100" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="125" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="125" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="150" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="150" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="175" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="175" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="200" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="200" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="225" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="225" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="250" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="250" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="275" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="275" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="300" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="300" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="325" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="325" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="350" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="350" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="375" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="375" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="400" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="400" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="425" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="425" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="450" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="450" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="475" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="475" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="500" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="500" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="525" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="525" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="550" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="550" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="575" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="575" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="600" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="600" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="625" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="625" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="650" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="650" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="675" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="675" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="700" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="700" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="725" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="725" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="750" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="750" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="775" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="775" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="800" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="800" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="825" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="825" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="850" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="850" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="875" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="875" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="900" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="900" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="925" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="925" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="950" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="950" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="975" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="975" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1000" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1000" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1025" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1025" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1050" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1050" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1075" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1075" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1100" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1100" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1125" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1125" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1150" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1150" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1175" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1175" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1200" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1200" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1225" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1225" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1250" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1250" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1275" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1275" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1300" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1300" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1325" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1325" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1350" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1350" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1375" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1375" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1400" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1400" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1425" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1425" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1450" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1450" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1475" y="160" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <rect x="1475" y="335" width="10" height="5" fill="#FBFDF8" opacity="0.15"/>
+  <path d="M115 55h10v10h-10zM105 65h20v10h-20zM115 75h10v10h-10zM115 85h10v10h-10zM115 95h10v10h-10zM115 105h10v10h-10zM105 115h30v10h-30zM165 55h30v10h-30zM155 65h10v10h-10zM195 65h10v10h-10zM155 75h10v10h-10zM185 75h20v10h-20zM155 85h10v10h-10zM175 85h10v10h-10zM195 85h10v10h-10zM155 95h20v10h-20zM195 95h10v10h-10zM155 105h10v10h-10zM195 105h10v10h-10zM165 115h30v10h-30zM115 375h10v10h-10zM105 385h20v10h-20zM115 395h10v10h-10zM115 405h10v10h-10zM115 415h10v10h-10zM115 425h10v10h-10zM105 435h30v10h-30zM165 375h30v10h-30zM155 385h10v10h-10zM195 385h10v10h-10zM155 395h10v10h-10zM185 395h20v10h-20zM155 405h10v10h-10zM175 405h10v10h-10zM195 405h10v10h-10zM155 415h20v10h-20zM195 415h10v10h-10zM155 425h10v10h-10zM195 425h10v10h-10zM165 435h30v10h-30zM255 55h30v10h-30zM245 65h10v10h-10zM285 65h10v10h-10zM285 75h10v10h-10zM275 85h10v10h-10zM265 95h10v10h-10zM255 105h10v10h-10zM245 115h50v10h-50zM315 55h30v10h-30zM305 65h10v10h-10zM345 65h10v10h-10zM305 75h10v10h-10zM335 75h20v10h-20zM305 85h10v10h-10zM325 85h10v10h-10zM345 85h10v10h-10zM305 95h20v10h-20zM345 95h10v10h-10zM305 105h10v10h-10zM345 105h10v10h-10zM315 115h30v10h-30zM255 375h30v10h-30zM245 385h10v10h-10zM285 385h10v10h-10zM285 395h10v10h-10zM275 405h10v10h-10zM265 415h10v10h-10zM255 425h10v10h-10zM245 435h50v10h-50zM315 375h30v10h-30zM305 385h10v10h-10zM345 385h10v10h-10zM305 395h10v10h-10zM335 395h20v10h-20zM305 405h10v10h-10zM325 405h10v10h-10zM345 405h10v10h-10zM305 415h20v10h-20zM345 415h10v10h-10zM305 425h10v10h-10zM345 425h10v10h-10zM315 435h30v10h-30zM395 55h40v10h-40zM435 65h10v10h-10zM435 75h10v10h-10zM405 85h30v10h-30zM435 95h10v10h-10zM435 105h10v10h-10zM395 115h40v10h-40zM465 55h30v10h-30zM455 65h10v10h-10zM495 65h10v10h-10zM455 75h10v10h-10zM485 75h20v10h-20zM455 85h10v10h-10zM475 85h10v10h-10zM495 85h10v10h-10zM455 95h20v10h-20zM495 95h10v10h-10zM455 105h10v10h-10zM495 105h10v10h-10zM465 115h30v10h-30zM395 375h40v10h-40zM435 385h10v10h-10zM435 395h10v10h-10zM405 405h30v10h-30zM435 415h10v10h-10zM435 425h10v10h-10zM395 435h40v10h-40zM465 375h30v10h-30zM455 385h10v10h-10zM495 385h10v10h-10zM455 395h10v10h-10zM485 395h20v10h-20zM455 405h10v10h-10zM475 405h10v10h-10zM495 405h10v10h-10zM455 415h20v10h-20zM495 415h10v10h-10zM455 425h10v10h-10zM495 425h10v10h-10zM465 435h30v10h-30zM545 55h10v10h-10zM585 55h10v10h-10zM545 65h10v10h-10zM585 65h10v10h-10zM545 75h10v10h-10zM585 75h10v10h-10zM545 85h50v10h-50zM585 95h10v10h-10zM585 105h10v10h-10zM585 115h10v10h-10zM615 55h30v10h-30zM605 65h10v10h-10zM645 65h10v10h-10zM605 75h10v10h-10zM635 75h20v10h-20zM605 85h10v10h-10zM625 85h10v10h-10zM645 85h10v10h-10zM605 95h20v10h-20zM645 95h10v10h-10zM605 105h10v10h-10zM645 105h10v10h-10zM615 115h30v10h-30zM545 375h10v10h-10zM585 375h10v10h-10zM545 385h10v10h-10zM585 385h10v10h-10zM545 395h10v10h-10zM585 395h10v10h-10zM545 405h50v10h-50zM585 415h10v10h-10zM585 425h10v10h-10zM585 435h10v10h-10zM615 375h30v10h-30zM605 385h10v10h-10zM645 385h10v10h-10zM605 395h10v10h-10zM635 395h20v10h-20zM605 405h10v10h-10zM625 405h10v10h-10zM645 405h10v10h-10zM605 415h20v10h-20zM645 415h10v10h-10zM605 425h10v10h-10zM645 425h10v10h-10zM615 435h30v10h-30zM695 55h50v10h-50zM695 65h10v10h-10zM695 75h40v10h-40zM735 85h10v10h-10zM735 95h10v10h-10zM695 105h10v10h-10zM735 105h10v10h-10zM705 115h30v10h-30zM765 55h30v10h-30zM755 65h10v10h-10zM795 65h10v10h-10zM755 75h10v10h-10zM785 75h20v10h-20zM755 85h10v10h-10zM775 85h10v10h-10zM795 85h10v10h-10zM755 95h20v10h-20zM795 95h10v10h-10zM755 105h10v10h-10zM795 105h10v10h-10zM765 115h30v10h-30zM695 375h50v10h-50zM695 385h10v10h-10zM695 395h40v10h-40zM735 405h10v10h-10zM735 415h10v10h-10zM695 425h10v10h-10zM735 425h10v10h-10zM705 435h30v10h-30zM765 375h30v10h-30zM755 385h10v10h-10zM795 385h10v10h-10zM755 395h10v10h-10zM785 395h20v10h-20zM755 405h10v10h-10zM775 405h10v10h-10zM795 405h10v10h-10zM755 415h20v10h-20zM795 415h10v10h-10zM755 425h10v10h-10zM795 425h10v10h-10zM765 435h30v10h-30zM845 55h10v10h-10zM885 55h10v10h-10zM845 65h10v10h-10zM885 65h10v10h-10zM845 75h10v10h-10zM885 75h10v10h-10zM845 85h50v10h-50zM885 95h10v10h-10zM885 105h10v10h-10zM885 115h10v10h-10zM915 55h30v10h-30zM905 65h10v10h-10zM945 65h10v10h-10zM905 75h10v10h-10zM935 75h20v10h-20zM905 85h10v10h-10zM925 85h10v10h-10zM945 85h10v10h-10zM905 95h20v10h-20zM945 95h10v10h-10zM905 105h10v10h-10zM945 105h10v10h-10zM915 115h30v10h-30zM845 375h10v10h-10zM885 375h10v10h-10zM845 385h10v10h-10zM885 385h10v10h-10zM845 395h10v10h-10zM885 395h10v10h-10zM845 405h50v10h-50zM885 415h10v10h-10zM885 425h10v10h-10zM885 435h10v10h-10zM915 375h30v10h-30zM905 385h10v10h-10zM945 385h10v10h-10zM905 395h10v10h-10zM935 395h20v10h-20zM905 405h10v10h-10zM925 405h10v10h-10zM945 405h10v10h-10zM905 415h20v10h-20zM945 415h10v10h-10zM905 425h10v10h-10zM945 425h10v10h-10zM915 435h30v10h-30zM995 55h40v10h-40zM1035 65h10v10h-10zM1035 75h10v10h-10zM1005 85h30v10h-30zM1035 95h10v10h-10zM1035 105h10v10h-10zM995 115h40v10h-40zM1065 55h30v10h-30zM1055 65h10v10h-10zM1095 65h10v10h-10zM1055 75h10v10h-10zM1085 75h20v10h-20zM1055 85h10v10h-10zM1075 85h10v10h-10zM1095 85h10v10h-10zM1055 95h20v10h-20zM1095 95h10v10h-10zM1055 105h10v10h-10zM1095 105h10v10h-10zM1065 115h30v10h-30zM995 375h40v10h-40zM1035 385h10v10h-10zM1035 395h10v10h-10zM1005 405h30v10h-30zM1035 415h10v10h-10zM1035 425h10v10h-10zM995 435h40v10h-40zM1065 375h30v10h-30zM1055 385h10v10h-10zM1095 385h10v10h-10zM1055 395h10v10h-10zM1085 395h20v10h-20zM1055 405h10v10h-10zM1075 405h10v10h-10zM1095 405h10v10h-10zM1055 415h20v10h-20zM1095 415h10v10h-10zM1055 425h10v10h-10zM1095 425h10v10h-10zM1065 435h30v10h-30zM1155 55h30v10h-30zM1145 65h10v10h-10zM1185 65h10v10h-10zM1185 75h10v10h-10zM1175 85h10v10h-10zM1165 95h10v10h-10zM1155 105h10v10h-10zM1145 115h50v10h-50zM1215 55h30v10h-30zM1205 65h10v10h-10zM1245 65h10v10h-10zM1205 75h10v10h-10zM1235 75h20v10h-20zM1205 85h10v10h-10zM1225 85h10v10h-10zM1245 85h10v10h-10zM1205 95h20v10h-20zM1245 95h10v10h-10zM1205 105h10v10h-10zM1245 105h10v10h-10zM1215 115h30v10h-30zM1155 375h30v10h-30zM1145 385h10v10h-10zM1185 385h10v10h-10zM1185 395h10v10h-10zM1175 405h10v10h-10zM1165 415h10v10h-10zM1155 425h10v10h-10zM1145 435h50v10h-50zM1215 375h30v10h-30zM1205 385h10v10h-10zM1245 385h10v10h-10zM1205 395h10v10h-10zM1235 395h20v10h-20zM1205 405h10v10h-10zM1225 405h10v10h-10zM1245 405h10v10h-10zM1205 415h20v10h-20zM1245 415h10v10h-10zM1205 425h10v10h-10zM1245 425h10v10h-10zM1215 435h30v10h-30zM1315 55h10v10h-10zM1305 65h20v10h-20zM1315 75h10v10h-10zM1315 85h10v10h-10zM1315 95h10v10h-10zM1315 105h10v10h-10zM1305 115h30v10h-30zM1365 55h30v10h-30zM1355 65h10v10h-10zM1395 65h10v10h-10zM1355 75h10v10h-10zM1385 75h20v10h-20zM1355 85h10v10h-10zM1375 85h10v10h-10zM1395 85h10v10h-10zM1355 95h20v10h-20zM1395 95h10v10h-10zM1355 105h10v10h-10zM1395 105h10v10h-10zM1365 115h30v10h-30zM1315 375h10v10h-10zM1305 385h20v10h-20zM1315 395h10v10h-10zM1315 405h10v10h-10zM1315 415h10v10h-10zM1315 425h10v10h-10zM1305 435h30v10h-30zM1365 375h30v10h-30zM1355 385h10v10h-10zM1395 385h10v10h-10zM1355 395h10v10h-10zM1385 395h20v10h-20zM1355 405h10v10h-10zM1375 405h10v10h-10zM1395 405h10v10h-10zM1355 415h20v10h-20zM1395 415h10v10h-10zM1355 425h10v10h-10zM1395 425h10v10h-10zM1365 435h30v10h-30z" fill="#FBFDF8" opacity="0.2"/>
+  <g>
+    <path d="M120 180h60v20h-60zM100 200h20v20h-20zM180 200h20v20h-20zM100 220h20v20h-20zM100 240h20v20h-20zM100 260h20v20h-20zM100 280h20v20h-20zM180 280h20v20h-20zM120 300h60v20h-60zM240 180h60v20h-60zM220 200h20v20h-20zM300 200h20v20h-20zM220 220h20v20h-20zM300 220h20v20h-20zM220 240h20v20h-20zM300 240h20v20h-20zM220 260h20v20h-20zM300 260h20v20h-20zM220 280h20v20h-20zM300 280h20v20h-20zM240 300h60v20h-60zM340 180h20v20h-20zM420 180h20v20h-20zM340 200h40v20h-40zM400 200h40v20h-40zM340 220h20v20h-20zM380 220h20v20h-20zM420 220h20v20h-20zM340 240h20v20h-20zM380 240h20v20h-20zM420 240h20v20h-20zM340 260h20v20h-20zM420 260h20v20h-20zM340 280h20v20h-20zM420 280h20v20h-20zM340 300h20v20h-20zM420 300h20v20h-20zM460 180h20v20h-20zM540 180h20v20h-20zM460 200h40v20h-40zM520 200h40v20h-40zM460 220h20v20h-20zM500 220h20v20h-20zM540 220h20v20h-20zM460 240h20v20h-20zM500 240h20v20h-20zM540 240h20v20h-20zM460 260h20v20h-20zM540 260h20v20h-20zM460 280h20v20h-20zM540 280h20v20h-20zM460 300h20v20h-20zM540 300h20v20h-20zM580 180h100v20h-100zM620 200h20v20h-20zM620 220h20v20h-20zM620 240h20v20h-20zM620 260h20v20h-20zM620 280h20v20h-20zM580 300h100v20h-100zM720 180h80v20h-80zM700 200h20v20h-20zM700 220h20v20h-20zM720 240h60v20h-60zM780 260h20v20h-20zM780 280h20v20h-20zM700 300h80v20h-80zM820 180h20v20h-20zM900 180h20v20h-20zM820 200h20v20h-20zM900 200h20v20h-20zM820 220h20v20h-20zM900 220h20v20h-20zM820 240h100v20h-100zM820 260h20v20h-20zM900 260h20v20h-20zM820 280h20v20h-20zM900 280h20v20h-20zM820 300h20v20h-20zM900 300h20v20h-20zM960 280h40v20h-40zM960 300h40v20h-40zM1060 180h100v20h-100zM1060 200h20v20h-20zM1060 220h20v20h-20zM1060 240h80v20h-80zM1060 260h20v20h-20zM1060 280h20v20h-20zM1060 300h20v20h-20zM1180 180h20v20h-20zM1260 180h20v20h-20zM1180 200h20v20h-20zM1260 200h20v20h-20zM1180 220h20v20h-20zM1260 220h20v20h-20zM1180 240h20v20h-20zM1260 240h20v20h-20zM1180 260h20v20h-20zM1260 260h20v20h-20zM1180 280h20v20h-20zM1260 280h20v20h-20zM1200 300h60v20h-60zM1300 180h20v20h-20zM1380 180h20v20h-20zM1300 200h40v20h-40zM1380 200h20v20h-20zM1300 220h20v20h-20zM1340 220h20v20h-20zM1380 220h20v20h-20zM1300 240h20v20h-20zM1360 240h40v20h-40zM1300 260h20v20h-20zM1380 260h20v20h-20zM1300 280h20v20h-20zM1380 280h20v20h-20zM1300 300h20v20h-20zM1380 300h20v20h-20z" fill="#0A100C" opacity="0.85" transform="translate(20 20)"/>
+    <path d="M120 180h60v20h-60zM100 200h20v20h-20zM180 200h20v20h-20zM100 220h20v20h-20zM100 240h20v20h-20zM100 260h20v20h-20zM100 280h20v20h-20zM180 280h20v20h-20zM120 300h60v20h-60zM240 180h60v20h-60zM220 200h20v20h-20zM300 200h20v20h-20zM220 220h20v20h-20zM300 220h20v20h-20zM220 240h20v20h-20zM300 240h20v20h-20zM220 260h20v20h-20zM300 260h20v20h-20zM220 280h20v20h-20zM300 280h20v20h-20zM240 300h60v20h-60zM340 180h20v20h-20zM420 180h20v20h-20zM340 200h40v20h-40zM400 200h40v20h-40zM340 220h20v20h-20zM380 220h20v20h-20zM420 220h20v20h-20zM340 240h20v20h-20zM380 240h20v20h-20zM420 240h20v20h-20zM340 260h20v20h-20zM420 260h20v20h-20zM340 280h20v20h-20zM420 280h20v20h-20zM340 300h20v20h-20zM420 300h20v20h-20zM460 180h20v20h-20zM540 180h20v20h-20zM460 200h40v20h-40zM520 200h40v20h-40zM460 220h20v20h-20zM500 220h20v20h-20zM540 220h20v20h-20zM460 240h20v20h-20zM500 240h20v20h-20zM540 240h20v20h-20zM460 260h20v20h-20zM540 260h20v20h-20zM460 280h20v20h-20zM540 280h20v20h-20zM460 300h20v20h-20zM540 300h20v20h-20zM580 180h100v20h-100zM620 200h20v20h-20zM620 220h20v20h-20zM620 240h20v20h-20zM620 260h20v20h-20zM620 280h20v20h-20zM580 300h100v20h-100zM720 180h80v20h-80zM700 200h20v20h-20zM700 220h20v20h-20zM720 240h60v20h-60zM780 260h20v20h-20zM780 280h20v20h-20zM700 300h80v20h-80zM820 180h20v20h-20zM900 180h20v20h-20zM820 200h20v20h-20zM900 200h20v20h-20zM820 220h20v20h-20zM900 220h20v20h-20zM820 240h100v20h-100zM820 260h20v20h-20zM900 260h20v20h-20zM820 280h20v20h-20zM900 280h20v20h-20zM820 300h20v20h-20zM900 300h20v20h-20z" fill="#F0F2EC"/>
+    <path d="M960 280h40v20h-40zM960 300h40v20h-40zM1060 180h100v20h-100zM1060 200h20v20h-20zM1060 220h20v20h-20zM1060 240h80v20h-80zM1060 260h20v20h-20zM1060 280h20v20h-20zM1060 300h20v20h-20zM1180 180h20v20h-20zM1260 180h20v20h-20zM1180 200h20v20h-20zM1260 200h20v20h-20zM1180 220h20v20h-20zM1260 220h20v20h-20zM1180 240h20v20h-20zM1260 240h20v20h-20zM1180 260h20v20h-20zM1260 260h20v20h-20zM1180 280h20v20h-20zM1260 280h20v20h-20zM1200 300h60v20h-60zM1300 180h20v20h-20zM1380 180h20v20h-20zM1300 200h40v20h-40zM1380 200h20v20h-20zM1300 220h20v20h-20zM1340 220h20v20h-20zM1380 220h20v20h-20zM1300 240h20v20h-20zM1360 240h40v20h-40zM1300 260h20v20h-20zM1380 260h20v20h-20zM1300 280h20v20h-20zM1380 280h20v20h-20zM1300 300h20v20h-20zM1380 300h20v20h-20z" fill="#FF6A2B"/>
+  </g>
 </svg>

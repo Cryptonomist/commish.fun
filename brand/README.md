@@ -24,7 +24,7 @@ a time. Change a token, re-run the script, and the kit is correct again.
 | `avatar.svg` / `.png` | 512 | The mark on its own ground, square. Profile pictures |
 | `appicon.png` | 1024 | App stores, large icons |
 | `favicon-180.png` | 180 | Apple touch icon |
-| `banner-x.svg` / `.png` | 1500 × 500 | Social header |
+| `banner-x.svg` / `.png` | 1500 × 500 | Social header. Pixel wordmark on a numbered field |
 | `og.svg` / `.png` | 1200 × 630 | Link previews. Wired up in `layout.tsx` |
 
 `public/brand/` holds the copies the site actually serves. The script writes
@@ -46,15 +46,38 @@ outside the palette. The illustrated footballs are retired.
 
 ## Type
 
-The wordmark is **Anton**, and `fonts/Anton-Regular.ttf` is committed because
-the generator needs it: sharp rasterises SVG through librsvg, which resolves
-fonts through the system and knows nothing about `@font-face`, so the woff2 the
-site ships cannot be used here. The script installs it into your user font
-directory on first run.
+**The wordmark is drawn, not set.** `scripts/pixelfont.mjs` holds a 5x7 bitmap
+alphabet, and the header and the link preview are built from it as SVG paths —
+one rectangle per lit pixel, horizontal runs merged.
 
-Anton is licensed under the SIL Open Font License 1.1, included as
-`fonts/OFL.txt`. That licence permits redistribution and embedding; it also
-requires the licence travel with the font, which is why it is here.
+That is partly because the rest of the product went blocky, and partly because
+of a real hazard this closes. `sharp` rasterises SVG through librsvg, which
+resolves fonts through fontconfig and knows nothing about `@font-face`. So the
+old script had to install Anton into your user font directory before it could
+set the wordmark, and on a machine where the copy or `fc-cache` quietly failed,
+nothing errored: it rendered the wordmark in whatever fontconfig fell back to
+and wrote the PNG anyway. A wrong-font banner looks like a banner. Rectangles
+cannot fail that way, and they rasterise exactly at any size.
+
+There is no font install step any more, and no font dependency.
+
+`fonts/Anton-Regular.ttf` and `fonts/OFL.txt` stay. Anton is still the site's
+display face, and that pair is where its licence is recorded — SIL Open Font
+License 1.1, which permits redistribution and embedding and requires the
+licence travel with the font.
+
+## The field
+
+Both wide assets are a football field: mow bands, sidelines, yard lines, hash
+marks, and the yard numbers stencilled on the grass in the same bitmap
+alphabet as the wordmark.
+
+One pitch governs all of it, and it is derived from the asset rather than
+fixed, so a colour change always lands on a yard line and a number always sits
+inside a stripe. The **count** of numbers gives way before the spacing does: a
+3:1 header carries the whole field, 10 through 50 and back; the narrower link
+preview shows the middle of it, 20 through 50 and back, because nine numbers on
+a 1.9:1 card jam into each other. Always an odd count, so the 50 stays centred.
 
 ## `archive/`
 
