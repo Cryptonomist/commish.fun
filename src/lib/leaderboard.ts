@@ -74,20 +74,37 @@ type StandingRow = {
 };
 type Tally = { poolsJoined: number; poolsWon: number; claimedBase: string };
 
-/* The RPC to use from a server, which is not necessarily the browser's.
+/* The RPC to use from a server, which is not the browser's once a proxy is in
+ * front of the browser's.
  *
- * The public Helius URL is domain-restricted to commish.fun, and a request
- * from a Vercel function carries no Origin at all. Sending a Referer naming
- * our own site is the honest fix: it is our key, used for our domain. `RPC_URL`
- * overrides it for anyone who would rather keep a separate unrestricted key
- * server-side. */
+ * `RPC_URL` is the right answer and should always be set: it holds a direct
+ * key, it is read inside a route handler, and it never reaches a browser, so
+ * there is no reason to send a server's reads the long way round through a
+ * proxy that exists to hide a credential from clients.
+ *
+ * The fallback to `NEXT_PUBLIC_RPC_URL` keeps local development working with
+ * one variable, and it has one sharp edge worth heading off. That variable
+ * becomes the CORS-locked worker, and the worker refuses any request without
+ * an allowed `Origin`, on the grounds that browsers always send one and
+ * therefore its absence means the caller is not a browser. A Vercel function
+ * is not a browser and sends none, so the fallback would 403 and the
+ * leaderboard would quietly start serving cached standings forever with
+ * nothing but a log line to say why.
+ *
+ * So the headers name the site explicitly. It is our own server identifying
+ * itself to our own proxy, which is exactly the case both were written for. */
 function connection(): Connection {
-  const url = process.env.RPC_URL ?? process.env.NEXT_PUBLIC_RPC_URL;
+  const direct = process.env.RPC_URL;
+  const url = direct ?? process.env.NEXT_PUBLIC_RPC_URL;
   if (!url) throw new Error("No RPC URL is configured");
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://commish.fun";
+
+  const site = (
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://commish.fun"
+  ).replace(/\/+$/, "");
+
   return new Connection(url, {
     commitment: "confirmed",
-    httpHeaders: { referer: site },
+    httpHeaders: { origin: site, referer: `${site}/` },
   });
 }
 
