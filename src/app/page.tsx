@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AttractCabinet from "@/components/AttractCabinet";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
@@ -194,8 +195,13 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* Never played Survivor? You have now. */}
-          <TryAWeek />
+          {/* Never played Survivor? You have now.
+              The demo now lives inside the cabinet and is not mounted until
+              somebody presses start, so a visitor who never does pays nothing
+              for it. */}
+          <AttractCabinet>
+            <TryAWeek />
+          </AttractCabinet>
         </section>
 
         {/* ── What you can run ────────────────────────────────────────────── */}

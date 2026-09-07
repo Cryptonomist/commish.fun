@@ -27,20 +27,33 @@ const LINKS = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto flex flex-col gap-5 border-t border-night-3 py-8 text-sm text-cream-dim">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <span className="flex items-center gap-2.5">
+    /* ON A PANEL, like everything else that carries words.
+       It was sitting straight on the grass, so the mow bands ran behind the
+       links and the small print, and cream-dim at 4.91:1 over a moving
+       background is the exact case the panel rule exists to prevent. */
+    <footer className="panel mt-auto mb-8 flex flex-col gap-5 p-5 text-sm text-cream-dim sm:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* `whitespace-nowrap` on the tagline, because "Built on Solana" was
+            breaking after "Built on" and dropping "Solana" onto the line below
+            the links, which read as a stray word rather than as part of the
+            lockup. */}
+        <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
           <Laces size={14} className="text-action" />
-          <span className="font-bold tracking-wide">COMMISH.FUN</span>
-          <span>· Built on Solana</span>
+          <span className="font-matrix text-[10px] leading-4 text-chalk">
+            COMMISH.FUN
+          </span>
+          <span className="whitespace-nowrap text-xs">Built on Solana</span>
         </span>
 
-        <nav className="flex flex-wrap gap-x-5 gap-y-2">
+        {/* A single row that wraps as whole links rather than mid-phrase.
+            "Playing responsibly" is two words and was the one that broke the
+            line, so it holds together and the row wraps around it. */}
+        <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
           {LINKS.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className="underline decoration-night-3 underline-offset-4 transition-colors hover:text-cream hover:decoration-action"
+              className="whitespace-nowrap underline decoration-rule underline-offset-4 transition-colors hover:text-cream hover:decoration-action"
             >
               {l.label}
             </Link>
