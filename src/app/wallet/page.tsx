@@ -104,7 +104,7 @@ export default function WalletPage() {
         <section className="flex flex-col gap-4">
           <h2 className="text-lg font-bold text-cream">On your device</h2>
           <p className="text-sm text-cream-dim">
-            That button works out which device you are on. If you would rather
+            That page has the download for every platform. If you would rather
             know what to expect first:
           </p>
 
@@ -129,11 +129,11 @@ export default function WalletPage() {
               use your phone instead, which is easier anyway.
             </Platform>
 
-            <Platform title="iPhone or iPad">
-              Get the Phantom app from the App Store. Open pool links inside
-              Phantom&apos;s own browser, which is the compass icon at the
-              bottom of the app. Opening them in Safari will not find your
-              wallet.
+            <Platform title="iPhone">
+              Get the Phantom app from the App Store. Then open pool links
+              inside Phantom&apos;s own browser, using the browser tab in the
+              app rather than Safari. A link opened in Safari will not find
+              your wallet.
             </Platform>
 
             <Platform title="Android">

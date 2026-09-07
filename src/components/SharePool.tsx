@@ -47,13 +47,31 @@ function stake(buyIn: bigint): string {
   return IS_MAINNET ? `${amount} buy-in` : `${amount} buy-in in test USDC`;
 }
 
+/* A pool name is attacker-chosen text that ends up in a message somebody
+ * forwards to their friends, and chat apps preview the FIRST link they find in
+ * it. A pool called "Free money at evil.example" would therefore put somebody
+ * else's URL ahead of ours, with their preview card, in an invitation that
+ * looks like it came from a friend. That is a phishing primitive and this
+ * component would have been handing it out.
+ *
+ * So anything that could read as a link is removed before the name is used.
+ * Names are 32 bytes on chain, so there is nothing here worth preserving that
+ * this would damage. */
+const safeName = (raw: string): string =>
+  raw
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/\bwww\.\S+/gi, "")
+    .replace(/\b[a-z0-9-]+\.(com|net|org|io|fun|xyz|co|app|gg|link|me|to)\b\S*/gi, "")
+    .replace(/\s+/g, " ")
+    .trim() || "our pool";
+
 function shareText(p: SharePoolProps): string {
   const spots =
     typeof p.spotsLeft === "number" && p.spotsLeft > 0
       ? ` ${p.spotsLeft} ${p.spotsLeft === 1 ? "spot" : "spots"} left.`
       : "";
   const testnet = IS_MAINNET ? "" : " Test pool on Solana devnet, no real money.";
-  return `Join my ${p.kind} pool "${p.name}" on Commish. ${stake(p.buyIn)}, held in escrow that nobody can touch, not even me.${spots}${testnet}`;
+  return `Join my ${p.kind} pool "${safeName(p.name)}" on Commish. ${stake(p.buyIn)}, held in escrow that nobody can touch, not even me.${spots}${testnet}`;
 }
 
 /** X counts a link as 23 characters whatever its length, so the prose has room
@@ -65,7 +83,7 @@ function shortText(p: SharePoolProps): string {
       ? ` ${p.spotsLeft} left.`
       : "";
   const testnet = IS_MAINNET ? "" : " (devnet, test money)";
-  return `Join my ${p.kind} pool "${p.name}" on Commish. ${stake(p.buyIn)}.${spots}${testnet}`;
+  return `Join my ${p.kind} pool "${safeName(p.name)}" on Commish. ${stake(p.buyIn)}.${spots}${testnet}`;
 }
 
 type Target = {
@@ -164,7 +182,7 @@ export default function SharePool(props: SharePoolProps) {
 
   const nativeShare = useCallback(async () => {
     try {
-      await navigator.share({ title: props.name, text, url });
+      await navigator.share({ title: safeName(props.name), text, url });
     } catch {
       // Cancelling the sheet throws. That is not an error.
     }
