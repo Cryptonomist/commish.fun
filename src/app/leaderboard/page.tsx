@@ -11,11 +11,9 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { Wordmark } from "@/components/Laces";
+import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
-import { WalletButton } from "@/components/WalletButton";
 import XLink from "@/components/XLink";
 import { formatUsdc, shortAddress } from "@/lib/format";
 import { buildLeaderboard } from "@/lib/leaderboard";
@@ -48,12 +46,7 @@ export default async function LeaderboardPage() {
    * their handle. It would be a strange one to leave them off. */
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-5 sm:px-8">
-      <header className="flex items-center justify-between py-6">
-        <Link href="/" aria-label="Commish home">
-          <Wordmark size={20} />
-        </Link>
-        <WalletButton />
-      </header>
+      <SiteNav />
 
       <main className="flex flex-col gap-8 py-10">
         <div className="flex flex-col gap-3">

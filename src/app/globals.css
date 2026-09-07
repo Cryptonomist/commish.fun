@@ -422,6 +422,37 @@ body {
   cursor: not-allowed;
   box-shadow: none;
 }
+/* THE NAV BLOCK. A smaller button, because four of them plus a mark and a
+   connect button have to fit a 375px phone.
+
+   The numbers are not arbitrary: at 10px the label face is exactly 10px per
+   character, so NEW POOL is 80px of glyph, and 10px of padding either side
+   plus the 2px border brings it to 104. Four labels come to 390, which is why
+   the strip scrolls on the narrowest phones and why it gets a row to itself.
+
+   The current page is lit in the action colour rather than merely underlined,
+   which is how a cabinet menu shows a selection and, more usefully, is legible
+   at a glance on a strip that may be half scrolled off. */
+.btn-nav {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 10px;
+  line-height: 14px;
+  background: var(--color-panel);
+  color: var(--color-cream);
+  border: 2px solid var(--color-rule);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+}
+.btn-nav:hover:not([aria-current="page"]) {
+  color: var(--color-chalk);
+  border-color: var(--color-chalk);
+}
+.btn-nav[aria-current="page"] {
+  background: var(--color-action);
+  color: var(--color-panel); /* 6.42:1 */
+  border-color: var(--color-action);
+  box-shadow: 3px 3px 0 #3a1405;
+}
 
 /* ── THE HEADLINE DOUBLE-PRINT ────────────────────────────────────────────────
    The 8-bit title-card offset: a hard orange copy behind the headline, no blur

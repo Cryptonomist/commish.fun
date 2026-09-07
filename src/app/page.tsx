@@ -1,8 +1,8 @@
 import Link from "next/link";
 import AttractCabinet from "@/components/AttractCabinet";
+import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
-import { Laces, Wordmark } from "@/components/Laces";
-import { WalletButton } from "@/components/WalletButton";
+import { Laces } from "@/components/Laces";
 import { Countdown } from "@/components/Countdown";
 import { FieldMarkings } from "@/components/FieldMarkings";
 import { ScoreTicker } from "@/components/ScoreTicker";
@@ -128,21 +128,11 @@ export default async function Home() {
       <ScoreTicker initial={board} />
       <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 sm:px-8">
         {/* ── Nav ─────────────────────────────────────────────────────────── */}
-        <header className="flex items-center justify-between py-6">
-          {/* the lockup scales down on a phone so it never crowds the connect button */}
-          <Link href="/" aria-label="Commish home" className="origin-left scale-[0.82] sm:scale-100">
-            <Wordmark size={22} />
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              href="#drive"
-              className="hidden text-sm font-semibold text-cream-dim transition-colors hover:text-cream sm:block"
-            >
-              How a week works
-            </Link>
-            <WalletButton />
-          </div>
-        </header>
+        {/* The "How a week works" anchor that used to live here is gone: the
+            hero carries a button with the same words and the same target, and
+            two links to one anchor within an inch of each other is not a menu,
+            it is a stutter. */}
+        <SiteNav markSize={22} />
 
         {/* ── Hero ────────────────────────────────────────────────────────── */}
         <section className="flex flex-col gap-8 pb-10">

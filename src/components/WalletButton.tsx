@@ -107,11 +107,17 @@ export function WalletButton() {
     setPicking((p) => !p);
   }, [connected, disconnect, available, choose]);
 
+  /* Upper case, and no ellipsis character. The label face is Press Start 2P
+   * and it sits in a row of nav blocks that are all caps; a mixed-case
+   * "Connect" beside them reads as a different control from a different site.
+   * Three full stops rather than U+2026 because the ellipsis is not something
+   * to gamble on in a subsetted bitmap face — an address, which is base58 and
+   * genuinely mixed case, is left exactly as it is. */
   const label = connected
     ? shortAddress(publicKey?.toBase58() ?? "", 4)
     : connecting
-      ? "Connecting…"
-      : "Connect";
+      ? "CONNECTING..."
+      : "CONNECT";
 
   return (
     <div className="relative">
@@ -119,19 +125,19 @@ export function WalletButton() {
         type="button"
         onClick={onClick}
         disabled={connecting}
-        className="inline-flex h-11 items-center rounded-xl bg-action px-5 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi disabled:cursor-wait disabled:opacity-70"
+        className="btn btn-nav !bg-action !text-panel !border-action shadow-[3px_3px_0_#3a1405] disabled:cursor-wait disabled:opacity-70"
       >
         {label}
       </button>
 
       {picking ? (
-        <ul className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-night-3 bg-night-2 shadow-xl">
+        <ul className="absolute right-0 z-20 mt-2 w-60 overflow-hidden border-2 border-chalk bg-panel shadow-[4px_4px_0_rgba(0,0,0,0.5)]">
           {available.map((w) => (
             <li key={w.adapter.name}>
               <button
                 type="button"
                 onClick={() => choose(w.adapter.name)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-cream hover:bg-night-3"
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-left font-matrix text-[10px] leading-4 text-cream transition-colors hover:bg-action hover:text-panel"
               >
                 {w.adapter.icon ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -140,7 +146,10 @@ export function WalletButton() {
                     alt=""
                     width={20}
                     height={20}
-                    className="rounded"
+                    /* The wallet's own mark, handed to us by the Wallet
+                       Standard as a data URI. Square, not rounded: every
+                       other edge on this site is. */
+                    className="shrink-0"
                   />
                 ) : null}
                 {w.adapter.name}
@@ -151,7 +160,7 @@ export function WalletButton() {
       ) : null}
 
       {error ? (
-        <p className="absolute right-0 mt-2 w-64 rounded-lg border border-out/40 bg-out/10 p-2 text-xs text-cream">
+        <p className="absolute right-0 mt-2 w-64 border-2 border-out bg-panel p-2 text-xs text-cream">
           {error}
         </p>
       ) : null}

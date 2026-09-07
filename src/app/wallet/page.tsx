@@ -16,9 +16,8 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { Wordmark } from "@/components/Laces";
+import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
@@ -74,11 +73,7 @@ function Platform({
 export default function WalletPage() {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-5 sm:px-8">
-      <header className="flex items-center justify-between py-6">
-        <Link href="/" aria-label="Commish home">
-          <Wordmark size={20} />
-        </Link>
-      </header>
+      <SiteNav />
 
       <main className="flex flex-col gap-10 py-10">
         <div className="flex flex-col gap-3">

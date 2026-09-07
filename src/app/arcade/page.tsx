@@ -18,7 +18,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CommishBowl } from "@/components/CommishBowl";
-import { Wordmark } from "@/components/Laces";
+import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
@@ -30,14 +30,7 @@ export const metadata: Metadata = {
 export default function ArcadePage() {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-5 sm:px-8">
-      <header className="flex items-center justify-between py-6">
-        <Link href="/" aria-label="Commish home">
-          <Wordmark size={20} />
-        </Link>
-        <Link href="/pools/new" className="btn btn-primary">
-          START A POOL
-        </Link>
-      </header>
+      <SiteNav />
 
       <main className="flex flex-col gap-8 py-6">
         <div className="flex flex-col gap-3">

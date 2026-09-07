@@ -23,9 +23,9 @@ import Link from "next/link";
 import { Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
-import { Laces, Wordmark } from "@/components/Laces";
-import { WalletButton } from "@/components/WalletButton";
+import { Laces } from "@/components/Laces";
 import SharePool from "@/components/SharePool";
+import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { shortAddress, toBaseUnits, formatUsdc } from "@/lib/format";
 import {
@@ -323,12 +323,7 @@ export default function NewPool() {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-5 sm:px-8">
-      <header className="flex items-center justify-between py-6">
-        <Link href="/" aria-label="Commish home">
-          <Wordmark size={20} />
-        </Link>
-        <WalletButton />
-      </header>
+      <SiteNav />
 
       <main className="py-10">
         <h1 className="display text-2xl uppercase sm:text-3xl">Start a pool</h1>
