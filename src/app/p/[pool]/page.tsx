@@ -13,7 +13,7 @@
  * it is why the page makes no distinction either.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PublicKey, Transaction } from "@solana/web3.js";
@@ -36,6 +36,7 @@ import {
   memberPda,
   ataFor,
   readableProgramError,
+  PROGRAM_ID,
   USDC_MINT,
   MAX_DISPLAY_NAME,
   POOL_LOSER,
@@ -44,6 +45,8 @@ import {
   type PoolView,
   type MemberView,
 } from "@/lib/program";
+
+const CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet";
 
 type Status =
   | { at: "idle" }
@@ -68,6 +71,12 @@ export default function PoolPage() {
   const [member, setMember] = useState<MemberView | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [status, setStatus] = useState<Status>({ at: "idle" });
+  /* Once true, a failed refresh leaves the last good page alone. */
+  const loadedOnce = useRef(false);
+  /* Distinguishes "not a member" from "not read yet", which otherwise look
+   * identical and let somebody submit a second join over the top of their
+   * first one. */
+  const [walletRead, setWalletRead] = useState(false);
 
   const poolKey = useMemo(() => {
     try {
@@ -91,9 +100,35 @@ export default function PoolPage() {
         setPool(null);
         return;
       }
-      const decoded = decodePool(info.data);
+
+      /* WHOSE POOL IS IT? Anchor derives a discriminator from the account's
+       * NAME, not from the program id, so a Pool written by a DIFFERENT
+       * deployment decodes perfectly and renders a completely normal joinable
+       * page that fails at signing with an error nothing here can name. One
+       * comparison closes it. */
+      if (!info.owner.equals(PROGRAM_ID)) {
+        setLoadError(
+          "That account is not a Commish pool. It exists on this cluster but " +
+            "belongs to another program.",
+        );
+        setPool(null);
+        return;
+      }
+
+      let decoded: PoolView;
+      try {
+        decoded = decodePool(info.data);
+      } catch {
+        /* Anything that is not a Pool: a wallet address, a token account, a
+         * Member PDA, a mint — all of which people paste out of explorers —
+         * throws here. Without this the raw Borsh message reaches the screen. */
+        setLoadError("That address is not a pool. Check the link.");
+        setPool(null);
+        return;
+      }
       setPool(decoded);
       setLoadError(null);
+      loadedOnce.current = true;
 
       const vault = await connection
         .getTokenAccountBalance(ataFor(poolKey, USDC_MINT))
@@ -115,12 +150,25 @@ export default function PoolPage() {
          * the buy-in but no lamports used to get a failed transaction rather
          * than a reason. */
         setSolLamports(await connection.getBalance(publicKey).catch(() => null));
+
+        setWalletRead(true);
       } else {
         setMember(null);
         setUsdcAmount(null);
         setSolLamports(null);
+        setWalletRead(false);
       }
     } catch (e) {
+      /* A REFRESH THAT FAILS MUST NOT REPLACE A PAGE THAT LOADED.
+       *
+       * `refresh` runs again the moment a join confirms, and the render tests
+       * `loadError` before anything else. So one throttled RPC call in that
+       * instant used to wipe the entire page — heading, vault, membership, the
+       * lot — and leave a single grey error line, one second after somebody
+       * paid. The first load may report; every later one fails quietly and
+       * leaves the last good view on screen. */
+      if (loadedOnce.current) return;
+
       /* An unreachable RPC is by far the most common failure here, and web3.js
        * reports it as "failed to get info about account …: TypeError: Failed to
        * fetch" — which sends people looking at the address rather than at their
@@ -137,6 +185,15 @@ export default function PoolPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  /* An error describes the attempt that produced it, not the one being typed.
+   * It used to survive until the next submit, so somebody who fixed the actual
+   * problem still read the old cause sitting above the button. Every failure
+   * on this page routes into that one box, which makes a stale message there
+   * more confusing than none at all. */
+  useEffect(() => {
+    setStatus((s) => (s.at === "error" ? { at: "idle" } : s));
+  }, [displayName, publicKey]);
 
   /* A pool that ran out of road: past the refund deadline and never settled.
    * Checked once per render rather than on a ticking clock, because the
@@ -177,7 +234,8 @@ export default function PoolPage() {
                     : null;
 
   const busy = status.at === "signing" || status.at === "confirming";
-  const canJoin = connected && !!pool && !problem && !busy;
+  const canJoin =
+    connected && !!pool && !problem && !busy && walletRead;
 
   async function onJoin(e: React.FormEvent) {
     e.preventDefault();
@@ -210,15 +268,43 @@ export default function PoolPage() {
       });
       setStatus({ at: "confirming", signature });
 
-      const result = await connection.confirmTransaction(
-        { signature, ...latest },
-        "confirmed",
-      );
-      if (result.value.err) {
-        throw new Error(`Transaction failed: ${JSON.stringify(result.value.err)}`);
+      /* A BLOCKHASH EXPIRING IS NOT A FAILED JOIN, AND SAYING SO IS THE WORST
+       * THING THIS PAGE CAN DO.
+       *
+       * The blockhash is fetched before the wallet popup opens and is good for
+       * roughly a minute. A hardware wallet, a phone that switches to a wallet
+       * app and back, or somebody who reads the popup carefully will routinely
+       * exceed that, and `confirmTransaction` then throws
+       * TransactionExpiredBlockheightExceeded. The transaction may still have
+       * landed. Telling somebody their money did not move when it did is worse
+       * than any other error here, so an expiry asks the chain rather than
+       * assuming. */
+      let confirmed = false;
+      try {
+        const result = await connection.confirmTransaction(
+          { signature, ...latest },
+          "confirmed",
+        );
+        if (result.value.err) {
+          throw new Error(
+            `Transaction failed: ${JSON.stringify(result.value.err)}`,
+          );
+        }
+        confirmed = true;
+      } catch (err) {
+        const st = await connection
+          .getSignatureStatus(signature, { searchTransactionHistory: true })
+          .catch(() => null);
+        const landed =
+          !!st?.value &&
+          !st.value.err &&
+          (st.value.confirmationStatus === "confirmed" ||
+            st.value.confirmationStatus === "finalized");
+        if (!landed) throw err;
+        confirmed = true;
       }
 
-      setStatus({ at: "joined", signature });
+      if (confirmed) setStatus({ at: "joined", signature });
       await refresh();
     } catch (err) {
       setStatus({ at: "error", message: readableProgramError(err) });
@@ -253,6 +339,25 @@ export default function PoolPage() {
                 ? "League · dues held in escrow"
                 : `${pool.poolType === POOL_LOSER ? "Loser" : "Survivor"} · week ${pool.currentWeek}`}
             </p>
+
+            {/* Set the moment a join confirms and, until now, rendered
+                nowhere. The page did change underneath them — the form became
+                a pick grid — but nothing said "that worked", and nothing gave
+                them the receipt. Money moving deserves an acknowledgement. */}
+            {status.at === "joined" ? (
+              <p className="mt-6 rounded-xl border border-alive/40 bg-alive/5 p-4 text-sm text-cream">
+                <span className="font-bold">You are in.</span>{" "}
+                {formatUsdc(pool.buyIn)} moved into the vault.{" "}
+                <a
+                  href={`https://explorer.solana.com/tx/${status.signature}?cluster=${CLUSTER}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  {shortAddress(status.signature, 6)}
+                </a>
+              </p>
+            ) : null}
 
             <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-night-3 bg-night-3 sm:grid-cols-3">
               <Stat label="BUY-IN" value={formatUsdc(pool.buyIn)} gold />
