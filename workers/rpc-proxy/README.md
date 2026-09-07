@@ -59,7 +59,7 @@ problem one layer down.
 `wrangler deploy` prints the worker's URL. Point the app at it:
 
 ```
-NEXT_PUBLIC_RPC_URL = https://commish-rpc.<your-subdomain>.workers.dev
+NEXT_PUBLIC_RPC_URL = https://commish-rpc.therealcryptonomist.workers.dev
 ```
 
 and give the server its own direct key, which never reaches a browser:
@@ -74,7 +74,7 @@ variable change alone does nothing.
 ## Check it worked
 
 ```bash
-W=https://commish-rpc.<your-subdomain>.workers.dev
+W=https://commish-rpc.therealcryptonomist.workers.dev
 B='{"jsonrpc":"2.0","id":1,"method":"getHealth"}'
 
 # allowed origin -> 200 ok

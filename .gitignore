@@ -49,3 +49,6 @@ test-ledger/
 **/*.rs.bk
 target/
 .anchor/
+
+# The RPC proxy worker pins its own wrangler.
+workers/**/node_modules

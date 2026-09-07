@@ -1,0 +1,15 @@
+{
+  "name": "commish-rpc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker between the browser and Helius, so the RPC credential is not in the JavaScript bundle.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "wrangler deploy --dry-run",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "4.129.0"
+  }
+}
