@@ -25,6 +25,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
+import SharePool from "@/components/SharePool";
 import { SiteFooter } from "@/components/SiteFooter";
 import { shortAddress, toBaseUnits, formatUsdc } from "@/lib/format";
 import {
@@ -351,6 +352,13 @@ export default function NewPool() {
             signature={status.signature}
             buyIn={buyInUnits ?? BigInt(0)}
             name={name}
+            kind={
+              poolType === POOL_LEAGUE
+                ? "League"
+                : poolType === POOL_LOSER
+                  ? "Loser"
+                  : "Survivor"
+            }
           />
         ) : (
           <form className="mt-10 flex flex-col gap-6" onSubmit={onSubmit}>
@@ -690,11 +698,13 @@ function Created({
   signature,
   buyIn,
   name,
+  kind,
 }: {
   pool: string;
   signature: string;
   buyIn: bigint;
   name: string;
+  kind: "Survivor" | "Loser" | "League";
 }) {
   return (
     <div className="mt-10 flex flex-col gap-4 rounded-xl border border-alive/40 bg-alive/10 p-6">
@@ -739,8 +749,20 @@ function Created({
       </Link>
       <p className="text-xs text-cream-dim">
         You are not a member yet. The commissioner joins like everyone else and
-        pays the same buy-in, and that link is also the one you send the others.
+        pays the same buy-in.
       </p>
+
+      {/* The moment somebody wants to send this to nine people. Before this
+          the answer was to select the address bar, which is a poor answer on
+          the phone where most of this sharing happens. A pool that does not
+          fill is not a pool. */}
+      <SharePool
+        pool={pool}
+        name={name}
+        buyIn={buyIn}
+        kind={kind}
+        className="mt-2 border-t border-alive/30 pt-5"
+      />
     </div>
   );
 }

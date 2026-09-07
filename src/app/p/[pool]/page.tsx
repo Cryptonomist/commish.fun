@@ -21,6 +21,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
+import SharePool from "@/components/SharePool";
 import { SiteFooter } from "@/components/SiteFooter";
 import { JoinChecklist, SOL_NEEDED_LAMPORTS } from "@/components/JoinChecklist";
 import { LeaguePanel } from "@/components/LeaguePanel";
@@ -340,6 +341,27 @@ export default function PoolPage() {
                 ? "League · dues held in escrow"
                 : `${pool.poolType === POOL_LOSER ? "Loser" : "Survivor"} · week ${pool.currentWeek}`}
             </p>
+
+            {/* A pool that has not filled is not a pool, and the commissioner
+                needs the link in front of nine people rather than in front of
+                themselves. Shown while the pool is still taking members; once
+                it is locked there is nobody left to invite. */}
+            {pool.status === STATUS_OPEN ? (
+              <SharePool
+                className="mt-6"
+                pool={params.pool}
+                name={pool.name}
+                buyIn={pool.buyIn}
+                spotsLeft={Math.max(0, pool.maxMembers - pool.memberCount)}
+                kind={
+                  isLeague(pool)
+                    ? "League"
+                    : pool.poolType === POOL_LOSER
+                      ? "Loser"
+                      : "Survivor"
+                }
+              />
+            ) : null}
 
             {/* Set the moment a join confirms and, until now, rendered
                 nowhere. The page did change underneath them — the form became

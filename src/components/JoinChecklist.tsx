@@ -67,9 +67,17 @@ export function joinRows(n: JoinNeeds): Row[] {
       ok: n.hasWallet === null ? null : n.connected ? true : false,
       detail:
         n.hasWallet === false ? (
+          /* The dead end this checklist exists to remove. "You need a wallet"
+             is true and useless to somebody who has never had one, which is
+             most people in a football pool. On a phone it is worse: they may
+             have installed the app and still see this, because the link opened
+             in the wrong browser. All of that is behind the link. */
           <>
-            No wallet found in this browser. Phantom, Solflare and Backpack all
-            work.
+            No wallet found in this browser.{" "}
+            <a className="text-action underline underline-offset-2" href="/wallet">
+              How to get one
+            </a>
+            .
           </>
         ) : n.connecting ? (
           <>Connecting…</>

@@ -15,6 +15,10 @@ import { Laces } from "@/components/Laces";
 
 const LINKS = [
   { href: "/leaderboard", label: "Leaderboard" },
+  /* Reachable from every page, not only from the join screen that discovers
+   * you have no wallet. Somebody sent a pool link is often reading the terms
+   * before they get anywhere near a Connect button. */
+  { href: "/wallet", label: "Get a wallet" },
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },
   { href: "/risk", label: "Risks" },
