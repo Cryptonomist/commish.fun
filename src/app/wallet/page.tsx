@@ -87,13 +87,35 @@ export default function WalletPage() {
           </p>
         </div>
 
+        {/* PHANTOM'S OWN MARK, not a redrawing of it.
+            public/wallets/phantom.svg is the file Phantom publishes for exactly
+            this purpose — their integration docs say "for most dapp
+            integrations, we recommend using the following icon". Redrawing
+            somebody's trademark by hand is how you end up with a nearly-right
+            ghost that reads as a knock-off, and the whole job of this icon is
+            to be recognised.
+
+            It is square, with no corner radius. Phantom's source file has none
+            either; every other UI rounds it on the way in, and this one does
+            not round anything.
+
+            The button also stopped being the last rounded sans-serif control on
+            the site while I was here. */}
         <a
           href={DOWNLOAD}
           target="_blank"
           rel="noreferrer"
-          className="self-start rounded-lg bg-action px-5 py-3 text-sm font-bold text-night transition hover:brightness-110"
+          className="btn btn-primary self-start gap-2.5"
         >
-          Get Phantom
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/wallets/phantom.svg"
+            alt=""
+            width={20}
+            height={20}
+            className="shrink-0"
+          />
+          GET PHANTOM
         </a>
 
         <section className="flex flex-col gap-4">
