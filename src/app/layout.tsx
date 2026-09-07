@@ -81,29 +81,29 @@ export const metadata: Metadata = {
    * them so this is not left to memory. */
   robots: { index: false, follow: false, nocache: true },
   title: {
-    default: "Commish · NFL football pools, escrowed on-chain",
+    default: "Commish · Fantasy dues and pick'em pots, escrowed on-chain",
     template: "%s · Commish",
   },
   /* The one line that shows up in a search result and a pasted link, so it
      says what the product is rather than telling a joke about it. */
   description:
-    "Escrow for NFL football pools. Members pay into a vault that is the pool's own account, picks and results are recorded on chain, and the commissioner never holds the money.",
+    "Escrow for fantasy league dues and weekly pick'em pots. Every buy-in goes into a vault that is the pool's own account, picks and results are recorded on chain, and the commissioner never holds the money.",
   applicationName: "Commish",
   openGraph: {
     type: "website",
     url: SITE,
     siteName: "Commish",
-    title: "Commish · NFL football pools, escrowed on-chain",
+    title: "Commish · Fantasy dues and pick'em pots, escrowed on-chain",
     description:
-      "Survivor pools now, league dues next. The commissioner runs the pool and never holds the money.",
+      "Fantasy league dues and weekly pick'em pots, held in escrow. The commissioner runs the pool and never holds the money.",
     images: [{ url: "/brand/og.png", width: 1200, height: 630, alt: "Commish" }],
   },
   twitter: {
     card: "summary_large_image",
     site: "@Commishfun",
-    title: "Commish · NFL football pools, escrowed on-chain",
+    title: "Commish · Fantasy dues and pick'em pots, escrowed on-chain",
     description:
-      "Survivor pools now, league dues next. The commissioner runs the pool and never holds the money.",
+      "Fantasy league dues and weekly pick'em pots, held in escrow. The commissioner runs the pool and never holds the money.",
     images: ["/brand/og.png"],
   },
   icons: { icon: "/brand/appicon.png", apple: "/brand/favicon-180.png" },

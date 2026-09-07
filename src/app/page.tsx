@@ -158,7 +158,20 @@ export default async function Home() {
                 panel-coloured outline holds them against a mow band or a yard
                 number passing behind a letter. Only cream-dim, action and out
                 are illegal out here, and none of them is used. */}
-            <div className="relative flex flex-col gap-7">
+            {/* THE COPY STARTS AT THE GOAL LINE, not at the back of the
+                endzone. The field runs the full width of this section and its
+                left endzone is the first 8.33% of it — ten yards of a hundred
+                and twenty — so text beginning at the container edge began in
+                the endzone, on top of the hatching and behind the goal line.
+                Reading it, the words looked like they had been dropped onto
+                the wrong part of the pitch.
+
+                The inset is the endzone's own width, taken from the same
+                fraction the markings use, so the two cannot drift apart. Only
+                from sm upward: on a phone the field is barely wider than the
+                text and giving away a tenth of it costs more than the
+                alignment is worth. */}
+            <div className="relative flex flex-col gap-7 sm:pl-[8.333%]">
               <span className="inline-flex w-fit items-center gap-2.5 border-2 border-chalk bg-panel px-4 py-2 font-matrix text-[10px] leading-4">
                 <Laces size={13} className="text-action" />
                 <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
@@ -167,16 +180,30 @@ export default async function Home() {
 
               {/* The 8-bit title-card offset print, now with the sprite outline
                   around it so it survives the field behind it. */}
+              {/* THREE SHORT LINES, AND THEY NAME BOTH PRODUCTS.
+                  "NFL football pools" was true and told nobody what this is
+                  for: a stranger cannot tell whether it holds season-long
+                  fantasy dues or a weekly pick'em pot, and it does both. So
+                  the two are said outright, in the order people meet them.
+
+                  Three lines rather than two because the display face is a
+                  bitmap one and sets about 0.72em per character. At the 3rem
+                  ceiling that is roughly 35px a character, so a line has about
+                  twenty-five before it runs past max-w-4xl — and the shorter
+                  declaratives read better than one sentence wrapped badly. */}
               <h1 className="display field-display max-w-4xl text-[clamp(1.5rem,4.4vw,3rem)] uppercase">
-                NFL football pools,
+                Fantasy dues.
                 <br />
-                escrowed on-chain.
+                Weekly pick&rsquo;em.
+                <br />
+                Escrowed on-chain.
               </h1>
 
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <p className="field-type max-w-2xl text-lg font-medium leading-relaxed sm:text-xl">
-                  Members pay their buy-in into a vault that is the pool&rsquo;s
-                  own account. Picks, results and payouts are recorded on chain.
+                  Season-long league dues or a week&rsquo;s pick&rsquo;em pot:
+                  every buy-in goes into a vault that is the pool&rsquo;s own
+                  account. Picks, results and payouts are recorded on chain.
                   The commissioner runs the pool and never holds the money.
                 </p>
                 <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
