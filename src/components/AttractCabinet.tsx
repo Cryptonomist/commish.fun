@@ -29,6 +29,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TEAMS } from "@/lib/nfl";
+import { drawField, drawPlayer, PX } from "@/lib/pixel";
 import { play, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 
 /* Logical resolution. Everything is drawn on integer coordinates at this size
@@ -39,15 +40,6 @@ const H = 144;
 
 const FPS = 12;
 const SCENE_FRAMES = 48; // four seconds each, twelve second loop
-
-const CHALK = "#FBFDF8";
-const PANEL = "#0B1710";
-const TURF = "#24492E";
-const TURF_2 = "#1B3724";
-const GOLD = "#E9C258";
-const ACTION = "#FF6A2B";
-const OUT = "#EC565B";
-const DIM = "#A9B8AC";
 
 /** Twenty-four clubs, taken in a fixed order so the loop is identical on every
  *  visit rather than reshuffling and looking like a bug. Both colours travel:
@@ -63,7 +55,7 @@ type Player = {
   homeX: number;
   y: number;
   target: number;
-  colour: string;
+  lead: string;
   trim: string;
   out: boolean;
 };
@@ -76,7 +68,7 @@ function layout(): Player[] {
   const startX = Math.round((W - (cols - 1) * gapX) / 2) - 4;
   const startY = 22;
   return ROSTER.map(({ lead, trim }, i) => ({
-    colour: lead,
+    lead,
     trim,
     x: startX + (i % cols) * gapX,
     homeX: startX + (i % cols) * gapX,
@@ -193,91 +185,13 @@ export default function AttractCabinet({
     /* The field, repainted every frame beneath the sprites. This is
        FieldMarkings' logic moved to where it belongs: it is the field the
        players stand on, not a texture behind some text. */
-    const field = () => {
-      ctx.fillStyle = TURF;
-      ctx.fillRect(0, 0, W, H);
-      for (let i = 0; i < 8; i += 2) {
-        ctx.fillStyle = TURF_2;
-        ctx.fillRect(Math.round((i * W) / 8), 0, Math.round(W / 8), H);
-      }
-      // Sidelines, 4px in.
-      ctx.fillStyle = "rgba(251,253,248,0.35)";
-      ctx.fillRect(0, 4, W, 1);
-      ctx.fillRect(0, H - 5, W, 1);
-      // Five-yard lines.
-      ctx.fillStyle = "rgba(251,253,248,0.22)";
-      for (let x = 24; x < W; x += 24) ctx.fillRect(x, 4, 1, H - 9);
-      // Hash marks.
-      ctx.fillStyle = "rgba(251,253,248,0.18)";
-      for (let x = 12; x < W; x += 12) {
-        ctx.fillRect(x, 40, 2, 1);
-        ctx.fillRect(x, 104, 2, 1);
-      }
-    };
+    const field = () => drawField(ctx, W, H);
 
-    /* A PLAYER, 8 wide and 13 tall, drawn as nine rectangles.
-     *
-     * This was two rects and read as a coloured block, which is what it was.
-     * A Tecmo sprite is not much more than this but the "not much" is the whole
-     * thing: a helmet with a facemask sticking out the front, shoulders wider
-     * than the waist, a jersey in the club colour with a trim stripe, white
-     * pants, and two legs that alternate. Nine rects and the eye reads a
-     * footballer instead of a domino.
-     *
-     * `stride` alternates the legs. On an NES that was the entire running
-     * animation and it is enough here too.
-     */
-    const player = (p: Player, stride: boolean, squash: boolean) => {
-      const x = Math.round(p.x);
-      const y = Math.round(p.y) + (squash ? 1 : 0);
-      const body = p.out ? DIM : p.colour;
-      const trim = p.out ? DIM : p.trim;
-
-      // Player, 6 wide, inset one from each side of the shoulders.
-      ctx.fillStyle = body;
-      ctx.fillRect(x + 1, y, 6, 4);
-      // The crown stripe, front to back. One pixel, and it is the first thing
-      // that reads as a football helmet rather than a bean.
-      ctx.fillStyle = trim;
-      ctx.fillRect(x + 1, y, 6, 1);
-      // Facemask, poking out to the right, which is what makes it a helmet
-      // rather than a hat.
-      ctx.fillStyle = CHALK;
-      ctx.fillRect(x + 6, y + 2, 2, 1);
-
-      // A DARK LINE FOR THE NECK. Without it the helmet and the jersey are the
-      // same colour touching, so the whole top half reads as one lump. One
-      // pixel of shadow is what separates a head from a torso.
-      ctx.fillStyle = PANEL;
-      ctx.fillRect(x + 1, y + 4, 6, 1);
-
-      // Shoulders, the widest part, then the jersey a pixel narrower.
-      ctx.fillStyle = body;
-      ctx.fillRect(x, y + 5, 8, 2);
-      ctx.fillRect(x + 1, y + 7, 6, 2);
-      // The club's second colour as a belt. Two colours per club is what makes
-      // thirty-two teams instead of thirty-two rectangles.
-      ctx.fillStyle = trim;
-      ctx.fillRect(x + 1, y + 9, 6, 1);
-
-      // Pants, white the way almost every away kit is.
-      ctx.fillStyle = p.out ? DIM : "#E8EDE6";
-      ctx.fillRect(x + 1, y + 10, 6, 2);
-      // Socks in the club's trim, which is both true of the kit and the only
-      // way the stride reads: white legs under white pants are invisible.
-      ctx.fillStyle = trim;
-      ctx.fillRect(x + 1, y + 12, 2, stride ? 3 : 2);
-      ctx.fillRect(x + 5, y + 12, 2, stride ? 2 : 3);
-
-      if (p.out) {
-        // The elimination X, stamped over the whole sprite.
-        ctx.fillStyle = OUT;
-        for (let i = 0; i < 8; i++) {
-          ctx.fillRect(x + i, y + 3 + i, 1, 1);
-          ctx.fillRect(x + 7 - i, y + 3 + i, 1, 1);
-        }
-      }
-    };
+    /* One sprite, shared with the playable drive at /arcade. It used to live
+       here, and the moment a second canvas existed that would have meant a
+       second copy of a footballer that slowly stopped matching this one. */
+    const player = (p: Player, stride: boolean, squash: boolean) =>
+      drawPlayer(ctx, p.x, p.y, p, { stride, squash, out: p.out });
 
     const draw = (t: number) => {
       raf = requestAnimationFrame(draw);
@@ -334,7 +248,7 @@ export default function AttractCabinet({
         );
         // The winner's mark, painted under his feet before he is, so he stands
         // on it rather than in front of it.
-        ctx.fillStyle = ACTION;
+        ctx.fillStyle = PX.action;
         ctx.fillRect(Math.round(hero.x) - 1, Math.round(hero.y) + 15, 10, 1);
         // Still walking? Then keep the legs going. Arrived? Stand still.
         player(hero, f < 16 && f % 2 === 0, false);
@@ -342,9 +256,9 @@ export default function AttractCabinet({
         if (f > 18) {
           const rise = Math.min(1, (f - 18) / 8);
           const by = Math.round(H - rise * (H / 2 + 10));
-          ctx.fillStyle = GOLD;
+          ctx.fillStyle = PX.gold;
           ctx.fillRect(W / 2 - 18, by, 36, 12);
-          ctx.fillStyle = PANEL;
+          ctx.fillStyle = PX.panel;
           ctx.fillRect(W / 2 - 15, by + 4, 30, 4);
         }
         showAlive(1);

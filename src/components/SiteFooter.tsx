@@ -15,6 +15,10 @@ import { Laces } from "@/components/Laces";
 
 const LINKS = [
   { href: "/leaderboard", label: "Leaderboard" },
+  /* The game. In the footer rather than the header, because it is a toy and
+   * the header is for the product — but on every page rather than only the
+   * landing one, because otherwise nobody ever finds it. */
+  { href: "/arcade", label: "Arcade" },
   /* Reachable from every page, not only from the join screen that discovers
    * you have no wallet. Somebody sent a pool link is often reading the terms
    * before they get anywhere near a Connect button. */
