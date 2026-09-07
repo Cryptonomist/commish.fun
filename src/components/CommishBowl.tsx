@@ -64,6 +64,7 @@ import {
   type Input,
   type World,
 } from "@/lib/bowl";
+import * as kit from "@/lib/audiokit";
 import { fanfare, startDrive, stopMusic } from "@/lib/chiptune";
 import { TEAMS } from "@/lib/nfl";
 import { drawField, drawPlayer, PX } from "@/lib/pixel";
@@ -151,6 +152,11 @@ export function CommishBowl() {
     setSfxEnabled(next);
     setSfx(next);
     if (next) {
+      /* Fetch the music now rather than at the moment it is needed: a track
+       * that starts downloading when the whistle blows arrives after the play
+       * it was meant to score. Nothing is fetched before this point, so a
+       * visitor who never presses this never downloads any of it. */
+      kit.preload(["kickoff", "drive", "touchdown", "move-up", "move-down"]);
       // Confirm through the thing that was just switched on, so pressing it
       // tells you what you turned on rather than only that you did.
       play("first");
@@ -239,10 +245,14 @@ export function CommishBowl() {
     setGained(0);
     setupPlay(w);
     play("snap");
+    /* A KICKOFF GETS ITS OWN OPENING, if one has been supplied. Everything
+     * here is "use the file if there is one, otherwise the synth" — see
+     * public/audio/README.md. */
+    if (w.kind === "kickoff") kit.playOnce("kickoff");
     /* The loop runs for the length of the down and stops at the whistle. It is
      * bounded by the play rather than by the page, which is what keeps music
      * on a website from being something done TO somebody. */
-    startDrive();
+    if (!kit.startLoop("drive")) startDrive();
     goPhase("live");
   }, [goPhase]);
 
@@ -319,11 +329,24 @@ export function CommishBowl() {
         }
         ctx.fillStyle = PX.chalk;
         ctx.fillRect(gx, 4, 2, VIEW_H - 9);
-        // Goalposts at the back of the endzone.
-        const post = Math.round(WORLD - camX - 6);
-        ctx.fillStyle = PX.gold;
-        ctx.fillRect(post, 30, 2, VIEW_H - 60);
-        ctx.fillRect(post - 4, 30, 10, 2);
+
+        /* THE UPRIGHTS, at the back of the endzone where they belong — not on
+         * the goal line, which is where they were and which is a decade out of
+         * date for the professional game.
+         *
+         * Drawn head-on: a base post, a crossbar, and two uprights running well
+         * above it, in the real proportions. And in CHALK, not gold. They were
+         * gold, which breaks the one palette rule this project actually
+         * enforces — gold is money and nothing else, ever. The bar that rises
+         * on a touchdown a few lines below is money and stays gold; the
+         * furniture is painted like the rest of the field. */
+        const post = Math.round(WORLD - camX - 8);
+        const mid = Math.round(VIEW_H / 2);
+        ctx.fillStyle = PX.chalk;
+        ctx.fillRect(post, mid - 2, 2, 26); // base post, down to the ground
+        ctx.fillRect(post - 7, mid - 4, 16, 2); // crossbar
+        ctx.fillRect(post - 7, mid - 26, 2, 22); // upright, near side
+        ctx.fillRect(post + 7, mid - 26, 2, 22); // upright, far side
       }
 
       // The line of scrimmage in orange, the first-down marker in gold. Two
@@ -410,9 +433,10 @@ export function CommishBowl() {
         setGained(yards);
         remember(yards);
 
-        stopMusic(); // the whistle
+        stopMusic();
+        kit.stopLoop(); // the whistle
         if (result === "touchdown") {
-          fanfare();
+          if (!kit.playOnce("touchdown")) fanfare();
           goPhase("touchdown");
           break;
         }
@@ -461,6 +485,7 @@ export function CommishBowl() {
         /* Scrolled out of view pauses the play, so it has to silence the loop
          * as well — music continuing over a paused game is worse than either. */
         stopMusic();
+        kit.stopLoop();
       },
       { threshold: 0.25 },
     );
@@ -472,6 +497,7 @@ export function CommishBowl() {
       /* Leaving the page mid-down must not leave a marching band playing under
        * whatever the visitor opened next. */
       stopMusic();
+      kit.stopLoop();
     };
   }, [kits, goPhase]);
 
