@@ -19,15 +19,9 @@ export const metadata: Metadata = {
   description: "Only put in what you can afford to lose. How to set limits, and where to get help.",
 };
 
-/** Marks something a lawyer must supply. Loud on purpose: an unanswered
- *  placeholder that reads like finished prose is how a draft ships. */
-function Tbc({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded bg-out/20 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-out">
-      [confirm: {children}]
-    </span>
-  );
-}
+/* This page had two placeholders and now has none, so the component that
+ * rendered them is gone with them. It stays in the other three files until the
+ * same is true there. */
 
 export default function Page() {
   return (
@@ -128,9 +122,9 @@ export default function Page() {
 
       <p>{"This page is not legal, medical or financial advice, and it is not a promise about anything. It does not change the Terms of Service or the Privacy Policy, and it is not a statement about whether Commish or any pool on it is lawful where you are. That remains your responsibility to work out. We make no representation about legality anywhere."}</p>
 
-      <p>{"If you want to raise something with us, including a concern about your own use of Commish or someone else's, you can reach us at "}<Tbc>{"contact address for support and welfare enquiries"}</Tbc>{". We cannot move funds, and we cannot remove someone from a pool, so please be aware of what we can and cannot help with before you write."}</p>
+      <p>{"If you want to raise something with us, including a concern about your own use of Commish or someone else's, you can reach us at "}{"hello@commish.fun"}{". We cannot move funds, and we cannot remove someone from a pool, so please be aware of what we can and cannot help with before you write."}</p>
 
-      <p>{"Commish is operated by "}<Tbc>{"legal entity name and registered address"}</Tbc>{"."}</p>
+      <p>{"Commish is operated by "}{"HoldFi LLC, a Texas limited liability company, whose registered agent is at 5900 Balcones Dr, STE 100, Austin, TX 78731"}{"."}</p>
 
       <p>{"Commish is not affiliated with, endorsed by or sponsored by the NFL, any NFL club, ESPN, Yahoo or Sleeper."}</p>
     </LegalPage>

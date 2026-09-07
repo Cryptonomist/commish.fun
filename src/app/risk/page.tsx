@@ -239,7 +239,7 @@ export default function Page() {
 
       <h2>{"Questions"}</h2>
 
-      <p><Tbc>{"contact address for risk and security questions, and a separate address or process for responsible disclosure of a vulnerability in the program"}</Tbc></p>
+      <p>{"Email hello@commish.fun for anything on this page. If you have found a vulnerability in the program, use the same address and say so in the subject line. Tell us before you tell anyone else, give us a reasonable chance to fix it, and we will not pursue you for having looked."}</p>
     </LegalPage>
   );
 }

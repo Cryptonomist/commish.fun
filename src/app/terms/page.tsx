@@ -36,7 +36,7 @@ export default function Page() {
       updated={"7 September 2026"}
       intro={"We provide software and an escrow program. We are not a party to your pool, we do not hold your money, and we cannot decide who won."}
     >
-      <p>{"These terms are an agreement between you and "}<Tbc>{"legal entity name, company number and registered address of the operator"}</Tbc>{" (\"we\", \"us\", \"our\"). They cover your use of the commish.fun website and the interface it provides to the Commish Solana program."}</p>
+      <p>{"These terms are an agreement between you and "}{"HoldFi LLC, a Texas limited liability company, whose registered agent is at 5900 Balcones Dr, STE 100, Austin, TX 78731"}{" (\"we\", \"us\", \"our\"). They cover your use of the commish.fun website and the interface it provides to the Commish Solana program."}</p>
 
       <p>{"If you do not accept these terms, do not use the site."}</p>
 
@@ -276,9 +276,9 @@ export default function Page() {
 
       <h2>{"Governing law and disputes with us"}</h2>
 
-      <p>{"These terms are governed by "}<Tbc>{"governing law"}</Tbc>{"."}</p>
+      <p>{"These terms are governed by "}{"the laws of the State of Texas, without regard to its conflict of law rules"}{"."}</p>
 
-      <p>{"Disputes between you and us will be resolved in "}<Tbc>{"forum, and whether arbitration, a class action waiver and a jury trial waiver are wanted and are enforceable in the target jurisdictions"}</Tbc>{"."}</p>
+      <p>{"Disputes between you and us will be resolved in "}{"the state and federal courts sitting in Travis County, Texas. You and we each agree those courts have personal jurisdiction over us for that purpose"}{"."}</p>
 
       <h2>{"General"}</h2>
 
@@ -292,7 +292,7 @@ export default function Page() {
 
       <h2>{"Contact"}</h2>
 
-      <p><Tbc>{"contact email and postal address for notices, and a separate address for legal or regulatory correspondence if wanted."}</Tbc></p>
+      <p>{"Write to hello@commish.fun. For notices that need to be on paper, post them to HoldFi LLC, 5900 Balcones Dr, STE 100, Austin, TX 78731. Legal and regulatory correspondence can use either route."}</p>
     </LegalPage>
   );
 }

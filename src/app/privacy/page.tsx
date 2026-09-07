@@ -46,7 +46,7 @@ export default function Page() {
 
       <h2>{"Who we are"}</h2>
 
-      <p>{"Commish is operated by "}<Tbc>{"legal entity name, registered address and, if applicable, EU/UK representative and Data Protection Officer"}</Tbc>{". In this policy \"we\" and \"us\" mean the operator, and \"you\" means the person using the site."}</p>
+      <p>{"Commish is operated by "}{"HoldFi LLC, a Texas limited liability company, whose registered agent is at 5900 Balcones Dr, STE 100, Austin, TX 78731. We are established in the United States. We have not appointed a Data Protection Officer or an EU or UK representative, because our processing does not meet the thresholds that require one"}{". In this policy \"we\" and \"us\" mean the operator, and \"you\" means the person using the site."}</p>
 
       <p>{"This policy covers the website at commish.fun. It does not cover the Solana blockchain itself, your wallet software, X, or any league platform you use elsewhere, such as ESPN or Sleeper. Those are run by other people under their own policies."}</p>
 
@@ -182,7 +182,7 @@ export default function Page() {
 
       <p>{"Commish is not intended for children and is not directed at them. You must be at least 18 years old, or the age of majority where you live if that is higher, which is the same requirement the Terms set to use it."}</p>
 
-      <p>{"We do not knowingly collect personal information from children. If you believe a child has linked an X account to a wallet on our site, contact us at "}<Tbc>{"contact address"}</Tbc>{" and we will delete the record we hold. We cannot delete anything from the blockchain."}</p>
+      <p>{"We do not knowingly collect personal information from children. If you believe a child has linked an X account to a wallet on our site, contact us at hello@commish.fun and we will delete the record we hold. We cannot delete anything from the blockchain."}</p>
 
       <h2>{"Where your data is processed"}</h2>
 
@@ -192,7 +192,7 @@ export default function Page() {
 
       <p>{"This section applies if UK GDPR or EU GDPR applies to you."}</p>
 
-      <p><strong>{"Controller."}</strong>{" "}<Tbc>{"the controller entity, and whether an Article 27 representative is required."}</Tbc></p>
+      <p><strong>{"Controller."}</strong>{" "}{"HoldFi LLC is the controller of the personal data described in this policy. We have not appointed an Article 27 representative, because we are not established in the EU or the UK and do not target users there."}</p>
 
       <p><strong>{"What we process and why."}</strong></p>
 
@@ -216,9 +216,9 @@ export default function Page() {
 
       <p><strong>{"The honest limit on erasure."}</strong>{" We cannot erase anything from the Solana blockchain. We do not control it, we did not create the record on our own, and no one has the ability to delete or alter it. If your erasure request covers on-chain data, we will tell you plainly that we cannot comply as to that data, and explain what we did delete. "}<Tbc>{"how the operator wishes to characterise this in law, and whether the wallet address as processed by us is treated as personal data. A lawyer should settle the position on immutable ledgers and Article 17."}</Tbc></p>
 
-      <p><strong>{"Complaints."}</strong>{" You can complain to your local supervisory authority. In the UK that is the Information Commissioner's Office. "}<Tbc>{"lead supervisory authority in the EU, if one applies."}</Tbc></p>
+      <p><strong>{"Complaints."}</strong>{" You can complain to your local supervisory authority. In the UK that is the Information Commissioner's Office. "}{"We have no establishment in the EU, so no single lead supervisory authority applies to us. Complain to the authority where you live."}</p>
 
-      <p><strong>{"How to ask."}</strong>{" Contact "}<Tbc>{"contact address"}</Tbc>{". "}<Tbc>{"how identity is verified for a request when we hold no account, and whether a signed message from the wallet is an acceptable proof."}</Tbc></p>
+      <p><strong>{"How to ask."}</strong>{" Contact hello@commish.fun. We hold no account and no password, so the way to prove a record is yours is to sign a message with the wallet it is attached to, the same way you proved it when you linked. We will tell you the exact words to sign. If you have lost that wallet, tell us what you can and we will do what we reasonably can, but we may not be able to act on a request we cannot tie to a record."}</p>
 
       <h2>{"If you are in California"}</h2>
 
@@ -238,7 +238,7 @@ export default function Page() {
 
       <p><strong>{"The same honest limit."}</strong>{" A deletion request reaches what we hold in our own database. It cannot reach the blockchain, and it cannot reach a handle-to-wallet pairing that other people already copied from a public leaderboard."}</p>
 
-      <p><strong>{"How to ask."}</strong>{" Contact "}<Tbc>{"contact address and, if required, a toll-free number or the basis for not providing one"}</Tbc>{"."}</p>
+      <p><strong>{"How to ask."}</strong>{" Contact "}{"hello@commish.fun. We do not operate a telephone line. We are a small operation with no call centre, and email is the only channel we can answer reliably"}{"."}</p>
 
       <h2>{"Security"}</h2>
 
@@ -254,9 +254,9 @@ export default function Page() {
 
       <h2>{"Contact"}</h2>
 
-      <p><Tbc>{"contact email or postal address for privacy questions and rights requests."}</Tbc></p>
+      <p>{"Email hello@commish.fun, or write to HoldFi LLC, 5900 Balcones Dr, STE 100, Austin, TX 78731."}</p>
 
-      <p><Tbc>{"governing law and jurisdiction for this policy, aligned with the Terms."}</Tbc></p>
+      <p>{"This policy is governed by the laws of the State of Texas, and disputes about it go to the same courts named in the Terms."}</p>
 
       <h2>{"About the NFL and other names"}</h2>
 
