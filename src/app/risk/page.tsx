@@ -189,7 +189,7 @@ export default function Page() {
 
       <h2>{"Fees"}</h2>
 
-      <p>{"Season one charges a zero platform fee. The fee mechanism exists in the program, it is capped, and it is currently set to zero."}</p>
+      <p>{"Season one charges a zero platform fee. The fee mechanism exists in the program and is currently set to zero. Being precise about \"capped\", because it matters: each pool records an absolute ceiling in tokens chosen when the pool is created, and the fee can never exceed that or the amount actually in the vault. The percentage rate itself is only validated against a 100 percent ceiling in the code, so the protection that matters is the per pool absolute cap and the zero rate, not a low maximum rate. "}<Tbc>{"whether to add a hard rate ceiling in a future program version and say so here"}</Tbc></p>
 
       <p>{"Because a fee mechanism exists and can be configured, and because the upgrade authority can deploy new code, you should not treat a zero fee as permanent or as a guarantee. Separately, every transaction you send costs Solana network fees in SOL, which are paid to the network and not to us."}</p>
 

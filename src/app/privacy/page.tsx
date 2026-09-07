@@ -180,7 +180,7 @@ export default function Page() {
 
       <h2>{"Children"}</h2>
 
-      <p>{"Commish is not intended for children and is not directed at them. You must be at least "}<Tbc>{"minimum age, and whether it varies by jurisdiction, aligned with the position taken in the Terms"}</Tbc>{" to use it."}</p>
+      <p>{"Commish is not intended for children and is not directed at them. You must be at least 18 years old, or the age of majority where you live if that is higher, which is the same requirement the Terms set to use it."}</p>
 
       <p>{"We do not knowingly collect personal information from children. If you believe a child has linked an X account to a wallet on our site, contact us at "}<Tbc>{"contact address"}</Tbc>{" and we will delete the record we hold. We cannot delete anything from the blockchain."}</p>
 

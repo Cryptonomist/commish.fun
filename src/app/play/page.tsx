@@ -40,6 +40,10 @@ export default function Page() {
 
       <p>{"We are not qualified to tell you what is healthy for you, and we are not going to try. What follows is what we think is worth saying plainly, and what we do and do not do as an operator."}</p>
 
+      <h2>{"Right now this is test money"}</h2>
+
+      <p>{"The program is currently deployed to Solana devnet using test tokens, which have no value. Nothing on this page is urgent yet. It is here because it should be written before real money is involved rather than after, and everything below applies from the moment it is."}</p>
+
       <h2>{"Only put in what you can afford to lose entirely"}</h2>
 
       <p>{"Treat every buy-in as money that is gone the moment you pay it. Not money you expect back. Not money you are hoping to grow. Gone."}</p>
@@ -88,7 +92,7 @@ export default function Page() {
       <h2>{"What we do not do"}</h2>
 
       <ul>
-        <li>{"We do not extend credit. There is no borrowing, no deferred buy-in, no paying later. You can only join a pool with money you already have."}</li>
+        <li>{"We do not extend credit. There is no borrowing, no deferred buy-in, no paying later. We do not lend, and there is no credit anywhere in this product. One member can choose to pay another member's dues, which the program supports directly, so if somebody offers to cover your buy-in, be as careful about what you owe them as you would be anywhere else."}</li>
         <li>{"We do not offer bonuses, free entries, deposit matches, loyalty rewards or anything else designed to get you to put in more."}</li>
         <li>{"We do not send promotional messages telling you to play again. We do not ask for your email address and we have no way of sending you one."}</li>
         <li>{"We do not run public pools that strangers can join. Every pool is private and link only. There is no directory. The only way in is that somebody you know sent you the link."}</li>
@@ -116,7 +120,7 @@ export default function Page() {
         <li>{"United Kingdom: GamCare, at gamcare.org.uk, which runs the National Gambling Helpline."}</li>
       </ul>
 
-      <p>{"These are examples, not a complete list, and they are not affiliated with us. If you are somewhere else, look up what exists where you live. A search for your country and \"problem gambling helpline\" will normally find it, and your doctor or a local health service can point you to support as well."}</p>
+      <p>{"These are examples, not a complete list, and they are not affiliated with us. If you are somewhere else, look up what exists where you live. Searching for your country alongside the name of a national helpline for difficulty with money and play will normally find one, and your doctor or a local health service can point you to support as well."}</p>
 
       <p>{"You do not have to be in crisis to contact any of them. They will talk to you about a worry as readily as about a disaster, and they will talk to family members too."}</p>
 

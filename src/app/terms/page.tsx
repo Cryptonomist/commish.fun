@@ -62,9 +62,13 @@ export default function Page() {
 
       <p>{"We provide software and, through that software, access to an escrow mechanism that runs on a public blockchain. That is the whole of our role."}</p>
 
-      <p>{"We are not a party to any pool. The arrangement is between the members of that pool and their commissioner. We do not organise pools, promote them, set their rules, decide who joins, or take any share of a pot "}<Tbc>{"whether this sentence should be qualified once a platform fee is ever switched on, see the Fees section"}</Tbc>{"."}</p>
+      <p>{"We are not a party to any pool. The arrangement is between the members of that pool and their commissioner. We do not organise pools, promote them, set their rules or decide who joins."}</p>
 
-      <p>{"We are not a stakeholder in the older sense of a person who holds money on behalf of others pending an outcome. We never receive, hold or control your funds. The word \"escrow\" here describes what the program's code does. It does not make us an escrow agent, a custodian, a trustee, a bank, a money transmitter, a broker or a payment processor, and nothing in these terms should be read as us accepting any of those roles "}<Tbc>{"counsel to confirm the regulatory characterisation in each jurisdiction where the service is offered"}</Tbc>{"."}</p>
+      <p>{"We take no share of any pot in season one: the platform fee is set to zero. A fee mechanism exists in the program and is described under Fees below, so if that ever changes this sentence changes with it. "}<Tbc>{"whether counsel wants a commitment here not to raise the fee on pools that already exist, which the program already enforces"}</Tbc></p>
+
+      <p>{"We never receive, hold or control your funds at any point. Money moves from a member's wallet into an account owned by the pool's own program address, and out again only by the paths listed below. It does not pass through us, and there is no moment at which we could stop it, take it or send it somewhere else."}</p>
+
+      <p>{"The word \"escrow\" on this site describes what the program's code does. We are describing our conduct, not claiming any particular regulatory status for ourselves. "}<Tbc>{"counsel to settle the regulatory characterisation in each jurisdiction where the service is offered, and whether this section should say more or less"}</Tbc></p>
 
       <p>{"We do not give legal, tax, financial or investment advice."}</p>
 
@@ -113,11 +117,13 @@ export default function Page() {
       <ul>
         <li><strong>{"A winner's claim."}</strong>{" In a Survivor or Loser pool, a member who passes the pool's winner test claims from a settled pool."}</li>
         <li><strong>{"A prize slot claim."}</strong>{" In a league, the member assigned to a finalized slot on the payout sheet claims that slot."}</li>
-        <li><strong>{"A refund."}</strong>{" After the pool's refund deadline has passed, any paid member can trigger a pro rata refund of the vault to the paid members. They do not need our permission or the commissioner's, and nobody can block it."}</li>
+        <li><strong>{"A refund."}</strong>{" After the pool's refund deadline has passed, any paid member can trigger a pro rata refund of the vault to the paid members. They do not need our permission or the commissioner's. In a league there is one exception, described under Refunds below: a refund waits while a prize slot is still owed."}</li>
         <li><strong>{"A platform fee"}</strong>{", if one is set on that pool, to the treasury address recorded on the pool when it was created. See Fees below."}</li>
       </ul>
 
-      <p>{"There is no administrative withdrawal path, no sweep and no emergency route. We cannot freeze, reverse, seize, redirect or recover funds in a vault, for anyone, for any reason, including a court order directed at us "}<Tbc>{"how counsel wants us to describe our position if we are served with an order to do something the code cannot do"}</Tbc>{"."}</p>
+      <p>{"There is no administrative withdrawal path, no sweep and no emergency route in the program as deployed. Using the site, we cannot freeze, reverse, seize, redirect or recover funds in a vault, for anyone, for any reason."}</p>
+
+      <p>{"That statement has one important limit, and we would rather state it than let you discover it. The program's upgrade authority is currently a single key that we hold. While that is true, we are not powerless over the code in the way the paragraph above might suggest: new program code could in principle be deployed, and new code could behave differently. We intend to move that authority to a multi-signature arrangement and then discard it, at which point the paragraph above becomes unqualified. It has not happened yet. See the Risks page, which spells out what that key could do in the worst case. "}<Tbc>{"how counsel wants us to describe our position if we are served with an order to use a key we hold"}</Tbc></p>
 
       <h2>{"Refunds"}</h2>
 
