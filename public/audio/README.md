@@ -14,8 +14,8 @@ for. Lower case, exactly these names:
 
 | File | When it plays | Loops? | Target length |
 |---|---|---|---|
-| `kickoff.mp3` | Once, on the kickoff card before you return it | no | 3–6 s |
-| `drive.mp3` | For the length of a play from scrimmage | **yes** | 8–20 s |
+| `kickoff.mp3` | Once, when you snap the kickoff | no | 4–6 s |
+| `drive.mp3` | From the first snap until the drive ends | **yes** | 10–20 s |
 | `touchdown.mp3` | Once, on a score | no | 2–4 s |
 | `move-up.mp3` | When the runner cuts upfield | no | **under 150 ms** |
 | `move-down.mp3` | When the runner cuts downfield | no | **under 150 ms** |
@@ -34,6 +34,13 @@ This is the only one where the file itself has to be right.
   itself.
 - **No trailing silence.** Generators like to leave a beat of room at the end.
   Trim it, or the loop gains a gap.
+
+A note on how long it is actually heard. A single down is over fast — the
+median is 1.2 seconds and the longest measured was 1.6 — so the music
+deliberately runs across the whole drive rather than stopping at each whistle.
+A drive is roughly a dozen plays, so a 10–20 second loop will go round several
+times and wants to bear repeating. A kickoff return is about 5 seconds, which
+is what `kickoff.mp3` is sized for.
 
 The player decodes the file and loops it over an explicit sample range rather
 than using an `<audio>` element, which means MP3 encoder padding is not a

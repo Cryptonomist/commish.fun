@@ -252,6 +252,9 @@ export function CommishBowl() {
     /* The loop runs for the length of the down and stops at the whistle. It is
      * bounded by the play rather than by the page, which is what keeps music
      * on a website from being something done TO somebody. */
+    /* Both of these are no-ops when something is already looping, which is
+     * what lets the music carry across the whistle from one down to the next
+     * without restarting the track every snap. */
     if (!kit.startLoop("drive")) startDrive();
     goPhase("live");
   }, [goPhase]);
@@ -433,9 +436,22 @@ export function CommishBowl() {
         setGained(yards);
         remember(yards);
 
-        stopMusic();
-        kit.stopLoop(); // the whistle
+        /* THE MUSIC RUNS FOR THE DRIVE, NOT THE PLAY, and that changed after
+         * measuring how long a play actually is. The median scrimmage down
+         * lasts 1.2 seconds and the longest recorded was 1.6 — so music
+         * bounded by the whistle could never be more than a blip, and any
+         * track written for it would have its first bar heard and nothing
+         * else. Twelve plays of a drive with a stop and a restart between each
+         * is also just stuttering.
+         *
+         * So it starts at the first snap and runs until the drive ends: a
+         * touchdown or a turnover. Everything that made the old rule safe is
+         * unchanged — scrolling away stops it, unmounting stops it, muting
+         * stops it mid-bar — and it is still bounded by something the player
+         * did rather than by the page being open. */
         if (result === "touchdown") {
+          stopMusic();
+          kit.stopLoop();
           if (!kit.playOnce("touchdown")) fanfare();
           goPhase("touchdown");
           break;
@@ -456,6 +472,10 @@ export function CommishBowl() {
               ? "out"
               : "tackle",
         );
+        if (outcome === "turnover") {
+          stopMusic();
+          kit.stopLoop();
+        }
         goPhase(
           outcome === "turnover"
             ? "over"
