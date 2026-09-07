@@ -104,8 +104,22 @@ if [ "$GO" = "--go" ]; then
   npx tsc --noEmit || bad "tsc failed"
   npx eslint src --max-warnings 0 || bad "eslint failed"
   ok "tsc and eslint clean"
-  grep -rq "devnet" src/app/terms/page.tsx src/app/privacy/page.tsx src/app/play/page.tsx \
-    && bad "a legal page still says devnet" || ok "no devnet claims left in the legal copy"
+  # RISK/PAGE.TSX WAS MISSING FROM THIS LIST, and it is the page with the most
+  # devnet prose on it — a whole section under its own heading. The rewriter
+  # left "Treat anything you do today as a rehearsal" there, and this check
+  # looked at three files, none of them that one, and reported the copy clean.
+  #
+  # "devnet" alone is also not the whole claim. A page can stop naming the
+  # network and still tell somebody their money is play money.
+  if grep -rEiq "devnet|test tokens?|\brehearsal\b|no real money" \
+       src/app/terms/page.tsx src/app/privacy/page.tsx \
+       src/app/risk/page.tsx src/app/play/page.tsx; then
+    grep -rEin "devnet|test tokens?|\brehearsal\b|no real money" \
+      src/app/terms/page.tsx src/app/privacy/page.tsx \
+      src/app/risk/page.tsx src/app/play/page.tsx | cut -c1-160
+    bad "a legal page still tells the reader the money is not real"
+  fi
+  ok "no devnet or test-token claim left in the legal copy"
 fi
 
 say "8. Set these in Vercel yourself, then redeploy"

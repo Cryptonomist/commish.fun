@@ -53,18 +53,56 @@ const EDITS = [
     `<h2>{"Today this is devnet, with test tokens"}</h2>`,
     `<h2>{"This is mainnet, with real money"}</h2>`,
   ],
+  /* WHOLE PARAGRAPH, NOT A PREFIX, and this one nearly shipped the worst
+   * sentence on the site. The find string used to stop mid-sentence at
+   * "nothing you win on devnet is " and the replacement stopped at "Nothing you
+   * lose here is ", which left the original tail welded on. The result, under a
+   * heading this same script rewrites to "This is mainnet, with real money",
+   * read: "Nothing you lose here is worth anything. Devnet is a test network:
+   * it can be reset or wiped ... Treat anything you do today as a rehearsal."
+   *
+   * On a page about real money that is not a typo, it is the exact inverse of
+   * the truth, and the script reported "8 edits applied" while doing it. */
   [
     "risk/page.tsx",
-    `<p>{"At the moment the program is deployed to Solana devnet and pools use test tokens. Devnet money is not money. It has no value, you cannot sell it, and nothing you win on devnet is `,
-    `<p>{"The program is deployed to Solana mainnet and pools use real USDC. Everything on this page applies in full, and it applies to money you cannot get back if it goes wrong. Nothing you lose here is `,
+    `<p>{"At the moment the program is deployed to Solana devnet and pools use test tokens. Devnet money is not money. It has no value, you cannot sell it, and nothing you win on devnet is worth anything. Devnet is a test network: it can be reset or wiped, and it is not intended to be reliable or permanent. Treat anything you do today as a rehearsal."}</p>`,
+    `<p>{"The program is deployed to Solana mainnet and pools hold real USDC. The money is real, the transactions are final, and nothing on this page is hypothetical any more. Everything above applies in full, and it applies to money you cannot get back if it goes wrong."}</p>`,
   ],
 
   // ── Playing responsibly ──────────────────────────────────────────────────
+  /* Also a whole paragraph, for a smaller version of the same fault: replacing
+   * the head left "It was written before real money is involved rather than
+   * after", which clashes its own tenses and is no longer true anyway, since on
+   * mainnet the money is involved. */
   [
     "play/page.tsx",
-    `<p>{"The program is currently deployed to Solana devnet using test tokens, which have no value. Nothing on this page is urgent yet. It is here because it should be written before real `,
-    `<p>{"The program is deployed to Solana mainnet and pools hold real USDC. Everything on this page is live and applies to you now. It was written before real `,
+    `<p>{"The program is currently deployed to Solana devnet using test tokens, which have no value. Nothing on this page is urgent yet. It is here because it should be written before real money is involved rather than after, and everything below applies from the moment it is."}</p>`,
+    `<p>{"The program is deployed to Solana mainnet and pools hold real USDC. Everything below applies to you now, and applies to money you cannot get back. It was written before there was any real money in the product rather than after, which is the order these things should be written in."}</p>`,
   ],
+];
+
+/* WHAT MUST NOT SURVIVE, checked after the edits rather than trusted from
+ * them. Every failure above was a partial replacement that still reported
+ * success: the count of applied edits says how many `find` strings matched,
+ * which is not the same claim as "the page no longer tells the reader their
+ * money is fake". This asserts the second thing.
+ *
+ * Scoped to the four legal pages. The wallet page needs no entry because it
+ * already gates its devnet notice on IS_MAINNET (wallet/page.tsx:328) and the
+ * whole section disappears on its own. */
+const FORBIDDEN = [
+  /devnet/i,
+  /test tokens?/i,
+  /\brehearsal\b/i,
+  /no real money/i,
+  /not money\b(?!\s+you)/i,
+];
+
+const LEGAL_PAGES = [
+  "terms/page.tsx",
+  "privacy/page.tsx",
+  "risk/page.tsx",
+  "play/page.tsx",
 ];
 
 /* The RPC fallback. `clusterApiUrl("devnet")` as a default was right while the
@@ -120,6 +158,59 @@ for (const p of PROVIDERS) {
   break;
 }
 
+/* README, which no cutover step touched. It is the first thing anybody reads
+ * about the project and it opened with a bold "Devnet only." */
+const README = "README.md";
+if (fs.existsSync(README)) {
+  const src = fs.readFileSync(README, "utf8");
+  /* MATCHED AS A REGEX BECAUSE THIS BANNER WRAPS, and a checkout on Windows
+   * does not necessarily hand you the newline you wrote. Every other edit in
+   * this file is a single line and cannot notice; this one spans two, and a
+   * literal "\n" between them silently fails to match a CRLF working tree —
+   * which is what a `git checkout` produces here, `file` reporting "CRLF line
+   * terminators" on this very README. It failed closed rather than quietly, so
+   * nothing was at risk, but "MISSED" on deploy day over a line ending is a
+   * bad five minutes. \s+ spans whatever the checkout used. */
+  const find =
+    /\*\*Devnet only\.\*\*\s+The program is currently deployed to Solana devnet using test\s+tokens, which have no value\. Nothing below is holding real money yet\./;
+  if (find.test(src)) {
+    fs.writeFileSync(
+      README,
+      src.replace(
+        find,
+        "**Live on mainnet.** The program is deployed to Solana mainnet and pools\nhold real USDC. It has not been audited.",
+      ),
+    );
+    ok++;
+  } else {
+    missed.push("README.md: the devnet banner");
+  }
+}
+
 console.log(`  ${ok} edits applied`);
 for (const m of missed) console.log(`  MISSED ${m}`);
+
+/* THE POST-CONDITION. Counting matched `find` strings only proves the script
+ * found what it went looking for, which is exactly what it did on the day it
+ * left "Treat anything you do today as a rehearsal" on the risks page and
+ * reported eight edits applied. */
+const survived = [];
+for (const file of LEGAL_PAGES) {
+  const src = fs.readFileSync(path.join(DIR, file), "utf8");
+  for (const line of src.split("\n")) {
+    for (const rx of FORBIDDEN) {
+      if (rx.test(line)) survived.push(`${file}: ${line.trim().slice(0, 120)}`);
+    }
+  }
+}
+
+if (survived.length) {
+  console.error("\n  REFUSING: these still tell the reader the money is not real\n");
+  for (const s of survived) console.error(`  ${s}`);
+  console.error("\n  Fix the EDITS table in this script. Do not ship this.\n");
+  process.exitCode = 1;
+} else {
+  console.log("  post-check: no devnet or test-token claim left in the legal copy");
+}
+
 if (missed.length) process.exitCode = 1;
