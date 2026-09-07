@@ -25,6 +25,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
+import { SiteFooter } from "@/components/SiteFooter";
 import { shortAddress, toBaseUnits, formatUsdc } from "@/lib/format";
 import {
   buildCreatePool,
@@ -678,6 +679,8 @@ export default function NewPool() {
           </form>
         )}
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

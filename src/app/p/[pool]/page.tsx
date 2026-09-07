@@ -21,6 +21,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
+import { SiteFooter } from "@/components/SiteFooter";
 import { JoinChecklist, SOL_NEEDED_LAMPORTS } from "@/components/JoinChecklist";
 import { LeaguePanel } from "@/components/LeaguePanel";
 import { PickGrid } from "@/components/PickGrid";
@@ -499,6 +500,8 @@ export default function PoolPage() {
           </>
         )}
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

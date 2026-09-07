@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Laces, Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
 import { Countdown } from "@/components/Countdown";
@@ -60,12 +61,11 @@ const DRIVE = [
 
 /* What the product actually offers, and honestly which of it you can use.
  *
- * Survivor is the only type `/pools/new` can create today — the form passes
- * POOL_SURVIVOR and nothing else. Loser and League are enabled on chain and
- * covered by the LiteSVM suite, but League has no screens at all: no create,
- * no dues lock, no payout sheet, no claim. Listing it without saying so would
- * be selling a page that does not exist, which is a strange thing to do on a
- * site whose whole argument is that it does not ask for trust. */
+ * All three are creatable now. This list said otherwise for as long as it was
+ * true, and the honesty was the point: `mode_enabled` in the program permits
+ * exactly Survivor, Loser and League, and every other value in the enum is
+ * refused at runtime rather than half-built. If a fourth mode appears in the
+ * program, it does not belong on this page until it has screens. */
 const FORMATS = [
   {
     status: "AVAILABLE NOW",
@@ -76,12 +76,20 @@ const FORMATS = [
       "Picks lock at the week's first kickoff and are recorded on chain, so nobody can claim on Monday that they definitely picked the Bills.",
   },
   {
-    status: "ON CHAIN · SCREENS TO COME",
-    live: false,
-    h: "League dues",
-    p: "A season buy-in for a fantasy league, held in the same escrow and paid out against a prize sheet rather than a last-one-standing rule.",
+    status: "AVAILABLE NOW",
+    live: true,
+    h: "Loser pool",
+    p: "The same game inverted. Pick a team to lose, and if they win you are out. Burn the worst teams early and December gets interesting.",
     detail:
-      "The commissioner posts who finished where, members get the same dispute window they get on a weekly result, and each winner claims their own slot.",
+      "A tie carries you here and eliminates you in Survivor, because the rule is that your team must not win rather than that it must lose.",
+  },
+  {
+    status: "AVAILABLE NOW",
+    live: true,
+    h: "League dues",
+    p: "A season buy-in for a fantasy league you play somewhere else. Held in the same escrow, paid out against a prize sheet rather than a last-one-standing rule.",
+    detail:
+      "The commissioner posts who finished where, and can pull the final table straight from Sleeper. Members get the same dispute window they get on a weekly result, and each winner claims their own slot.",
   },
 ];
 
@@ -282,20 +290,10 @@ export default async function Home() {
           </Link>
         </section>
 
-        {/* ── Footer ──────────────────────────────────────────────────────── */}
-        <footer className="mt-auto flex flex-col gap-4 border-t border-night-3 py-8 text-sm text-cream-dim sm:flex-row sm:items-center sm:justify-between">
-          <span className="flex items-center gap-2.5">
-            <Laces size={14} className="text-action" />
-            <span className="font-bold tracking-wide">COMMISH.FUN</span>
-            <span>· Built on Solana</span>
-          </span>
-          <span className="max-w-md text-xs leading-relaxed">
-            Escrow infrastructure for private pools among people who know each
-            other. Not financial, gambling, or legal advice. Team names are used to
-            identify clubs and imply no affiliation or endorsement. Know the rules
-            where you live before running a pool.
-          </span>
-        </footer>
+        {/* Shared, because the terms somebody agrees to should be reachable
+            from the screen where they agree. A join link goes straight to a
+            pool page, which had no footer at all. */}
+        <SiteFooter />
       </div>
     </>
   );
