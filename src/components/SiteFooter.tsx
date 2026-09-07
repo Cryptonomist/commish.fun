@@ -14,6 +14,7 @@ import Link from "next/link";
 import { Laces } from "@/components/Laces";
 
 const LINKS = [
+  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },
   { href: "/risk", label: "Risks" },

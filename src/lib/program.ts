@@ -481,6 +481,13 @@ export const MAX_NOTE = 24;
 /** A member, decoded. `usedMask` is the on-chain u32: bit N means team N is
  *  spent for the season and can never be picked again. */
 export type MemberView = {
+  /** Which pool this membership belongs to.
+   *
+   *  Redundant when the account was fetched by deriving its PDA from a pool
+   *  you already had, which is every screen. It is not redundant when the
+   *  accounts arrive from a discriminator-only `getProgramAccounts` that
+   *  spans every pool at once, which is how the leaderboard reads them. */
+  pool: PublicKey;
   wallet: PublicKey;
   displayName: string;
   paid: boolean;
@@ -502,6 +509,7 @@ export function decodeMember(data: Uint8Array): MemberView {
     { toString(): string }
   >;
   return {
+    pool: raw.pool as unknown as PublicKey,
     wallet: raw.wallet as unknown as PublicKey,
     displayName: fromFixedBytes(raw.display_name as unknown as number[]),
     paid: raw.paid as unknown as boolean,
@@ -881,6 +889,34 @@ export function memberAccountFilters(pool: PublicKey) {
       },
     },
     { memcmp: { offset: 8, bytes: pool.toBase58() } },
+  ];
+}
+
+/* Every account of one type, across every pool.
+ *
+ * The per-pool version above is what a pool screen wants. The leaderboard
+ * wants the other cut: all Members everywhere, and all Pools, so it can work
+ * out who survived what. Same discriminator, no second filter.
+ *
+ * Reading it out of the IDL by name rather than hardcoding eight bytes matters
+ * more here than it looks: a discriminator is derived from the account NAME,
+ * so a pasted one keeps matching after a rename and quietly returns nothing. */
+export function discriminatorFilter(account: "Pool" | "Member" | "Config") {
+  const disc = (
+    idlJson as { accounts?: { name: string; discriminator: number[] }[] }
+  ).accounts?.find((a) => a.name === account)?.discriminator;
+
+  if (!disc) {
+    throw new Error(`The vendored IDL has no ${account} account discriminator`);
+  }
+
+  return [
+    {
+      memcmp: {
+        offset: 0,
+        bytes: utils.bytes.bs58.encode(Buffer.from(disc)),
+      },
+    },
   ];
 }
 
