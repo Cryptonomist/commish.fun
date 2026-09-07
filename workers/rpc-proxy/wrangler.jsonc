@@ -34,10 +34,39 @@
     // variable.
     "CORS_ALLOW_ORIGIN": "https://commish.fun,https://www.commish.fun"
 
-    // Uncomment to override the RPC method allowlist. The default is the set
-    // the app actually calls, listed in src/index.ts. Setting this to an empty
-    // string turns the allowlist off, which should be a deliberate act rather
-    // than a side effect.
-    // "ALLOWED_METHODS": ""
-  }
+    // The program getProgramAccounts is allowed to scan. Set this and an
+    // unfiltered scan of somebody else's program stops being reachable on this
+    // key. Left commented because the id belongs with the deploy, not here:
+    //   npx wrangler deploy --var PROGRAM_ID:<your program id>
+    // "PROGRAM_ID": ""
+  },
+
+  /* RATE LIMITING. The origin check above is a single header and anyone can
+     send it — this repo forges exactly that header itself, deliberately, in
+     src/lib/leaderboard.ts. So the origin list is a convention and this is the
+     actual control on a public URL that spends the owner's Helius credits.
+
+     Two budgets, because a POST and a socket are not worth the same upstream:
+     a POST is billed once, a subscription is billed for as long as it is held.
+
+     THE NUMBERS ARE DELIBERATELY GENEROUS. One pool page fans out into several
+     account reads plus a socket, and a household, an office or a campus all
+     share one cf-connecting-ip behind NAT. Watch `wrangler tail` for 429s
+     before tightening these. Note the binding's counter is approximate and
+     per-location rather than global, so treat these as an order of magnitude
+     rather than an exact ceiling. */
+  "ratelimits": [
+    {
+      "name": "RPC_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 300, "period": 60 }
+    },
+    {
+      "name": "WS_LIMIT",
+      "namespace_id": "1002",
+      "simple": { "limit": 30, "period": 60 }
+    }
+  ]
 }
+
+

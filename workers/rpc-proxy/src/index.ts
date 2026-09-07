@@ -41,6 +41,22 @@ export interface Env {
   /** Override the RPC method allowlist. Comma-separated. Empty string turns
    *  the allowlist off entirely, which should be a deliberate act. */
   ALLOWED_METHODS?: string;
+
+  /** The on-chain program this app reads. When set, getProgramAccounts is
+   *  refused for any other program — see the guard below. */
+  PROGRAM_ID?: string;
+
+  /** Workers native rate limiting. Two budgets, because one socket is worth
+   *  far more upstream than one POST: a POST is billed once, a subscription is
+   *  billed for as long as it is held open. */
+  RPC_LIMIT?: RateLimiter;
+  WS_LIMIT?: RateLimiter;
+}
+
+/** The shape Cloudflare's rate-limit binding exposes. Declared rather than
+ *  imported so this file still typechecks without the binding configured. */
+interface RateLimiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
 /* Exactly what the app calls, and nothing else.
@@ -83,8 +99,52 @@ const DEFAULT_METHODS = [
 ];
 
 /** 1 MB. A signed Solana transaction is a few kilobytes; a megabyte of JSON-RPC
- *  is not this app and should not reach Helius on our key. */
+ *  is not this app and should not reach Helius on our key.
+ *
+ *  MEASURED IN BYTES, NOT CHARACTERS. `String.length` counts UTF-16 code units,
+ *  so a body of multi-byte characters passed a 1MB check at about 1.2MB of
+ *  actual payload — verified live against the deployed worker. TextEncoder
+ *  counts what actually goes over the wire. */
 const MAX_BODY_BYTES = 1_000_000;
+
+/** How many calls one JSON-RPC batch may carry.
+ *
+ *  A batch is a multiplier: one request the rate limiter counts once can be a
+ *  hundred upstream calls on the owner's key. Solana's own RPC caps batches;
+ *  this app never sends one at all, since web3.js batches nothing here. Twenty
+ *  is generous for something that should be one. */
+const MAX_BATCH = 20;
+
+/* getProgramAccounts IS THE EXPENSIVE ONE, and it was allowlisted with no
+ * restriction on which program or whether any filter was attached. An
+ * unfiltered scan of a large program is the single costliest call available on
+ * this key, and it was reachable by anyone who could forge an Origin header.
+ *
+ * The guard: the program must be ours, and there must be at least one filter.
+ * When PROGRAM_ID is unset the check degrades to "must have filters", so a
+ * misconfigured deploy is stricter rather than looser. */
+function programScanRefused(payload: unknown, env: Env): string | null {
+  const calls = Array.isArray(payload) ? payload : [payload];
+  for (const call of calls) {
+    const c = call as { method?: unknown; params?: unknown };
+    if (c?.method !== "getProgramAccounts") continue;
+    const params = Array.isArray(c.params) ? c.params : [];
+    const programId = params[0];
+    const opts = (params[1] ?? {}) as { filters?: unknown };
+
+    if (env.PROGRAM_ID && programId !== env.PROGRAM_ID) {
+      return "getProgramAccounts is only forwarded for this app's own program.";
+    }
+    if (!Array.isArray(opts.filters) || opts.filters.length === 0) {
+      return "getProgramAccounts needs filters. An unfiltered scan is refused.";
+    }
+  }
+  return null;
+}
+
+/** How many calls a JSON-RPC payload actually makes. */
+const batchSize = (payload: unknown): number =>
+  Array.isArray(payload) ? payload.length : 1;
 
 const allowedOrigins = (env: Env): string[] =>
   (env.CORS_ALLOW_ORIGIN ?? "")
@@ -230,6 +290,29 @@ export default {
      * header. The runtime performs the switch and hands back a 101 with the
      * socket on `response.webSocket`, which is returned as-is. */
     if (request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
+      /* A SOCKET COSTS MORE THAN A POST, so it gets its own, tighter budget.
+       * A POST is billed upstream once; a subscription is billed for as long
+       * as it is held open, which is what makes an unmetered upgrade the more
+       * attractive half of this endpoint to abuse.
+       *
+       * THIS IS HALF A FIX AND THE COMMENT SHOULD SAY SO. Everything below
+       * still passes the socket straight through to Helius, so the method
+       * allowlist further down is never consulted for a frame sent over it —
+       * anything the upstream supports, including logsSubscribe and
+       * programSubscribe, still runs on this key once a socket is open. The
+       * complete fix is to terminate the socket here with a WebSocketPair,
+       * open our own upstream socket, and filter each frame. That is a real
+       * relay with keepalive and pre-connect buffering, and getting it wrong
+       * breaks confirmTransaction on a page holding escrowed USDC — which no
+       * curl test detects. Until it is written and tested against a real
+       * signed transaction, this limit is what shrinks the abuse economics. */
+      if (env.WS_LIMIT) {
+        const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+        const { success } = await env.WS_LIMIT.limit({ key: ip });
+        if (!success) {
+          return deny(429, "Too many socket connections.", origin, env);
+        }
+      }
       try {
         const upgraded = await fetch(upstream(env), request);
         if (!upgraded.webSocket) {
@@ -255,8 +338,21 @@ export default {
       return deny(405, "This proxy takes POST.", origin, env);
     }
 
+    /* Rate limit BEFORE reading the body, so a flood costs this worker as
+     * little as possible. Keyed on the connecting IP: the Origin check above
+     * is one header and anyone can send it, which the repo itself proves —
+     * src/lib/leaderboard.ts forges exactly this header on purpose. The origin
+     * check is a convention; this is the control. */
+    if (env.RPC_LIMIT) {
+      const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+      const { success } = await env.RPC_LIMIT.limit({ key: ip });
+      if (!success) {
+        return deny(429, "Too many requests. Slow down.", origin, env);
+      }
+    }
+
     const body = await request.text();
-    if (body.length > MAX_BODY_BYTES) {
+    if (new TextEncoder().encode(body).length > MAX_BODY_BYTES) {
       return deny(413, "That request is too large.", origin, env);
     }
 
@@ -276,6 +372,21 @@ export default {
               .split(",")
               .map((s) => s.trim())
               .filter(Boolean);
+
+    if (batchSize(payload) > MAX_BATCH) {
+      return deny(
+        413,
+        `That batch is too long. At most ${MAX_BATCH} calls per request.`,
+        origin,
+        env,
+      );
+    }
+
+    const scanRefused = programScanRefused(payload, env);
+    if (scanRefused) {
+      console.error(`[proxy] refused scan: ${scanRefused}`);
+      return deny(403, scanRefused, origin, env);
+    }
 
     if (allowlist.length > 0) {
       const asked = methodsIn(payload);
@@ -302,17 +413,29 @@ export default {
 
     /* A clean request upstream. The caller's headers are not forwarded: they
      * are attacker-influenced, and Helius needs exactly two of them. */
-    const res = await fetch(upstream(env), {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        /* Helius reads this for its own analytics. It identifies the app, not
-         * the person, and sending it keeps the dashboard's traffic breakdown
-         * meaningful once everything arrives from one worker IP. */
-        "solana-client": "commish.fun",
-      },
-      body,
-    });
+    /* An upstream throw — DNS, TLS, a timeout — used to escape this handler,
+     * and an unhandled throw in a Worker returns Cloudflare's own error page.
+     * That page is HTML, so a client expecting JSON gets a parse error instead
+     * of a readable failure, and the worker's URL appears in it. */
+    let res: Response;
+    try {
+      res = await fetch(upstream(env), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          /* Helius reads this for its own analytics. It identifies the app,
+           * not the person, and sending it keeps the dashboard's traffic
+           * breakdown meaningful once everything arrives from one worker IP. */
+          "solana-client": "commish.fun",
+        },
+        body,
+      });
+    } catch (err) {
+      /* Never echo the error: an upstream URL carrying the key can appear in
+       * one. Log it where only the owner can see it. */
+      console.error(`[proxy] upstream failed: ${String(err)}`);
+      return deny(502, "The RPC endpoint could not be reached.", origin, env);
+    }
 
     const out = new Headers(corsHeaders(origin, env));
     out.set("content-type", "application/json");
