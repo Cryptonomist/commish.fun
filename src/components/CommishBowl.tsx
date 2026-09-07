@@ -147,6 +147,32 @@ export function CommishBowl() {
   const [sfx, setSfx] = useState(false);
   useEffect(() => setSfx(sfxEnabled()), []);
 
+  /* ONE MUSIC SOURCE, EVER — AND IT STACKED BECAUSE THERE WERE TWO.
+   *
+   * There are two independent players here: the synthesised loop in
+   * chiptune.ts and the sample loop in audiokit.ts, and each guarded only
+   * against starting itself twice. Nothing stopped one when the other began.
+   *
+   * The sequence anybody would hit within a minute of playing: the first snap
+   * asks for the file, which is not decoded yet, so startLoop returns false and
+   * the SYNTH starts. The file finishes downloading in the background. The next
+   * snap finds it cached, starts the FILE loop — and the synth is still going.
+   * Two tracks, out of phase, for the rest of the drive. Scrolling away and
+   * back, or toggling sound mid-play, could add more.
+   *
+   * So both are behind these two functions now, and starting always stops
+   * first. It is not possible to hold two sources from here. */
+  const startMusic = useCallback(() => {
+    stopMusic();
+    kit.stopLoop();
+    if (!kit.startLoop("drive")) startDrive();
+  }, []);
+
+  const stopAllMusic = useCallback(() => {
+    stopMusic();
+    kit.stopLoop();
+  }, []);
+
   const toggleSfx = useCallback(() => {
     const next = !sfxEnabled();
     setSfxEnabled(next);
@@ -162,10 +188,10 @@ export function CommishBowl() {
       play("first");
       // Mid-play, the music should come straight back rather than waiting for
       // the next snap.
-      if (phaseRef.current === "live") startDrive();
+      if (phaseRef.current === "live") startMusic();
     }
     // Turning it off is handled inside setSfxEnabled, which stops the loop.
-  }, []);
+  }, [startMusic]);
 
   /* YOU PICK YOUR TEAM NOW, rather than being handed a random one. The
    * opponent is still chosen for you, from the clubs whose lead colour is far
@@ -254,12 +280,9 @@ export function CommishBowl() {
     /* The loop runs for the length of the down and stops at the whistle. It is
      * bounded by the play rather than by the page, which is what keeps music
      * on a website from being something done TO somebody. */
-    /* Both of these are no-ops when something is already looping, which is
-     * what lets the music carry across the whistle from one down to the next
-     * without restarting the track every snap. */
-    if (!kit.startLoop("drive")) startDrive();
+    startMusic();
     goPhase("live");
-  }, [goPhase]);
+  }, [goPhase, startMusic]);
 
   /* ------------------------------------------------------------- the loop */
 
@@ -420,7 +443,7 @@ export function CommishBowl() {
       if (!last) {
         last = t;
         // Coming back to a down that is still live: pick the music up again.
-        if (phaseRef.current === "live") startDrive();
+        if (phaseRef.current === "live") startMusic();
       }
       carry += t - last;
       last = t;
@@ -438,22 +461,16 @@ export function CommishBowl() {
         setGained(yards);
         remember(yards);
 
-        /* THE MUSIC RUNS FOR THE DRIVE, NOT THE PLAY, and that changed after
-         * measuring how long a play actually is. The median scrimmage down
-         * lasts 1.2 seconds and the longest recorded was 1.6 — so music
-         * bounded by the whistle could never be more than a blip, and any
-         * track written for it would have its first bar heard and nothing
-         * else. Twelve plays of a drive with a stop and a restart between each
-         * is also just stuttering.
-         *
-         * So it starts at the first snap and runs until the drive ends: a
-         * touchdown or a turnover. Everything that made the old rule safe is
-         * unchanged — scrolling away stops it, unmounting stops it, muting
-         * stops it mid-bar — and it is still bounded by something the player
-         * did rather than by the page being open. */
+        /* THE WHISTLE STOPS THE MUSIC. It briefly did not — the loop was made
+         * to span the whole drive, on the reasoning that a down lasts a median
+         * of 1.2 seconds and music bounded by it could never be more than a
+         * blip. That reasoning was fine and the result was wrong: playing it,
+         * a quick tackle followed by a quick snap left tracks overlapping, and
+         * a drive is not one continuous thing to a person holding the
+         * controls. It ends when the player goes down, which is what it
+         * sounds like it should do. */
+        stopAllMusic();
         if (result === "touchdown") {
-          stopMusic();
-          kit.stopLoop();
           if (!kit.playOnce("touchdown")) fanfare();
           goPhase("touchdown");
           break;
@@ -474,10 +491,6 @@ export function CommishBowl() {
               ? "out"
               : "tackle",
         );
-        if (outcome === "turnover") {
-          stopMusic();
-          kit.stopLoop();
-        }
         goPhase(
           outcome === "turnover"
             ? "over"
@@ -506,8 +519,7 @@ export function CommishBowl() {
         keysRef.current = {};
         /* Scrolled out of view pauses the play, so it has to silence the loop
          * as well — music continuing over a paused game is worse than either. */
-        stopMusic();
-        kit.stopLoop();
+        stopAllMusic();
       },
       { threshold: 0.25 },
     );
@@ -518,10 +530,9 @@ export function CommishBowl() {
       io.disconnect();
       /* Leaving the page mid-down must not leave a marching band playing under
        * whatever the visitor opened next. */
-      stopMusic();
-      kit.stopLoop();
+      stopAllMusic();
     };
-  }, [kits, goPhase]);
+  }, [kits, goPhase, startMusic, stopAllMusic]);
 
   /* -------------------------------------------------------------- controls */
 
