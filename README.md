@@ -76,7 +76,7 @@ its evidence:
   refuses to run the suite against anything else, because a `fastclock` build
   shortens the very floors those tests exist to check.
 
-Not yet: an audit, mainnet, a multisig upgrade authority, and the four league
+Not yet: an audit, mainnet, any change to the single-key upgrade authority, and the four league
 instructions, which are tested but have no UI.
 
 ## Brand

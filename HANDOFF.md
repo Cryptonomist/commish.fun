@@ -161,8 +161,12 @@ exist on devnet or localnet, and every `create_pool` fails.
 
 The program has never been audited, never run on mainnet, and its upgrade
 authority is a keypair in a file. `PROGRAM.md` has the full list; the short
-version is that the upgrade authority needs to become a 2-of-3 multisig and then
-be discarded, and that season one takes **zero** fee deliberately — charging
+version is that the upgrade authority is a single key and, as of 7 September 2026,
+there is no plan to change that. The decision belongs after an audit, because the
+audit is what tells you whether freezing the program is safe: discard the key and
+any bug is permanent, keep it and members are trusting one person. A multisig was
+the plan of record and is not any more. What has not changed is that season one
+takes **zero** fee deliberately — charging
 players on an unaudited escrow is not a trade worth making.
 
 One item has since moved. The production binary — `anchor build` with no
@@ -192,5 +196,6 @@ pool. And `veto_results` was deliberately skipped: it never reads the clock,
 so devnet tells you nothing localnet did not, and squeezing a veto and re-post
 into the cycle leaves about four minutes before the next week locks.
 
-What has still not happened: an audit, a mainnet deployment, and a multisig
-upgrade authority.
+What has still not happened: an audit and a mainnet deployment. The upgrade
+authority is a single key and is expected to stay one until an audit says
+otherwise.

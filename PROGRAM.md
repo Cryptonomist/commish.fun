@@ -167,4 +167,6 @@ path, atomic, no optional account.
 3. The three-wallet devnet loop: create → join ×3 → pick → post → veto →
    re-post → finalize → settle → advance → claim.
 4. Boundary tests at ±1s around every lock and window.
-5. Upgrade authority to a 2-of-3 multisig; immutable after audit.
+5. Decide the upgrade authority AFTER an audit. Keep the single key, discard it
+   for immutability, or share it. No option is committed to; a 2-of-3 multisig
+   was the plan of record and is not any more.

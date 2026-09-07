@@ -70,9 +70,9 @@ export default function Page() {
 
       <p>{"You are therefore trusting us, and trusting our operational security, whether or not you want to. The non-custodial design of the vaults limits what we can do with the current code. It does not limit what could be done with new code."}</p>
 
-      <p>{"Our intention is to move the upgrade authority to a 2-of-3 multisig, and after that to discard it entirely so that the program becomes immutable. THAT HAS NOT HAPPENED. It is an intention, not a commitment, and there is no date attached to it. Treat the single key as the live state of the world until we publish, verifiably, that it has changed."}</p>
+      <p>{"We are not promising to change this. There is a decision to make about that key and it belongs after an audit rather than before one, because the audit changes which answer is right. Keeping it means someone can fix a bug and you are trusting us not to misuse it. Discarding it means the program is frozen exactly as written, including any bug an audit did not catch, and nobody can ever repair it. Sharing it across several holders sits between those. We have not decided, no option is promised, and no date is attached. Treat the single key as the live state of the world unless and until we publish, verifiably, that it has changed."}</p>
 
-      <p><Tbc>{"whether we should publish the current upgrade authority address on this page so a reader can check the on-chain state for themselves, and whether we want to state who the multisig signers would be"}</Tbc></p>
+      <p><Tbc>{"whether we should publish the current upgrade authority address on this page so a reader can check the on-chain state for themselves, and whether the page should name the decision about that key rather than leaving it open"}</Tbc></p>
 
       <h2>{"Smart contract risk more generally"}</h2>
 
@@ -233,7 +233,7 @@ export default function Page() {
 
       <h2>{"Changes to this page"}</h2>
 
-      <p>{"We will update this page as the facts change, in particular if the program is audited, if the upgrade authority moves to a multisig or is discarded, or if we deploy to mainnet. The version you agreed to when you joined a pool is not preserved anywhere on-chain, so check back."}</p>
+      <p>{"We will update this page as the facts change, in particular if the program is audited, if anything changes about the upgrade authority, or if we deploy to mainnet. The version you agreed to when you joined a pool is not preserved anywhere on-chain, so check back."}</p>
 
       <p><Tbc>{"whether we notify users of changes to this page, how, and whether continued use counts as acceptance"}</Tbc></p>
 

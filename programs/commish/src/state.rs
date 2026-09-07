@@ -31,10 +31,12 @@ pub struct Config {
      * could not be rebuilt. `create_pool` reads `fee_treasury` from it, so a
      * broken config means no pool can be created at all.
      *
-     * Delete it in the same program version that moves the upgrade authority
-     * to a multisig, when a redeploy and a fresh config are happening anyway.
-     * Until then a named field that does nothing is a far smaller trap than a
-     * bricked config, provided it says so out loud. */
+     * Delete it in the next program version that redeploys for another
+     * reason and re-initialises the config anyway. There is no such version
+     * scheduled: a multisig migration was the obvious candidate and is no
+     * longer planned, so this may well outlive the hackathon. Until then a
+     * named field that does nothing is a far smaller trap than a bricked
+     * config, provided it says so out loud. */
     pub creation_fee: u64,
     pub paused: bool,
     pub bump: u8,
