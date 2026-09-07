@@ -58,10 +58,12 @@ export default async function LeaderboardPage() {
       <main className="flex flex-col gap-8 py-10">
         <div className="flex flex-col gap-3">
           <h1 className="display text-4xl uppercase sm:text-5xl">Leaderboard</h1>
+          {/* One line. The mechanics of the second opt-in belong on the panel
+              below, where somebody is actually deciding, and on the privacy
+              page. Explaining them here made a leaderboard read like a policy
+              document to people who only wanted to see who was winning. */}
           <p className="max-w-xl text-sm leading-relaxed text-cream-dim">
-            Everyone here chose to be here. Linking an X account to a wallet
-            does not put you on this page; a second, separate signature does.
-            Wins are read from the chain, not from anything anyone typed.
+            Players who chose to be listed. Wins are read from the chain.
           </p>
         </div>
 

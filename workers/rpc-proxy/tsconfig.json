@@ -1,0 +1,23 @@
+{
+  // The worker runs on workerd, not in a browser and not in Node, and its
+  // Response carries a `webSocket` property that the DOM's does not. The app's
+  // tsconfig checks against "dom", so it reported that property as an error on
+  // correct code and its build failed. Excluding the directory there fixes the
+  // build; without this file it would also mean the worker was never checked
+  // at all, which is a worse place to end up than a noisy error.
+  //
+  // Check it with:  npx tsc --noEmit   from this directory.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"],
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true
+  },
+  "include": ["src/**/*.ts"]
+}
