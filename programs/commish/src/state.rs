@@ -15,6 +15,26 @@ pub struct Config {
     pub fee_treasury: Pubkey,
     pub default_fee_bps: u16,
     pub default_fee_cap: u64,
+    /* DEAD, AND DELIBERATELY STILL HERE.
+     *
+     * Written by `init_config` and `update_config`, read by nothing. There is
+     * no creation fee: `create_pool` never looks at this, so setting it has no
+     * effect whatsoever. Same shape as the `fee_paid` bug, a field declared in
+     * the first commit and never wired up, and the same tell: grep finds only
+     * writes.
+     *
+     * It stays because removing it is not free. It sits BEFORE `paused` and
+     * `bump`, so deleting it shifts both eight bytes earlier and the Config
+     * already deployed would misparse, reading a stray byte of this as
+     * `paused`. `init_config` uses Anchor's `init`, which refuses an account
+     * that exists, and there is no instruction to close one, so the config
+     * could not be rebuilt. `create_pool` reads `fee_treasury` from it, so a
+     * broken config means no pool can be created at all.
+     *
+     * Delete it in the same program version that moves the upgrade authority
+     * to a multisig, when a redeploy and a fresh config are happening anyway.
+     * Until then a named field that does nothing is a far smaller trap than a
+     * bricked config, provided it says so out loud. */
     pub creation_fee: u64,
     pub paused: bool,
     pub bump: u8,
