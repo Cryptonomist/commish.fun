@@ -48,15 +48,18 @@ import {
   DOWNS,
   GOAL,
   gainOf,
-  kickoff,
+  KICK_CATCH,
+  setupPlay,
   newWorld,
   nextDown,
+  OWN_GOAL,
   step,
   TICK_MS,
   toGo,
   VIEW_H,
   VIEW_W,
   WORLD,
+  YARD,
   yardLine,
   type Input,
   type World,
@@ -68,7 +71,18 @@ import { play, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 
 const BEST_KEY = "commish.bowl.best";
 
-type Phase = "ready" | "live" | "tackled" | "first" | "touchdown" | "over";
+/* `select` is the team screen, `ready` is any pre-play card — a kickoff or a
+ * down — and `returned` is the one-off card after a kickoff return, which sets
+ * up the drive rather than using a down. */
+type Phase =
+  | "select"
+  | "ready"
+  | "live"
+  | "tackled"
+  | "first"
+  | "returned"
+  | "touchdown"
+  | "over";
 
 const rgb = (hex: string): [number, number, number] => [
   parseInt(hex.slice(1, 3), 16),
@@ -115,10 +129,11 @@ function pickOpponent(us: number): number {
 export function CommishBowl() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [phase, setPhase] = useState<Phase>("ready");
+  const [phase, setPhase] = useState<Phase>("select");
   const [down, setDown] = useState(1);
   const [ball, setBall] = useState(20); // yard line, counted from your own end
   const [need, setNeed] = useState(10); // yards to a new set of downs
+  const [kickoff, setKickoff] = useState(true); // the next play is a kickoff
   const [gained, setGained] = useState(0);
   const [best, setBest] = useState(0);
 
@@ -146,21 +161,12 @@ export function CommishBowl() {
     // Turning it off is handled inside setSfxEnabled, which stops the loop.
   }, []);
 
+  /* YOU PICK YOUR TEAM NOW, rather than being handed a random one. The
+   * opponent is still chosen for you, from the clubs whose lead colour is far
+   * enough from yours to be tellable apart at sprite size — see pickOpponent,
+   * where the league's several oranges are measured rather than assumed. */
   const [kits, setKits] = useState<{ us: number; them: number } | null>(null);
   useEffect(() => {
-    const us = Math.floor(Math.random() * TEAMS.length);
-    /* THE TWO SIDES HAVE TO BE TELLABLE APART, and "any club that is not this
-     * club" does not achieve that: the league has four or five oranges and a
-     * shelf of navies, so a random pair came up Cincinnati against Cleveland
-     * often enough to matter. Twenty-two sprites in two shades of the same
-     * colour is not a hard game, it is an unreadable one.
-     *
-     * So the opponent is drawn from the clubs whose lead colour is actually
-     * far from ours, and the walk starts at a random offset so it is not
-     * always the same fixture. The distance is a plain RGB one — good enough
-     * to separate orange from navy, which is the whole job. */
-    const them = pickOpponent(us);
-    setKits({ us, them });
     try {
       setBest(Number(window.localStorage.getItem(BEST_KEY)) || 0);
     } catch {
@@ -179,11 +185,11 @@ export function CommishBowl() {
   const worldRef = useRef<World | null>(null);
   if (worldRef.current === null) {
     const w = newWorld();
-    kickoff(w);
+    setupPlay(w);
     worldRef.current = w;
   }
 
-  const phaseRef = useRef<Phase>("ready");
+  const phaseRef = useRef<Phase>("select");
   const keysRef = useRef<Record<string, boolean>>({});
   /** Set for exactly one tick when the spin is pressed, then cleared by the
    *  loop. Holding the key must not hold the boost. */
@@ -201,17 +207,37 @@ export function CommishBowl() {
     setPhase(p);
   }, []);
 
+  const chooseTeam = useCallback(
+    (i: number) => {
+      setKits({ us: i, them: pickOpponent(i) });
+      const w = worldRef.current;
+      if (w) {
+        Object.assign(w, newWorld());
+        setupPlay(w);
+      }
+      setKickoff(true);
+      setBall(Math.round((KICK_CATCH - OWN_GOAL) / YARD));
+      setDown(1);
+      setNeed(10);
+      play("confirm");
+      goPhase("ready");
+    },
+    [goPhase],
+  );
+
   const snap = useCallback(() => {
     const w = worldRef.current;
     if (!w) return;
     if (phaseRef.current === "touchdown" || phaseRef.current === "over") {
+      // A fresh drive starts where every drive starts: with a kickoff.
       Object.assign(w, newWorld());
       setDown(1);
-      setBall(20);
+      setBall(Math.round((KICK_CATCH - OWN_GOAL) / YARD));
       setNeed(10);
+      setKickoff(true);
     }
     setGained(0);
-    kickoff(w);
+    setupPlay(w);
     play("snap");
     /* The loop runs for the length of the down and stops at the whistle. It is
      * bounded by the play rather than by the page, which is what keeps music
@@ -225,13 +251,16 @@ export function CommishBowl() {
   useEffect(() => {
     const canvas = canvasRef.current;
     const w = worldRef.current;
-    if (!canvas || !w || !kits) return;
+    if (!canvas || !w) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
 
-    const us = TEAMS[kits.us];
-    const them = TEAMS[kits.them];
+    /* Before a team is chosen the field is still drawn, with a placeholder
+     * pair, because the select screen sits over it and an empty black rectangle
+     * behind a menu looks like a failure to load. */
+    const us = TEAMS[kits ? kits.us : 0];
+    const them = TEAMS[kits ? kits.them : pickOpponent(0)];
 
     let raf = 0;
     let last = 0;
@@ -306,7 +335,7 @@ export function CommishBowl() {
         for (let y = 6; y < VIEW_H - 6; y += 4) ctx.fillRect(lx, y, 1, 2);
       }
       const mx = Math.round(w.marker - camX);
-      if (mx > -2 && mx < VIEW_W && w.marker < GOAL) {
+      if (w.kind !== "kickoff" && mx > -2 && mx < VIEW_W && w.marker < GOAL) {
         ctx.fillStyle = PX.gold;
         for (let y = 6; y < VIEW_H - 6; y += 4) ctx.fillRect(mx, y, 1, 2);
       }
@@ -315,6 +344,7 @@ export function CommishBowl() {
       const dead =
         phaseRef.current === "tackled" ||
         phaseRef.current === "first" ||
+        phaseRef.current === "returned" ||
         phaseRef.current === "over";
       const stride = Math.floor(w.frame / 4) % 2 === 0;
 
@@ -390,12 +420,13 @@ export function CommishBowl() {
         setBall(yardLine(w));
         setNeed(toGo(w));
         setDown(w.down);
+        setKickoff(w.kind === "kickoff");
         /* Three different endings need three different noises. Everything used
          * to resolve to the same descending menu-rejection blip, so being
          * brought down a yard short of the sticks and picking up a first down
          * sounded identical. */
         play(
-          outcome === "first-down"
+          outcome === "first-down" || outcome === "returned"
             ? "first"
             : outcome === "turnover"
               ? "out"
@@ -404,9 +435,11 @@ export function CommishBowl() {
         goPhase(
           outcome === "turnover"
             ? "over"
-            : outcome === "first-down"
-              ? "first"
-              : "tackled",
+            : outcome === "returned"
+              ? "returned"
+              : outcome === "first-down"
+                ? "first"
+                : "tackled",
         );
         break;
       }
@@ -519,8 +552,16 @@ export function CommishBowl() {
       <div className="flex items-center justify-between gap-3 border-b-2 border-chalk px-3 py-2 font-matrix text-[10px] leading-4">
         <span className="text-chalk">COMMISH BOWL</span>
         <span className="text-cream-dim">
-          {ordinal} &amp; <span className="text-chalk">{chains}</span>
-          <span className="ml-2 opacity-70">ON {ball}</span>
+          {phase === "select" ? (
+            "PICK A TEAM"
+          ) : kickoff ? (
+            <span className="text-chalk">KICKOFF</span>
+          ) : (
+            <>
+              {ordinal} &amp; <span className="text-chalk">{chains}</span>
+              <span className="ml-2 opacity-70">ON {ball}</span>
+            </>
+          )}
         </span>
         <span className="flex items-center gap-3">
           <span className="text-gold tabular-nums">BEST {best} YD</span>
@@ -548,7 +589,7 @@ export function CommishBowl() {
           width={VIEW_W}
           height={VIEW_H}
           role="img"
-          aria-label="A pixel football field. Your runner carries the ball left to right while seven defenders pursue."
+          aria-label="A pixel football field. Your runner carries the ball from left to right while the defence pursues."
           className="block w-full touch-none"
           style={{ imageRendering: "pixelated", aspectRatio: "16 / 9" }}
           onPointerDown={(e) => {
@@ -567,31 +608,79 @@ export function CommishBowl() {
           }}
         />
 
+        {/* PICK A TEAM. Thirty-two blocks in club colours, which is the same
+            grid the real product uses to take a pick — a visitor who plays a
+            down here has already used the control that matters upstairs.
+
+            The colours are data, not decoration: they are what lets somebody
+            find Buffalo in a thirty-two cell grid without reading a word. No
+            club marks, which are trademarks and not ours to hand out. */}
+        {phase === "select" ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-panel/85 p-3">
+            <p className="font-matrix text-[10px] leading-4 text-chalk">
+              PICK YOUR TEAM
+            </p>
+            <ul className="grid w-full max-w-md grid-cols-6 gap-1 sm:grid-cols-8">
+              {TEAMS.map((t) => (
+                <li key={t.abbr}>
+                  <button
+                    type="button"
+                    onClick={() => chooseTeam(t.i)}
+                    aria-label={`${t.city} ${t.name}`}
+                    style={{ background: t.lead }}
+                    className="bevel relative flex h-7 w-full items-center justify-center transition-transform duration-75 active:translate-x-[2px] active:translate-y-[2px]"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 bottom-0 h-[3px]"
+                      style={{ background: t.trim }}
+                    />
+                    <span className="tile-label font-matrix text-[8px] leading-3">
+                      {t.abbr}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[10px] leading-4 text-cream-dim">
+              Your opponent is picked for you, in a colour you can tell apart.
+            </p>
+          </div>
+        ) : null}
+
         {/* THE CARD BETWEEN PLAYS. It covers the field only when the field is
             not being played on, and it is never a modal: the button in it is
             the same snap the keyboard reaches. */}
-        {phase !== "live" ? (
+        {phase !== "live" && phase !== "select" ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-panel/70 px-4 text-center">
             <p
               className="font-matrix text-[13px] leading-5 text-chalk sm:text-[16px] sm:leading-6"
               aria-live="polite"
             >
               {phase === "ready"
-                ? "1ST & 10. TAKE IT."
-                : phase === "first"
-                  ? `${gained} YD. FIRST DOWN.`
-                  : phase === "tackled"
-                    ? `TACKLED. ${gained} YD.`
-                    : phase === "touchdown"
-                      ? "TOUCHDOWN"
-                      : "TURNOVER ON DOWNS"}
+                ? kickoff
+                  ? "KICKOFF. TAKE IT BACK."
+                  : `${ordinal} & ${chains}. TAKE IT.`
+                : phase === "returned"
+                  ? `RETURNED TO THE ${ball}.`
+                  : phase === "first"
+                    ? `${gained} YD. FIRST DOWN.`
+                    : phase === "tackled"
+                      ? `TACKLED. ${gained} YD.`
+                      : phase === "touchdown"
+                        ? "TOUCHDOWN"
+                        : "TURNOVER ON DOWNS"}
             </p>
             <button type="button" onClick={snap} className="btn btn-primary">
               {phase === "ready"
-                ? "SNAP"
-                : phase === "first" || phase === "tackled"
-                  ? `${ordinal} DOWN`
-                  : "PLAY AGAIN"}
+                ? kickoff
+                  ? "RETURN IT"
+                  : "SNAP"
+                : phase === "returned"
+                  ? "1ST DOWN"
+                  : phase === "first" || phase === "tackled"
+                    ? `${ordinal} DOWN`
+                    : "PLAY AGAIN"}
             </button>
             {phase === "touchdown" ? (
               <Link href="/pools/new" className="btn btn-secondary">

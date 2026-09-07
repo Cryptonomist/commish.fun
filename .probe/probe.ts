@@ -8,11 +8,11 @@
  * and a defensive line that made eighty-two per cent of the tackles.
  */
 import {
-  kickoff, newWorld, nextDown, step, gainOf, TOP, BOTTOM, TUNING,
+  setupPlay, newWorld, nextDown, step, gainOf, TOP, BOTTOM, TUNING, START, TO_GAIN,
   type World, type Input,
 } from "../src/lib/bowl";
 
-type Policy = { gapBias: number; jitter: number; phase: number; spinAt: number };
+type Policy = { gapBias: number; jitter: number; phase: number; spinAt: number; gain: number };
 
 /** Aim for the widest lane among the defenders ahead, which is what a person
  *  does. Fleeing the nearest man walks you into the next one. */
@@ -31,7 +31,7 @@ function bot(w: World, p: Policy, tick: number): Input {
     if (score > bestScore) { bestScore = score; bestY = y; }
   }
   const closest = Math.min(...w.defence.map((d) => Math.hypot(d.x - r.x, d.y - r.y)));
-  const dy = (bestY - r.y) / 7 + Math.sin(tick / 6 + p.phase) * p.jitter;
+  const dy = (bestY - r.y) / p.gain + Math.sin(tick / 6 + p.phase) * p.jitter;
   return { dx: 1, dy, spin: closest < p.spinAt };
 }
 
@@ -39,7 +39,8 @@ const POLICIES: Policy[] = [];
 for (const gapBias of [0.05, 0.15, 0.35])
   for (const jitter of [0, 0.2])
     for (const phase of [0, 1.3, 2.6, 4.1])
-      for (const spinAt of [12, 20, 28]) POLICIES.push({ gapBias, jitter, phase, spinAt });
+      for (const spinAt of [12, 20, 28])
+        for (const gain of [3, 7, 14]) POLICIES.push({ gapBias, jitter, phase, spinAt, gain });
 
 const UNIT = (i: number) => (i < 4 ? "line" : i < 6 ? "backer" : "safety");
 
@@ -51,9 +52,14 @@ function evaluate() {
   let plays = 0;
   for (const p of POLICIES) {
     const w = newWorld();
+    // Start from scrimmage: the kickoff has its own formation and its own
+    // balance, and mixing the two would report an average of two games.
+    w.kind = "scrimmage";
+    w.los = START;
+    w.marker = START + TO_GAIN;
     // A drive runs until it scores or turns over. The cap is a runaway guard.
     for (let snap = 0; snap < 60; snap++) {
-      kickoff(w);
+      setupPlay(w);
       plays++;
       let res: string = "live";
       for (let i = 0; i < 4000 && res === "live"; i++) res = step(w, bot(w, p, i));
@@ -82,7 +88,26 @@ function evaluate() {
 }
 
 const arg = process.argv[2];
-if (arg === "sweep") {
+if (arg === "band") {
+  // How much should the formation's vertical offsets scale with the wider
+  // field? 1.0 keeps the old spread on a taller field (a sideline corridor);
+  // 1.28 scales with the band exactly.
+  const base = {
+    line: TUNING.line.map((u) => u.dy),
+    backers: TUNING.backers.map((u) => u.dy),
+    safety: TUNING.safety.dy,
+  };
+  for (const k of [0.78, 0.88, 1.0, 1.1]) {
+    TUNING.line.forEach((u, i) => (u.dy = Math.round(base.line[i] * k)));
+    TUNING.backers.forEach((u, i) => (u.dy = Math.round(base.backers[i] * k)));
+    TUNING.safety.dy = Math.round(base.safety * k);
+    for (const rs of [2.1, 2.25]) {
+      TUNING.runSpeed = rs;
+      const r = evaluate();
+      console.log(`dyScale ${k}  run ${rs}  scored ${(r.rate*100).toFixed(0)}%  med ${r.median}  max ${String(r.max).padStart(3)}  fd/drive ${r.firstDowns.toFixed(1)}  plays ${r.plays.toFixed(1)}`);
+    }
+  }
+} else if (arg === "sweep") {
   const rows: { label: string; rate: number; median: number; max: number }[] = [];
   for (const run of [2.1, 2.25, 2.4])
     for (const lineSpeed of [0.9, 1.05])

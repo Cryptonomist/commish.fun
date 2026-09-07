@@ -1,7 +1,7 @@
-import { kickoff, newWorld, step, TOP, BOTTOM, type World, type Input } from "../src/lib/bowl";
+import { setupPlay, newWorld, step, TOP, BOTTOM, type World, type Input } from "../src/lib/bowl";
 
 const w: World = newWorld();
-kickoff(w);
+setupPlay(w);
 const UNIT = (i: number) => (i < 4 ? `L${i}` : i < 6 ? `B${i - 4}` : "SAF");
 
 console.log("snap: runner", w.runner.x.toFixed(0), w.runner.y.toFixed(0));

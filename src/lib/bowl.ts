@@ -20,9 +20,16 @@ import { SPRITE_H, SPRITE_W } from "@/lib/pixel";
 
 /* ---------------------------------------------------------------- geometry */
 
-/** The visible window. The world is wider; the camera moves over it. */
-export const VIEW_W = 256;
-export const VIEW_H = 144;
+/** The visible window. The world is wider; the camera moves over it.
+ *
+ *  320x180 RATHER THAN 256x144, which is how the players got smaller. The
+ *  sprite is the same eight-by-fifteen it always was; the field around it grew
+ *  by a quarter. Shrinking the sprite instead would have meant redrawing a
+ *  helmet, a facemask, a belt and two socks into eleven rows, and losing most
+ *  of what makes it read as a footballer. Both are still 16:9, so nothing in
+ *  the page layout moves. */
+export const VIEW_W = 320;
+export const VIEW_H = 180;
 
 /** Fixed simulation step. Thirty a second: fast enough that a dodge feels
  *  immediate, slow enough that the sprites still read as animation frames
@@ -30,14 +37,27 @@ export const VIEW_H = 144;
 export const TICK_MS = 1000 / 30;
 
 export const YARD = 6; // logical pixels per yard
-export const START = 40; // world x of your own 20
-export const GOAL = START + 80 * YARD; // 520
-export const WORLD = GOAL + 10 * YARD; // 580, including the endzone
+
+/* THE WHOLE FIELD NOW, both endzones, because a kickoff return starts behind
+ * your own goal line and the old world simply had no room there — x = 0 was
+ * your own 20 and the return would have run in negative coordinates.
+ *
+ * World x is measured from the back of YOUR endzone, so every yard line is one
+ * subtraction away and the two ends are symmetrical. */
+export const OWN_GOAL = 10 * YARD; // 60 — your goal line
+export const START = OWN_GOAL + 20 * YARD; // 180 — your own 20
+export const GOAL = OWN_GOAL + 100 * YARD; // 660 — theirs
+export const WORLD = GOAL + 10 * YARD; // 720 — the back of their endzone
+
+/** Where a kickoff is fielded: your own five. Deep enough that a return is a
+ *  real play rather than a formality, shallow enough that a bad one does not
+ *  hand over a safety, which this game does not model. */
+export const KICK_CATCH = OWN_GOAL + 5 * YARD;
 
 /** Vertical bounds, measured so the sprite's helmet and feet stay inside the
  *  sidelines rather than its origin. */
-export const TOP = 8;
-export const BOTTOM = VIEW_H - 6 - SPRITE_H;
+export const TOP = 10;
+export const BOTTOM = VIEW_H - 8 - SPRITE_H;
 
 /* THE BALANCE NUMBERS, in one object, because they were tuned by search and
  * not by eye and the next person to touch them will want to do the same.
@@ -76,7 +96,22 @@ export const TUNING = {
   blockHold: 16,
   blockSlow: 0.22,
   spinBoost: 1.7,
-  line: [-58, -20, 20, 58].map(
+  /* Every dy below scales with the playable band, which went from 115 logical
+     pixels to 147 when the view grew. Swept rather than assumed: at 1.1x the
+     band the formation spreads past the hashes and leaves a corridor down each
+     sideline, and the bot scores on 100% of drives running along the paint. At
+     the 1.0x here it scores 72%, takes about twelve plays and four first downs
+     to do it, and all three units make tackles.
+
+     A related scare, worth recording because it cost an hour. The first run on
+     the wider field reported a maximum gain of 9 yards across every play of
+     every policy, where the narrow field had produced 61 — which reads as a
+     game with no breakaways in it. It was the bot: its steering gain was fixed
+     at a value tuned for a shorter field, so it could no longer cross the
+     width fast enough to beat anybody. Making that gain a policy dimension put
+     the maximum back to 80, a full-length touchdown run. The game was never
+     broken; the measuring instrument was. */
+  line: [-74, -26, 26, 74].map(
     (dy): Unit => ({ dy, ahead: 42, speed: 1.06, lead: 2, turn: 0.1 }),
   ),
   /* NOT MIRRORED, and that is the point. Two linebackers at plus and minus the
@@ -87,10 +122,44 @@ export const TUNING = {
      from opposite sides, every time. Offsetting them, and staggering their
      depth, means there is a genuinely better side rather than a trap. */
   backers: [
-    { dy: -44, ahead: 96, speed: 1.44, lead: 4, turn: 0.17 },
-    { dy: 22, ahead: 110, speed: 1.44, lead: 4, turn: 0.17 },
+    { dy: -56, ahead: 96, speed: 1.44, lead: 4, turn: 0.17 },
+    { dy: 28, ahead: 110, speed: 1.44, lead: 4, turn: 0.17 },
   ] as Unit[],
-  safety: { dy: 12, ahead: 190, speed: 1.76, lead: 9, turn: 0.24 } as Unit,
+  safety: { dy: 15, ahead: 190, speed: 1.76, lead: 9, turn: 0.24 } as Unit,
+
+  /* THE COVERAGE TEAM on a kickoff: a wave, and then two men behind it.
+     
+     THE WAVE ALONE DID NOT WORK. Eight abreast with nothing behind them made
+     the return bimodal in the worst way — the probe returned 18 kickoffs and
+     five of them were touchdowns, with every other return dying on the 11.
+     Either you found a lane through the wave and had ninety clear yards, or
+     you did not and you had five. A 28% kickoff-return touchdown rate is not a
+     football game (the real figure is under one per cent), and a median return
+     to your own 11 is not a play worth pressing a button for.
+     
+     So: six across the front, committed and bad at turning, and two deep men
+     well behind them.
+     
+     WHERE THE WAVE STANDS IS THE WHOLE SETTING. Sweeping its depth moved the
+     median return from your own 15 to your own 21; sweeping the deep pair's
+     speed and lead across nine combinations moved it by a single yard. The
+     wave decides the return, the deep pair only decides whether beating the
+     wave is worth seven points. Returns now finish around your own 20, which
+     is roughly where football finishes them, and a return touchdown is rare
+     rather than one in four. */
+  coverage: [
+    ...[-70, -42, -14, 14, 42, 70].map(
+      (dy, i): Unit => ({
+        dy,
+        ahead: 270 + (i % 2) * 30,
+        speed: 1.46,
+        lead: 7,
+        turn: 0.1,
+      }),
+    ),
+    { dy: -30, ahead: 420, speed: 1.62, lead: 8, turn: 0.2 },
+    { dy: 34, ahead: 500, speed: 1.64, lead: 10, turn: 0.22 },
+  ] as Unit[],
 };
 
 /** One spin per play, ten ticks of it. A cooldown as well as a per-play limit
@@ -164,11 +233,17 @@ export const body = (
   mark: -1,
 });
 
+/** A kickoff return and a play from scrimmage are the same simulation with a
+ *  different formation and a different way of ending. */
+export type PlayKind = "kickoff" | "scrimmage";
+
 export type World = {
+  kind: PlayKind;
   runner: Body;
   defence: Body[];
   blockers: Body[];
-  /** World x the current play started from. */
+  /** World x the current play started from. On a kickoff, where it was
+   *  fielded, so `gainOf` reports return yards. */
   los: number;
   /** World x that earns a new set of downs. */
   marker: number;
@@ -189,10 +264,12 @@ export type Input = { dx: number; dy: number; spin?: boolean };
 
 export function newWorld(): World {
   return {
-    runner: body(START, (TOP + BOTTOM) / 2),
+    /* Every drive opens with a kickoff, the way the sport does. */
+    kind: "kickoff",
+    runner: body(KICK_CATCH, (TOP + BOTTOM) / 2),
     defence: [],
     blockers: [],
-    los: START,
+    los: KICK_CATCH,
     marker: START + TO_GAIN,
     down: 1,
     spin: 0,
@@ -201,13 +278,19 @@ export function newWorld(): World {
   };
 }
 
-/** Set up a play from the current line of scrimmage: seven defenders in three
- *  units, and three blockers in front of the ball. */
-export function kickoff(w: World): void {
+/** Set up the next play. Named for what it does now that there are two kinds:
+ *  it was called `kickoff`, which became the wrong word the moment an actual
+ *  kickoff existed. */
+export function setupPlay(w: World): void {
   const mid = (TOP + BOTTOM) / 2;
   w.runner = body(w.los, mid);
 
-  w.defence = [...TUNING.line, ...TUNING.backers, TUNING.safety].map((u) =>
+  const units =
+    w.kind === "kickoff"
+      ? TUNING.coverage
+      : [...TUNING.line, ...TUNING.backers, TUNING.safety];
+
+  w.defence = units.map((u) =>
     body(
       Math.min(w.los + u.ahead, GOAL - 8),
       clampY(mid + u.dy),
@@ -221,7 +304,7 @@ export function kickoff(w: World): void {
      hundred-policy bot search, because two blocked men still leaves two free,
      and two men either side of a gap close it. An offence outnumbers the rush
      in the real sport for exactly this reason. */
-  w.blockers = [-26, 0, 26].map((dy) =>
+  w.blockers = [-33, 0, 33].map((dy) =>
     body(w.los + 20, clampY(mid + dy), TUNING.blockSpeed, 0, 0.7),
   );
   w.spin = 0;
@@ -362,12 +445,24 @@ export function step(w: World, input: Input): Tick {
 }
 
 /** What closing out a tackled play did. */
-export type Outcome = "first-down" | "next-down" | "turnover";
+export type Outcome = "returned" | "first-down" | "next-down" | "turnover";
 
 /** Close out a tackled play: the ball moves to where he went down, and either
  *  the chains move or the down count does. */
 export function nextDown(w: World): Outcome {
   w.los = w.runner.x;
+
+  /* A KICKOFF DOES NOT USE A DOWN. Where the return ends is simply where the
+     drive begins, first and ten, and the game switches to a scrimmage
+     formation from here on. Getting this wrong would charge the returner a
+     down for catching the ball. */
+  if (w.kind === "kickoff") {
+    w.kind = "scrimmage";
+    w.down = 1;
+    w.marker = Math.min(w.los + TO_GAIN, GOAL);
+    return "returned";
+  }
+
   if (w.los >= w.marker) {
     w.down = 1;
     w.marker = Math.min(w.los + TO_GAIN, GOAL);
@@ -386,4 +481,4 @@ export const toGo = (w: World): number =>
 /** The yard line the ball sits on, counted from your own goal, which is how a
  *  scoreboard says it. */
 export const yardLine = (w: World): number =>
-  Math.round(20 + (w.los - START) / YARD);
+  Math.round((w.los - OWN_GOAL) / YARD);

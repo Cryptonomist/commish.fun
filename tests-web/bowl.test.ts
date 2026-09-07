@@ -20,7 +20,7 @@ import {
   DOWNS,
   GOAL,
   gainOf,
-  kickoff,
+  setupPlay,
   newWorld,
   nextDown,
   SPIN_TICKS,
@@ -55,9 +55,22 @@ function playOut(
   return { result: "live", ticks: cap };
 }
 
+/** A world set to a play FROM SCRIMMAGE. `newWorld` opens on a kickoff now, so
+ *  the drive tests below have to say which play they mean rather than relying
+ *  on the default — a distinction that did not exist before returns did. */
 const started = (): World => {
   const w = newWorld();
-  kickoff(w);
+  w.kind = "scrimmage";
+  w.los = START;
+  w.marker = START + TO_GAIN;
+  setupPlay(w);
+  return w;
+};
+
+/** A world on the opening kickoff, exactly as a visitor gets it. */
+const kickoffWorld = (): World => {
+  const w = newWorld();
+  setupPlay(w);
   return w;
 };
 
@@ -172,7 +185,7 @@ describe("Commish Bowl", () => {
       step(w, { ...RIGHT, spin: true });
       expect(w.spinUsed).to.equal(true);
       nextDown(w);
-      kickoff(w);
+      setupPlay(w);
       expect(w.spinUsed).to.equal(false);
       expect(w.spin).to.equal(0);
     });
@@ -238,12 +251,59 @@ describe("Commish Bowl", () => {
     });
 
     it("starts a drive at your own 20, first and ten, eighty from the endzone", () => {
-      const w = newWorld();
+      const w = started();
       expect(w.los).to.equal(START);
       expect(w.down).to.equal(1);
       expect(yardLine(w)).to.equal(20);
       expect(toGo(w)).to.equal(10);
       expect(Math.round((GOAL - w.los) / YARD)).to.equal(80);
+    });
+  });
+
+  describe("the kickoff", () => {
+    it("opens every game, fielded inside your own ten", () => {
+      const w = newWorld();
+      expect(w.kind).to.equal("kickoff");
+      expect(yardLine(w)).to.be.within(1, 10);
+    });
+
+    it("puts a coverage team out, not a scrimmage front", () => {
+      const kick = kickoffWorld();
+      const drive = started();
+      // Different formations, or the "kickoff" is a scrimmage with a new name.
+      expect(kick.defence.length).to.not.equal(drive.defence.length);
+      // Coverage starts much further downfield than a defensive line does.
+      const nearestKick = Math.min(...kick.defence.map((d) => d.x - kick.los));
+      const nearestDrive = Math.min(...drive.defence.map((d) => d.x - drive.los));
+      expect(nearestKick).to.be.above(nearestDrive * 2);
+    });
+
+    it("does not spend a down: a return sets up first and ten", () => {
+      const w = kickoffWorld();
+      playOut(w, () => RIGHT);
+      const outcome = nextDown(w);
+
+      expect(outcome).to.equal("returned");
+      expect(w.kind).to.equal("scrimmage");
+      // Charging a down for catching the ball would be the obvious bug here.
+      expect(w.down).to.equal(1);
+      expect(toGo(w)).to.equal(10);
+      expect(w.los).to.equal(w.runner.x);
+    });
+
+    it("can be taken all the way", () => {
+      const w = kickoffWorld();
+      w.defence = [];
+      const { result } = playOut(w, () => RIGHT, 4000);
+      expect(result).to.equal("touchdown");
+    });
+
+    it("never asks for ten yards it cannot have near the goal line", () => {
+      const w = kickoffWorld();
+      w.runner.x = GOAL - 3 * YARD;
+      nextDown(w);
+      expect(w.marker).to.equal(GOAL);
+      expect(toGo(w)).to.equal(3);
     });
   });
 
