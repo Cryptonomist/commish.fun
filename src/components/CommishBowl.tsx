@@ -70,6 +70,48 @@ const BEST_KEY = "commish.bowl.best";
 
 type Phase = "ready" | "live" | "tackled" | "first" | "touchdown" | "over";
 
+const rgb = (hex: string): [number, number, number] => [
+  parseInt(hex.slice(1, 3), 16),
+  parseInt(hex.slice(3, 5), 16),
+  parseInt(hex.slice(5, 7), 16),
+];
+
+/** Straight-line distance between two lead colours in RGB. Not a perceptual
+ *  metric, and it does not need to be: it only has to keep two oranges apart. */
+function apart(a: string, b: string): number {
+  const [r1, g1, b1] = rgb(a);
+  const [r2, g2, b2] = rgb(b);
+  return Math.hypot(r1 - r2, g1 - g2, b1 - b2);
+}
+
+/** A club far enough from `us` to read as the other team at sprite size.
+ *  Walks from a random offset so the fixture varies, and falls back to the
+ *  most distant club in the league if nothing clears the bar. */
+function pickOpponent(us: number): number {
+  /* 120, and the league was measured rather than eyeballed to pick it. Of the
+     496 possible matchups, 149 — thirty per cent — fall under this bar, and
+     six pairs share an identical lead colour outright: Atlanta/Houston,
+     Atlanta/New York, Cincinnati/Denver, Green Bay/Pittsburgh,
+     Green Bay/Washington, Houston/New York. Those games were unplayable.
+     The tightest club for choice is Cincinnati and it still has 17 eligible
+     opponents of 31, so the fallback below is a guard, not a code path. */
+  const MIN = 120;
+  const start = Math.floor(Math.random() * TEAMS.length);
+  let best = -1;
+  let bestGap = -1;
+  for (let i = 0; i < TEAMS.length; i++) {
+    const j = (start + i) % TEAMS.length;
+    if (j === us) continue;
+    const gap = apart(TEAMS[us].lead, TEAMS[j].lead);
+    if (gap >= MIN) return j;
+    if (gap > bestGap) {
+      bestGap = gap;
+      best = j;
+    }
+  }
+  return best;
+}
+
 export function CommishBowl() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -107,8 +149,17 @@ export function CommishBowl() {
   const [kits, setKits] = useState<{ us: number; them: number } | null>(null);
   useEffect(() => {
     const us = Math.floor(Math.random() * TEAMS.length);
-    let them = Math.floor(Math.random() * TEAMS.length);
-    if (them === us) them = (them + 1) % TEAMS.length;
+    /* THE TWO SIDES HAVE TO BE TELLABLE APART, and "any club that is not this
+     * club" does not achieve that: the league has four or five oranges and a
+     * shelf of navies, so a random pair came up Cincinnati against Cleveland
+     * often enough to matter. Twenty-two sprites in two shades of the same
+     * colour is not a hard game, it is an unreadable one.
+     *
+     * So the opponent is drawn from the clubs whose lead colour is actually
+     * far from ours, and the walk starts at a random offset so it is not
+     * always the same fixture. The distance is a plain RGB one — good enough
+     * to separate orange from navy, which is the whole job. */
+    const them = pickOpponent(us);
     setKits({ us, them });
     try {
       setBest(Number(window.localStorage.getItem(BEST_KEY)) || 0);
@@ -536,9 +587,11 @@ export function CommishBowl() {
                       : "TURNOVER ON DOWNS"}
             </p>
             <button type="button" onClick={snap} className="btn btn-primary">
-              {phase === "ready" || phase === "first" || phase === "tackled"
-                ? `${ordinal} DOWN`
-                : "PLAY AGAIN"}
+              {phase === "ready"
+                ? "SNAP"
+                : phase === "first" || phase === "tackled"
+                  ? `${ordinal} DOWN`
+                  : "PLAY AGAIN"}
             </button>
             {phase === "touchdown" ? (
               <Link href="/pools/new" className="btn btn-secondary">
