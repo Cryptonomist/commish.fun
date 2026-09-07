@@ -24,7 +24,7 @@ import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 
-import { textPath, textWidth } from "./pixelfont.mjs";
+import { ADVANCE, CELL_H, textPath, textWidth } from "./pixelfont.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const BRAND = path.join(ROOT, "brand");
@@ -103,179 +103,186 @@ const tileSvg = (ground, fill) =>
  * site's display face, and that file is where the licence is recorded.
  */
 
-/* ── THE PIXEL BANNER ─────────────────────────────────────────────────────── */
+/* -- THE PIXEL BANNER ------------------------------------------------------ */
 
-/* The header, set in rectangles instead of in Anton.
+/* The header and the link preview: the old composition, set in the new type.
  *
- * The rest of the product went blocky — the attract loop, the playable drive at
- * /arcade, the sprites, the field — and a profile header in a smooth condensed
- * grotesque was the last thing still speaking the old language. This one is
- * drawn the way everything else on the site is drawn: a field of mow bands and
- * chalk, yard numbers stencilled onto the grass, and eleven characters made of
- * five-by-seven pixel grids.
+ * TWO GOES AT THIS. The first pixel version threw the old layout away as well
+ * as the old font -- chunky mow bands, heavy yard lines, hash marks, and big
+ * boxed numerals with the wordmark stretched nearly to both edges. Every one
+ * of those is a thing competing with the name, and the name is the only reason
+ * the image exists. The ground stopped being a surface and became a subject.
  *
- * EVERYTHING IS ON A LOGICAL GRID AND SCALED UP. The banner is 1500x500, which
- * is 300x100 at five times. Nothing is ever positioned on a fraction of a
- * logical pixel, so the rasteriser has no edge to soften and the result is
- * hard squares rather than a slightly blurry approximation of them.
+ * The composition here is the original one, measured off it: a flat turf field
+ * under a gold floodlight wash, nineteen hairline yard lines, hash marks at
+ * thirty and seventy per cent, and numerals held at sixteen per cent opacity
+ * near the top and bottom edges, where they bleed out of frame. All of that is
+ * texture you half-see. The wordmark sits in the middle of it with room on
+ * both sides.
  *
- * NO FONT IS INVOLVED, which also means no install step to fail. See
- * scripts/pixelfont.mjs.
+ * WHAT ACTUALLY CHANGED is the type: every glyph is rectangles from
+ * scripts/pixelfont.mjs rather than Anton, which is what makes this read as
+ * the same product as the attract loop and the game.
+ *
+ * The type is drawn on a whole-pixel grid -- one font pixel is always an
+ * integer number of real ones -- so the rasteriser has no edge to soften.
+ * Everything else is in real coordinates, exactly as the original was.
  */
+
+const FIELD_INK = C.chalk;
+/* Fainter than the 0.16 the Anton numerals used, and for a reason that is
+   only visible once both are rendered: a bitmap glyph is mostly filled area
+   where a condensed grotesque is mostly thin strokes, so the same opacity
+   value comes out noticeably heavier. Matched by eye against the old banner
+   rather than by number. */
+const NUMERAL_OPACITY = 0.13;
+const LINE_OPACITY = { strong: 0.18, weak: 0.09 };
+const HASH_OPACITY = 0.14;
+
+/** The floodlight wash: gold-led, because orange over green mixes to brown.
+ *
+ *  TURF, NOT NIGHT. These two images are the only surfaces in the whole system
+ *  with no content on them -- just ground and type -- so the ground alone has
+ *  to say football. Night cannot: its green channel is six above its red,
+ *  which reads as black, and the numerals had nothing to sit against. */
+const flood = (w, h) => `<defs>
+    <radialGradient id="flood" cx="50%" cy="-10%" r="75%">
+      <stop offset="0%" stop-color="${C.gold}" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="${C.gold}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="${w}" height="${h}" fill="${C.turf}"/>
+  <rect width="${w}" height="${h}" fill="url(#flood)"/>`;
 
 /** Field numbering, the way it is painted on real grass: 10 through 50 and
  *  back down. Retro games kept them upright rather than rotated flat, and so
- *  does this — a rotated numeral at this size is four unreadable rectangles. */
+ *  does this -- a rotated numeral at this size is four unreadable rectangles. */
 const YARD_NUMBERS = ["10", "20", "30", "40", "50", "40", "30", "20", "10"];
 
-/** How much of the field to number, given the room. Nine numbers fit a 3:1
- *  header and jam together on a 1.9:1 card, so the narrower asset shows the
- *  middle of the field instead of a compressed whole one — which is what a
- *  camera does anyway. Always an odd count, so the 50 stays in the centre. */
-function yardNumbers(gw, scale) {
-  const each = textWidth("00", scale) + 10; // a number plus a decent gap
-  let count = Math.max(3, Math.min(YARD_NUMBERS.length, Math.floor(gw / each)));
+/** How much of the field to number, given the room. Nine fit a 3:1 header and
+ *  crowd a 1.9:1 card, so the narrower asset shows the middle of the field
+ *  rather than a squeezed whole one -- which is what a camera does anyway.
+ *  Always an odd count, so the 50 stays in the centre. */
+function yardNumbers(w, fontPx) {
+  const each = textWidth("00", fontPx) + fontPx * 6; // a number plus clear air
+  let count = Math.max(3, Math.min(YARD_NUMBERS.length, Math.floor(w / each)));
   if (count % 2 === 0) count -= 1;
   const from = (YARD_NUMBERS.length - count) / 2;
   return YARD_NUMBERS.slice(from, from + count);
 }
 
-function pixelField(gw, gh, s) {
-  const px = (n) => n * s;
-  const out = [];
+/** Yard lines, hash marks and numerals, at the weights the landing page uses.
+ *  Geometry and placement are the original's; only the numerals changed, from
+ *  Anton to rectangles. */
+function pixelField(w, h) {
+  const parts = [];
 
-  /* ONE SPACING GOVERNS THE WHOLE FIELD. The mow bands, the yard lines and
-     the numbers are all laid out on the same pitch, so a band edge always
-     lands on a yard line and a number always sits inside a band. The first
-     version used three different intervals and produced a plaid: lines every
-     15, bands every 20, numbers every 33, overlapping each other.
-
-     It is DERIVED FROM THE GRID, not fixed at 30. Hardcoding the header's
-     pitch sent the right-hand 20 and 10 clean off the edge of the narrower
-     link preview; deriving it from a fixed count of nine then jammed them
-     together instead. The count gives way first, and the pitch follows it. */
-  const numScale = 2;
-  const numbers = yardNumbers(gw, numScale);
-  const PITCH = Math.round(gw / (numbers.length + 1));
-
-  out.push(`<rect width="${px(gw)}" height="${px(gh)}" fill="${C.turf}"/>`);
-  /* The bands start half a pitch in, so every colour change lands exactly on a
-     yard line and every number sits inside one stripe rather than straddling
-     the seam between two. */
-  for (let x = PITCH / 2; x < gw; x += PITCH * 2) {
-    out.push(
-      `<rect x="${px(x)}" y="0" width="${px(PITCH)}" height="${px(gh)}" fill="#1B3724"/>`,
+  // Nineteen hairlines every five per cent, heavier on each tenth. Fine enough
+  // to read as a field and never as a grid.
+  for (let i = 1; i <= 19; i++) {
+    const x = (w * i * 5) / 100;
+    const strong = (i * 5) % 10 === 0;
+    parts.push(
+      `<rect x="${x.toFixed(1)}" y="0" width="1" height="${h}" fill="${FIELD_INK}" opacity="${strong ? LINE_OPACITY.strong : LINE_OPACITY.weak}"/>`,
     );
+    for (const ty of [0.3, 0.7]) {
+      parts.push(
+        `<rect x="${(x - 6).toFixed(1)}" y="${(h * ty).toFixed(1)}" width="13" height="1" fill="${FIELD_INK}" opacity="${HASH_OPACITY}"/>`,
+      );
+    }
   }
 
-  const line = (x, y, w, h, o) =>
-    `<rect x="${px(x)}" y="${px(y)}" width="${px(w)}" height="${px(h)}" fill="#FBFDF8" opacity="${o}"/>`;
-
-  // Sidelines.
-  out.push(line(0, 5, gw, 1, 0.32));
-  out.push(line(0, gh - 6, gw, 1, 0.32));
-
-  // Yard lines on the band edges, and the numbers centred between them.
-  for (let x = PITCH / 2; x < gw; x += PITCH) {
-    out.push(line(x, 5, 1, gh - 11, 0.2));
-  }
-
-  // Hash marks, two rows, one tick per logical yard.
-  for (let x = 5; x < gw; x += 5) {
-    out.push(line(x, 32, 2, 1, 0.15));
-    out.push(line(x, gh - 33, 2, 1, 0.15));
-  }
-
-  /* THE NUMBERS ON THE GRASS. Two rows, top and bottom, sitting inside the
-     hash marks the way they do on a field. They are texture rather than
-     information, so they are held well back: bright enough to read as
-     stencilled paint, faint enough that the wordmark across the middle never
-     competes with a 40. */
-  const numH = 7 * numScale;
-  const rows = [11, gh - 11 - numH];
+  /* The numerals, sized off the height so they hold the proportion the Anton
+     ones did, and pushed to the top and bottom edges so they bleed out of
+     frame rather than sitting in a tidy row. Faint: the moment somebody reads
+     a yard number before they read COMMISH, this has gone wrong. */
+  const fontPx = Math.max(2, Math.round((h * 0.095) / CELL_H));
+  const numbers = yardNumbers(w, fontPx);
+  const numH = CELL_H * fontPx;
+  const rows = [Math.round(h * 0.05), Math.round(h - h * 0.05 - numH)];
   const d = [];
   numbers.forEach((n, i) => {
-    const cx = (i + 1) * PITCH;
-    const x = Math.round(cx - textWidth(n, numScale) / 2);
-    for (const y of rows) d.push(textPath(n, px(x), px(y), px(numScale)));
+    const cx = ((i + 1) * w) / (numbers.length + 1);
+    const x = Math.round(cx - textWidth(n, fontPx) / 2);
+    for (const y of rows) d.push(textPath(n, x, y, fontPx));
   });
-  out.push(`<path d="${d.join("")}" fill="#FBFDF8" opacity="0.2"/>`);
+  parts.push(
+    `<path d="${d.join("")}" fill="${FIELD_INK}" opacity="${NUMERAL_OPACITY}"/>`,
+  );
 
-  return out.join("\n  ");
+  return parts.join("\n  ");
 }
 
-/** COMMISH.FUN, in pixels, centred, with a hard offset shadow.
+/** COMMISH.FUN, centred on `cy`, one font pixel equal to `fontPx` real ones.
  *
- *  THE SCALE IS DERIVED, NOT PICKED. Eleven characters at six cells each is
- *  sixty-five cells wide once the trailing tracking comes off, and a scale
- *  chosen by eye ran the word off both ends of the banner. It is computed from
- *  the space available instead, so the margins are what get specified and the
- *  type follows.
- *
- *  THE SHADOW IS NOT DECORATION. Chalk on turf measures 9.9:1 and needs no
- *  help, but the brand orange is 3.6:1 on grass — legible as a big display
- *  word and thin without something behind it. One offset copy in panel green
- *  fixes it, costs one path, and is exactly the title-card trick the machines
- *  this is imitating used for the same reason. */
-function pixelWordmark(gw, cy, s, margin = 20) {
+ *  THE SHADOW IS ONE OFFSET COPY at low opacity, not the hard black slab the
+ *  first pixel version used. Chalk on turf measures 9.9:1 and needs no help at
+ *  all; the brand orange is 3.6:1 on grass and wants a little. Enough to seat
+ *  the letters on the field, not enough to read as a second colour. */
+function pixelWordmark(w, cy, fontPx) {
   const left = "COMMISH";
   const right = ".FUN";
+  const total = textWidth(left + right, fontPx);
+  const x0 = Math.round(w / 2 - total / 2);
+  const y0 = Math.round(cy - (CELL_H * fontPx) / 2);
+  const rightX = x0 + left.length * ADVANCE * fontPx;
 
-  // Largest whole scale whose word still clears the margins. Whole, because a
-  // fractional one would put glyph edges on half pixels and soften them.
-  const cells = (left + right).length * 6 - 1;
-  const scale = Math.max(1, Math.floor((gw - margin * 2) / cells));
-
-  const total = textWidth(left + right, scale);
-  const x0 = Math.round(gw / 2 - total / 2);
-  const y0 = Math.round(cy - (7 * scale) / 2);
-  const rightX = x0 + left.length * 6 * scale;
-
-  const px = (n) => n * s;
-  const dLeft = textPath(left, px(x0), px(y0), px(scale));
-  const dRight = textPath(right, px(rightX), px(y0), px(scale));
-  const off = px(scale); // a shadow exactly one font pixel down and right
+  const dLeft = textPath(left, x0, y0, fontPx);
+  const dRight = textPath(right, rightX, y0, fontPx);
 
   return `<g>
-    <path d="${dLeft + dRight}" fill="${C.night}" opacity="0.85" transform="translate(${off} ${off})"/>
+    <path d="${dLeft + dRight}" fill="${C.night}" opacity="0.4" transform="translate(${fontPx} ${fontPx})"/>
     <path d="${dLeft}" fill="${C.cream}"/>
     <path d="${dRight}" fill="${C.action}"/>
   </g>`;
 }
 
-/** The banner. `gw`/`gh` are the logical grid; `s` scales it to the real size. */
-const pixelBannerSvg = (gw, gh, s) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${gw * s} ${gh * s}" width="${gw * s}" height="${gh * s}" role="img" aria-label="Commish dot fun">
-  ${pixelField(gw, gh, s)}
-  ${pixelWordmark(gw, gh / 2, s)}
+/** A centred line of small pixel type, at the largest whole font pixel that
+ *  clears the margins -- because a size picked by eye ran a thirty-three
+ *  character tagline sixty per cent off both sides of the card. */
+function pixelLine(text, w, y, fill, opts = {}) {
+  const { margin = 90, max = 12, opacity = 1 } = opts;
+  const cells = text.length * ADVANCE - 1;
+  const fontPx = Math.max(1, Math.min(max, Math.floor((w - margin * 2) / cells)));
+  const x = Math.round(w / 2 - textWidth(text, fontPx) / 2);
+  return `<path d="${textPath(text, x, y, fontPx)}" fill="${fill}"${opacity === 1 ? "" : ` opacity="${opacity}"`}/>`;
+}
+
+/** The font pixel size for the wordmark: derived from the height, so the type
+ *  holds the proportion of the image the Anton wordmark did, then clamped so
+ *  it can never crowd the sides. Both bounds matter -- sizing on width alone
+ *  is what stretched the first pixel version nearly edge to edge. */
+function wordmarkPx(w, h) {
+  const byHeight = Math.round((h * 0.19) / CELL_H);
+  const byWidth = Math.floor((w * 0.6) / (11 * ADVANCE - 1));
+  return Math.max(2, Math.min(byHeight, byWidth));
+}
+
+const pixelBannerSvg = (w, h) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Commish dot fun">
+  ${flood(w, h)}
+  ${pixelField(w, h)}
+  ${pixelWordmark(w, h / 2, wordmarkPx(w, h))}
 </svg>
 `;
-
-/** A line of small pixel type, centred, at the largest whole scale that clears
- *  the margins — the same rule as the wordmark, and for the same reason: a
- *  scale picked by eye ran a thirty-three character tagline about sixty per
- *  cent off both sides of the card. */
-function pixelLine(text, gw, y, s, fill, { margin = 16, max = 3, opacity = 1 } = {}) {
-  const cells = text.length * 6 - 1;
-  const scale = Math.max(1, Math.min(max, Math.floor((gw - margin * 2) / cells)));
-  const x = Math.round(gw / 2 - textWidth(text, scale) / 2);
-  const d = textPath(text, x * s, y * s, scale * s);
-  return `<path d="${d}" fill="${fill}"${opacity === 1 ? "" : ` opacity="${opacity}"`}/>`;
-}
 
 /* The link preview, in the same language.
  *
  * Converting the header and leaving this one set in Anton would have been the
- * exact failure the brand README exists to prevent: two assets, six inches
+ * exact failure brand/README.md exists to prevent: two assets, six inches
  * apart in somebody's feed, disagreeing about what the product looks like. It
  * keeps the Laces, because unlike the header this card meets people with
  * nothing else around it and the mark has to be somewhere. */
-const pixelOgSvg = (gw, gh, s) => {
-  const markH = 24; // logical pixels
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${gw * s} ${gh * s}" width="${gw * s}" height="${gh * s}" role="img" aria-label="Commish dot fun — football pools, escrowed on-chain">
-  ${pixelField(gw, gh, s)}
-  <g transform="translate(${(gw / 2) * s} ${30 * s}) scale(${(markH * s) / 200})">${laces(C.action)}</g>
-  ${pixelWordmark(gw, 68, s, 20)}
-  ${pixelLine("FOOTBALL POOLS, ESCROWED ON-CHAIN", gw, 86, s, C.cream, { opacity: 0.8 })}
+const pixelOgSvg = (w, h) => {
+  const markH = h * 0.17;
+  const fontPx = wordmarkPx(w, h * 0.72);
+  const wordCy = h * 0.55;
+  const tagY = Math.round(wordCy + (CELL_H * fontPx) / 2 + h * 0.075);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Commish dot fun - football pools, escrowed on-chain">
+  ${flood(w, h)}
+  ${pixelField(w, h)}
+  <g transform="translate(${w / 2} ${h * 0.25}) scale(${markH / 200})">${laces(C.action)}</g>
+  ${pixelWordmark(w, wordCy, fontPx)}
+  ${pixelLine("FOOTBALL POOLS, ESCROWED ON-CHAIN", w, tagY, C.cream, { opacity: 0.7 })}
 </svg>
 `;
 };
@@ -331,10 +338,10 @@ async function main() {
      the avatar hangs into the bottom-left corner on X and because the mark is
      already showing there — repeating it in the strip above says the same
      thing twice. */
-  const banner = writeSvg("banner-x.svg", pixelBannerSvg(300, 100, 5));
+  const banner = writeSvg("banner-x.svg", pixelBannerSvg(1500, 500));
   // Stacked and centred. This one meets people in a feed with nothing else
   // around it, so it keeps the mark and the line saying what the thing is.
-  const og = writeSvg("og.svg", pixelOgSvg(240, 126, 5));
+  const og = writeSvg("og.svg", pixelOgSvg(1200, 630));
   await writePng(banner, "banner-x.png", 1500, 500, true);
   await writePng(og, "og.png", 1200, 630, true);
 
