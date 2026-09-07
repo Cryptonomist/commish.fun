@@ -96,7 +96,25 @@ say "6. Point the RPC proxy at mainnet"
 
 run "sed -i 's/\"HELIUS_CLUSTER\": \"devnet\"/\"HELIUS_CLUSTER\": \"mainnet\"/' workers/rpc-proxy/wrangler.jsonc"
 warn "the worker's HELIUS_API_KEY must be a key valid for mainnet"
-run "(cd workers/rpc-proxy && npx wrangler deploy)"
+
+# PROGRAM_ID IS SET AT DEPLOY, and this step used to deploy without it.
+#
+# It is the allowlist for getProgramAccounts. With it unset the guard in the
+# worker degrades to "the scan must carry filters" (index.ts:135-140), which
+# means anybody who finds the proxy can enumerate ANY program on Solana through
+# our Helius key, as long as they attach a filter. On devnet that is somebody
+# else's free tier being rude. On mainnet it is our paid key indexing the chain
+# for a stranger, and the bill is ours.
+#
+# wrangler.jsonc leaves it commented out on purpose — the id belongs with the
+# deploy rather than in the file — so the deploy is where it has to be passed.
+run "(cd workers/rpc-proxy && npx wrangler deploy --var PROGRAM_ID:$PROGRAM_ID)"
+
+if [ "$GO" = "--go" ]; then
+  grep -q '"HELIUS_CLUSTER": "mainnet"' workers/rpc-proxy/wrangler.jsonc \
+    && ok "worker points at mainnet" \
+    || bad "HELIUS_CLUSTER is still not mainnet"
+fi
 
 say "7. Check it still builds"
 
