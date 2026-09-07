@@ -343,6 +343,11 @@ export default {
      * is one header and anyone can send it, which the repo itself proves —
      * src/lib/leaderboard.ts forges exactly this header on purpose. The origin
      * check is a convention; this is the control. */
+    /* VERIFIED NOT TO ENFORCE — see the long note in wrangler.jsonc. The
+     * binding attaches and limit() is callable, but it returned success on
+     * twelve consecutive calls against a budget of five. The guard stays
+     * because it is correct and will work the day the platform allows it; do
+     * not read its presence as protection until a test shows a 429. */
     if (env.RPC_LIMIT) {
       const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
       const { success } = await env.RPC_LIMIT.limit({ key: ip });

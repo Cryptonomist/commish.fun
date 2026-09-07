@@ -41,7 +41,37 @@
     // "PROGRAM_ID": ""
   },
 
-  /* RATE LIMITING. The origin check above is a single header and anyone can
+  /* RATE LIMITING — AND IT DOES NOT CURRENTLY WORK. READ THIS BEFORE TRUSTING
+     THIS ENDPOINT.
+
+     The bindings below attach correctly: `wrangler deploy --dry-run` lists
+     them, a deployed worker sees RPC_LIMIT as an object, and env.RPC_LIMIT
+     .limit() is callable and returns a result. It simply never denies.
+
+     Measured, on a preview version uploaded with the limit dropped to 5 per 10
+     seconds so the threshold could not be missed:
+       - 15 sequential POSTs      -> 15 x 200, no 429
+       - 10 websocket upgrades    -> 10 x 101, no 429
+       - 12 direct limit() calls on ONE key -> 12 x {"success":true}
+
+     The last line is the decisive one: the limiter itself returns success
+     twelve times against a budget of five. This is not a keying mistake, not
+     the documented per-location counter, and not eventual consistency at the
+     margin. The binding is inert on this worker.
+
+     The likeliest cause is that this Worker is served from *.workers.dev,
+     which Cloudflare treats as a Free website outside your zones. THE FIX IS
+     THEREFORE NOT IN THIS FILE: put the worker on a custom domain inside the
+     commish.fun zone (rpc.commish.fun) and apply a WAF Rate Limiting Rule,
+     which is a dashboard change. The config below is kept because it is
+     correct and costs nothing, and because it will start working the moment
+     the platform lets it — but until the numbers above come back with 429s in
+     them, this endpoint is NOT rate limited.
+
+     Two budgets, because a POST and a socket are not worth the same upstream:
+     a POST is billed once, a subscription is billed for as long as it is held.
+
+     The origin check above is a single header and anyone can
      send it — this repo forges exactly that header itself, deliberately, in
      src/lib/leaderboard.ts. So the origin list is a convention and this is the
      actual control on a public URL that spends the owner's Helius credits.
