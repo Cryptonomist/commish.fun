@@ -244,6 +244,8 @@ export function CommishBowl() {
     }
     setGained(0);
     setupPlay(w);
+    /* A touchdown fanfare can still be sounding when somebody presses on. */
+    kit.stopOneShots();
     play("snap");
     /* A KICKOFF GETS ITS OWN OPENING, if one has been supplied. Everything
      * here is "use the file if there is one, otherwise the synth" — see

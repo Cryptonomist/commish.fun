@@ -32,8 +32,8 @@ import { audio, MAX_GAIN, registerStopper } from "@/lib/sfx";
 /** The sounds a file may replace. Names map to filenames: "kickoff" looks for
  *  /audio/kickoff.mp3 and then /audio/kickoff.wav. */
 export type Track =
-  | "kickoff" // plays once when a kickoff is about to be returned
-  | "drive" // loops for the length of a play from scrimmage
+  | "kickoff" // plays once when the kickoff is snapped
+  | "drive" // loops from the first snap until the drive ends
   | "touchdown" // plays once on a score
   | "move-up" // a blip when the runner turns upfield
   | "move-down"; // and the other way
@@ -47,6 +47,41 @@ const EXTENSIONS = ["mp3", "wav"] as const;
 /** Decoded and ready. A track that failed is stored as null so the failure is
  *  cached too and a missing file is not re-fetched on every play. */
 const cache = new Map<Track, AudioBuffer | null>();
+
+/** Where the music actually ends, in seconds, once trailing silence is
+ *  discounted. Keyed alongside the buffer — see trimmedEnd. */
+const musicEnd = new Map<Track, number>();
+
+/* GENERATORS LEAVE SILENCE ON THE END, and a loop point placed after it is a
+ * gap you hear once per pass. The first drive track supplied came in at 12.76
+ * seconds with its last 60ms at a peak of 0.0002 — inaudible, but the loop
+ * would have stopped there and restarted, every time round.
+ *
+ * So the loop end is measured rather than assumed: scan back from the last
+ * sample for the first one above a floor, and loop there. This costs one pass
+ * over the buffer, once, at load — and it means a file exported from anything,
+ * by anyone, loops correctly without being edited first.
+ *
+ * The floor is -60 dBFS. Low enough that a real decaying note is kept, high
+ * enough that dither and encoder noise are not mistaken for music. */
+const SILENCE_FLOOR = 0.001;
+
+function trimmedEnd(buf: AudioBuffer): number {
+  let last = 0;
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = d.length - 1; i > last; i--) {
+      if (Math.abs(d[i]) > SILENCE_FLOOR) {
+        if (i > last) last = i;
+        break;
+      }
+    }
+  }
+  /* Fall back to the whole buffer if the file is silent throughout, rather
+   * than returning a zero-length loop that plays nothing forever. */
+  return last > 0 ? (last + 1) / buf.sampleRate : buf.duration;
+}
+
 const inFlight = new Map<Track, Promise<AudioBuffer | null>>();
 
 async function load(ctx: AudioContext, name: Track): Promise<AudioBuffer | null> {
@@ -63,6 +98,7 @@ async function load(ctx: AudioContext, name: Track): Promise<AudioBuffer | null>
         const bytes = await res.arrayBuffer();
         const buf = await ctx.decodeAudioData(bytes);
         cache.set(name, buf);
+        musicEnd.set(name, trimmedEnd(buf));
         return buf;
       } catch {
         /* A decode failure is as good as a missing file: fall through to the
@@ -91,6 +127,23 @@ export function preload(names: Track[]): void {
 
 /* ------------------------------------------------------------- one-shots */
 
+/** The one-shot currently sounding. A touchdown fanfare can run for seconds,
+ *  and without this it plays straight over the kickoff of the next drive —
+ *  two pieces of music at once, which sounds like a bug because it is one. */
+let shot: AudioBufferSourceNode | null = null;
+
+/** Silence whatever one-shot is playing. Called when a new play starts. */
+export function stopOneShots(): void {
+  const s = shot;
+  shot = null;
+  if (!s) return;
+  try {
+    s.stop();
+  } catch {
+    // Already finished.
+  }
+}
+
 /** Play `name` once. Returns false if there is no file, so the caller can fall
  *  back to its synthesised version — which is why this is fire-and-check
  *  rather than fire-and-forget. */
@@ -106,12 +159,17 @@ export function playOnce(name: Track, level = 1): boolean {
     return false;
   }
   try {
+    stopOneShots();
     const src = ctx.createBufferSource();
     src.buffer = buf;
     const gain = ctx.createGain();
     gain.gain.value = MAX_GAIN * level;
     src.connect(gain).connect(ctx.destination);
+    src.onended = () => {
+      if (shot === src) shot = null;
+    };
     src.start();
+    shot = src;
     return true;
   } catch {
     return false;
@@ -143,7 +201,7 @@ export function startLoop(name: Track, level = 0.5): boolean {
      * stream; looping the element plays that padding as a gap every time
      * round. Looping the buffer over an explicit range does not. */
     src.loopStart = 0;
-    src.loopEnd = buf.duration;
+    src.loopEnd = musicEnd.get(name) ?? buf.duration;
 
     const gain = ctx.createGain();
     gain.gain.value = MAX_GAIN * level;
