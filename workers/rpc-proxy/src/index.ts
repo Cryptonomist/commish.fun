@@ -50,18 +50,34 @@ export interface Env {
  * something new, this list is where it fails, and the error names the method
  * so the fix takes a minute rather than an afternoon. */
 const DEFAULT_METHODS = [
+  // Called directly by this app's own code.
   "getAccountInfo",
   "getMultipleAccounts",
   "getBalance",
   "getLatestBlockhash",
   "getProgramAccounts",
-  "getSignatureStatuses",
   "sendTransaction",
   "simulateTransaction",
-  "getMinimumBalanceForRentExemption",
   "getTokenAccountBalance",
   "getHealth",
-  // confirmTransaction subscribes rather than polls.
+
+  /* Called by web3.js UNDERNEATH those, which is the half I got wrong first
+   * time. The list was built by grepping for `connection.*` in this repo, and
+   * that only finds what we ask for, not what the library asks for on our
+   * behalf. `confirmTransaction` in particular subscribes over the socket AND
+   * polls getSignatureStatuses AND checks getBlockHeight to notice the
+   * blockhash expiring, so two of these three are invisible in our source. */
+  "getSignatureStatuses",
+  "getBlockHeight",
+  "getEpochInfo",
+  "getSlot",
+  "getVersion",
+  "getFeeForMessage",
+  "getRecentPrioritizationFees",
+  "getMinimumBalanceForRentExemption",
+  "getTokenAccountsByOwner",
+
+  // The subscription pair, over the websocket.
   "signatureSubscribe",
   "signatureUnsubscribe",
 ];
@@ -127,10 +143,39 @@ function methodsIn(payload: unknown): string[] {
   return m ? [m] : [];
 }
 
-function upstream(env: Env, protocol: "https" | "wss"): string {
+/* ALWAYS https, EVEN FOR THE WEBSOCKET.
+ *
+ * The first version of this built a `wss://` URL for the upgrade, which is
+ * what the Solana client uses and what the address obviously "is". The Workers
+ * runtime refuses it outright:
+ *
+ *   TypeError: Fetch API cannot load: wss://devnet.helius-rpc.com/?api-key=...
+ *
+ * `fetch` speaks http and https only. A WebSocket is established by sending an
+ * ordinary https request carrying `Upgrade: websocket` and reading the 101 back
+ * off `response.webSocket`; the runtime does the protocol switch. So the scheme
+ * here is always https and the Upgrade header is what makes it a socket.
+ *
+ * The failure was invisible from outside. Every HTTP call succeeded, so the
+ * proxy looked healthy under curl, while `confirmTransaction` retried a socket
+ * that could never open. */
+function upstream(env: Env): string {
   const cluster = env.HELIUS_CLUSTER === "mainnet" ? "mainnet" : "devnet";
-  return `${protocol}://${cluster}.helius-rpc.com/?api-key=${env.HELIUS_API_KEY}`;
+  return `https://${cluster}.helius-rpc.com/?api-key=${env.HELIUS_API_KEY}`;
 }
+
+/* Never let the key reach a log line.
+ *
+ * When the fetch above threw, the runtime's own TypeError quoted the URL it had
+ * been handed, api-key and all, straight into `wrangler tail`. The credential
+ * this worker exists to hide was printed by the worker's own error handling.
+ *
+ * So every throw is caught and scrubbed before anything is logged. */
+const scrub = (err: unknown, env: Env): string => {
+  const text = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  const key = env.HELIUS_API_KEY;
+  return key ? text.split(key).join("<redacted>") : text;
+};
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -175,13 +220,35 @@ export default {
     /* WebSockets, because `confirmTransaction` needs them.
      *
      * web3.js confirms a transaction with `signatureSubscribe` rather than by
-     * polling. Without this branch every confirmation in the app would hang
-     * until the blockhash expired and then report a failure for a transaction
-     * that had probably landed, which is the single worst error this product
-     * can show somebody. The upgrade is passed straight through; Cloudflare
-     * handles the socket pair. */
+     * polling. Without this working, every confirmation in the app hangs until
+     * the blockhash expires and then reports failure for a transaction that
+     * already landed, which is the single worst error this product can show
+     * somebody. That is not hypothetical: it is what this worker did on its
+     * first day, because the URL below said wss and `fetch` refuses that.
+     *
+     * The upgrade goes out as an ordinary https request carrying the Upgrade
+     * header. The runtime performs the switch and hands back a 101 with the
+     * socket on `response.webSocket`, which is returned as-is. */
     if (request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
-      return fetch(upstream(env, "wss"), request);
+      try {
+        const upgraded = await fetch(upstream(env), request);
+        if (!upgraded.webSocket) {
+          console.error(
+            `[proxy] upstream refused the websocket upgrade: ${upgraded.status}`,
+          );
+          return deny(502, "The upstream refused a websocket.", origin, env);
+        }
+        return new Response(null, {
+          status: 101,
+          webSocket: upgraded.webSocket,
+        });
+      } catch (err) {
+        /* Scrubbed. The runtime's own TypeError quotes the URL it was given,
+         * api-key included, and an unhandled throw here puts the credential
+         * this worker exists to hide straight into the log. */
+        console.error(`[proxy] websocket upgrade failed: ${scrub(err, env)}`);
+        return deny(502, "Could not open a websocket upstream.", origin, env);
+      }
     }
 
     if (request.method !== "POST") {
@@ -217,9 +284,13 @@ export default {
       }
       const refused = asked.find((m) => !allowlist.includes(m));
       if (refused) {
-        /* Name it. This list will be wrong one day, when a screen starts
-         * calling something new, and an error that says which method is the
-         * difference between a one-line fix and an afternoon of guessing. */
+        /* Log it as well as returning it. A 403 body reaches whoever made the
+         * request, and when that is a library buried inside the page it can be
+         * swallowed without ever surfacing. `wrangler tail` shows every
+         * refusal by name, so the next gap in this list costs one tail rather
+         * than an afternoon. */
+        console.error(`[proxy] refused method: ${refused}`);
+        /* Name it in the response too, for the same reason. */
         return deny(
           403,
           `This proxy does not forward ${refused}. Add it to ALLOWED_METHODS if the app needs it.`,
@@ -231,7 +302,7 @@ export default {
 
     /* A clean request upstream. The caller's headers are not forwarded: they
      * are attacker-influenced, and Helius needs exactly two of them. */
-    const res = await fetch(upstream(env, "https"), {
+    const res = await fetch(upstream(env), {
       method: "POST",
       headers: {
         "content-type": "application/json",
