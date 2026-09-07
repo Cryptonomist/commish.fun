@@ -33,6 +33,7 @@ import {
   maskCount,
   readableProgramError,
   NO_PICK,
+  POOL_LOSER,
   type MemberView,
   type PoolView,
 } from "@/lib/program";
@@ -85,6 +86,7 @@ export function PickGrid({
 
   const locked = !!lock && now >= lock;
   const alive = isAlive(member);
+  const loserPool = pool.poolType === POOL_LOSER;
 
   /* `current_pick` is only this week's pick if `pick_week` says so — the field
    * is not cleared between weeks until the member is settled, so reading it
@@ -232,6 +234,26 @@ export function PickGrid({
 
   return (
     <section className="mt-8">
+      {/* WHICH WAY, SAID LOUDLY AND FIRST.
+       *
+       * A Loser pool is a Survivor pool with one line inverted in the program,
+       * which makes the two screens identical and the two games opposite.
+       * Somebody who joins a Loser pool, sees a grid of teams and picks the one
+       * they think is best has lost their season in week one, and nothing on
+       * the page would have told them. So the direction is a banner rather than
+       * a subtitle. */}
+      <p
+        className={`mb-3 rounded-xl border px-4 py-2.5 text-sm font-bold tracking-wide ${
+          loserPool
+            ? "border-out/50 bg-out/10 text-out"
+            : "border-alive/40 bg-alive/5 text-alive"
+        }`}
+      >
+        {loserPool
+          ? "LOSER POOL — pick a team you think will LOSE. If they win, you are out."
+          : "SURVIVOR — pick a team you think will WIN. If they lose, you are out."}
+      </p>
+
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="display text-2xl uppercase">Week {pool.currentWeek}</h2>
         <p className="text-sm">
@@ -367,7 +389,10 @@ export function PickGrid({
 
       <p className="mt-2 text-xs text-cream-dim">
         A team you pick is spent for the season whether it wins or loses. A
-        cancelled game is not a loss. You survive, and the team is still gone.
+        cancelled game carries you either way, and the team is still gone.
+        {loserPool
+          ? " A tie carries you too: a tied team did not win."
+          : " A tie eliminates you: a tied team did not win."}
         {byes > 0 ? " Teams on a bye are not listed; they play again next week." : ""}
       </p>
     </section>

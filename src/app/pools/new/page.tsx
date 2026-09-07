@@ -33,6 +33,7 @@ import {
   readableProgramError,
   POOL_SURVIVOR,
   POOL_LEAGUE,
+  POOL_LOSER,
   MAX_PRIZE_SLOTS,
   MAX_SLOT_LABEL,
   BPS_DENOM,
@@ -88,8 +89,10 @@ export default function NewPool() {
    * They share the escrow, the veto and the deadman refund, and share almost
    * nothing else, so half these fields are meaningless in the other mode and
    * are hidden rather than disabled. */
-  const [mode, setMode] = useState<"survivor" | "league">("survivor");
+  const [mode, setMode] = useState<"survivor" | "loser" | "league">("survivor");
   const isLeagueMode = mode === "league";
+  const poolType =
+    mode === "league" ? POOL_LEAGUE : mode === "loser" ? POOL_LOSER : POOL_SURVIVOR;
 
   /* Joining closes here and `lock_dues` opens. A week is the usual gap between
    * agreeing a league and everybody having actually paid. */
@@ -249,7 +252,7 @@ export default function NewPool() {
         commissioner: publicKey,
         nonce,
         name,
-        poolType: isLeagueMode ? POOL_LEAGUE : POOL_SURVIVOR,
+        poolType,
         buyIn: buyInUnits,
         maxMembers: members,
         startWeek,
@@ -358,13 +361,20 @@ export default function NewPool() {
               <span className="text-xs font-bold tracking-[0.18em] text-cream-dim">
                 WHAT KIND
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 {(
                   [
                     {
                       key: "survivor" as const,
                       title: "Survivor",
-                      blurb: "Pick a team each week. Wrong and you are out.",
+                      blurb:
+                        "Pick a team to WIN each week. Wrong and you are out.",
+                    },
+                    {
+                      key: "loser" as const,
+                      title: "Loser pool",
+                      blurb:
+                        "Pick a team to LOSE each week. If they win, you are out.",
                     },
                     {
                       key: "league" as const,
