@@ -20,10 +20,11 @@
  * results you cannot.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { TEAMS, type Team } from "@/lib/nfl";
+import { play } from "@/lib/sfx";
 
 /* Three invented weeks. Every club wins in at least one and loses in at least
  * one, so a replay is never the round you just played, and no pick is safe
@@ -55,6 +56,7 @@ export function TryAWeek() {
   const finished = phase === "result";
 
   const choose = useCallback((i: number) => {
+    play("confirm");
     setPicked(i);
     setPhase("locking");
     // The beat between the pick and the result is the whole tension of the
@@ -86,6 +88,41 @@ export function TryAWeek() {
 
   const weekNo = (week % WEEKS.length) + 1;
   const survivedThree = finished && survived && spent.length >= 2;
+
+  /* GAME OVER, CONTINUE? 9, 8, 7.
+   *
+   * Runs only while eliminated, counts to zero, and then stops. Reaching zero
+   * does nothing except drop the digit and leave an ordinary Try again button:
+   * a countdown that navigated or reset on its own would be a trap wearing a
+   * joke's clothes, and somebody reading the sentence next to it would lose
+   * their place mid-line. */
+  const [continueIn, setContinueIn] = useState<number | null>(null);
+  const eliminated = finished && !survived;
+  useEffect(() => {
+    if (!eliminated) {
+      setContinueIn(null);
+      return;
+    }
+    if (reducedMotion()) return; // a ticking number is motion
+    setContinueIn(9);
+    const id = window.setInterval(() => {
+      setContinueIn((n) => {
+        if (n === null || n <= 0) {
+          window.clearInterval(id);
+          return null;
+        }
+        return n - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [eliminated]);
+
+  /* Sound, only ever when somebody has turned it on. The result is the one
+   * moment in the demo with a verdict, so it is the one moment worth a noise. */
+  useEffect(() => {
+    if (!finished) return;
+    play(survived ? "win" : "out");
+  }, [finished, survived]);
 
   return (
     <div className="panel p-4 sm:p-6">
@@ -233,12 +270,28 @@ export function TryAWeek() {
           </>
         ) : (
           <>
+            {/* CONTINUE?, counting down from ten, which is the single most
+                Tecmo element on the site and costs one interval.
+
+                It never navigates, never steals focus, and letting it reach
+                zero does nothing worse than leaving the button as an ordinary
+                one. A countdown that took an action on its own would be a trap
+                rather than a joke. */}
             <button
               type="button"
               onClick={restart}
-              className="inline-flex h-12 items-center justify-center rounded-xl border border-night-3 px-6 text-sm font-bold tracking-wide text-cream transition-colors hover:border-action"
+              className="btn btn-secondary"
             >
-              Try again
+              {continueIn !== null ? (
+                <>
+                  CONTINUE?{" "}
+                  <span className="ml-2 tabular-nums text-action">
+                    {continueIn}
+                  </span>
+                </>
+              ) : (
+                "TRY AGAIN"
+              )}
             </button>
             <p className="text-sm text-cream-dim">
               That is the whole game. One wrong week and the season is over,

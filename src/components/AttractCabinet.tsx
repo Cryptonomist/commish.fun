@@ -29,6 +29,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TEAMS } from "@/lib/nfl";
+import { play, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 
 /* Logical resolution. Everything is drawn on integer coordinates at this size
  * and the canvas is then scaled up by CSS with smoothing off, which is what
@@ -110,7 +111,25 @@ export default function AttractCabinet({
     );
   }, []);
 
-  const start = useCallback(() => setStarted(true), []);
+  /* Read after mount, never during render: localStorage does not exist on the
+   * server and branching on it while rendering would hydrate to different
+   * markup than the server sent. */
+  const [sfx, setSfx] = useState(false);
+  useEffect(() => setSfx(sfxEnabled()), []);
+
+  const toggleSfx = useCallback(() => {
+    const next = !sfxEnabled();
+    setSfxEnabled(next);
+    setSfx(next);
+    // Play the confirmation through the thing that was just switched on, so
+    // pressing it tells you what you turned on rather than only that you did.
+    if (next) play("move");
+  }, []);
+
+  const start = useCallback(() => {
+    play("confirm");
+    setStarted(true);
+  }, []);
 
   /* A key anywhere starts it, but ONLY while the cabinet is actually on
      screen. Without the observer this would swallow keystrokes meant for the
@@ -309,8 +328,24 @@ export default function AttractCabinet({
         <span className="text-cream-dim">
           ALIVE <span className="text-alive">{alive}</span>
         </span>
-        <span className="text-gold tabular-nums">
-          POT ${pot.toLocaleString("en-US")}
+        <span className="flex items-center gap-3">
+          <span className="text-gold tabular-nums">
+            POT ${pot.toLocaleString("en-US")}
+          </span>
+          {/* Sound is off until this is pressed, and the press is what builds
+              the AudioContext. Nothing is constructed for a visitor who never
+              touches it. */}
+          <button
+            type="button"
+            onClick={toggleSfx}
+            aria-pressed={sfx}
+            aria-label={sfx ? "Turn sound off" : "Turn sound on"}
+            className={`flex h-5 w-5 items-center justify-center border border-rule text-[10px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chalk ${
+              sfx ? "bg-action text-panel" : "text-cream-dim hover:text-chalk"
+            }`}
+          >
+            &#9834;
+          </button>
         </span>
       </div>
 
