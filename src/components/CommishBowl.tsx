@@ -61,9 +61,10 @@ import {
   type Input,
   type World,
 } from "@/lib/bowl";
+import { fanfare, startDrive, stopMusic } from "@/lib/chiptune";
 import { TEAMS } from "@/lib/nfl";
 import { drawField, drawPlayer, PX } from "@/lib/pixel";
-import { play } from "@/lib/sfx";
+import { play, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 
 const BEST_KEY = "commish.bowl.best";
 
@@ -82,6 +83,27 @@ export function CommishBowl() {
   /* Kits are picked on the client. Picking during render would give the server
    * one pair of teams and the browser another, which React reports as a
    * hydration mismatch and, more to the point, makes the page flicker. */
+  /* Read after mount, never during render: localStorage does not exist on the
+   * server, and branching on it while rendering hydrates to different markup
+   * than the server sent. */
+  const [sfx, setSfx] = useState(false);
+  useEffect(() => setSfx(sfxEnabled()), []);
+
+  const toggleSfx = useCallback(() => {
+    const next = !sfxEnabled();
+    setSfxEnabled(next);
+    setSfx(next);
+    if (next) {
+      // Confirm through the thing that was just switched on, so pressing it
+      // tells you what you turned on rather than only that you did.
+      play("first");
+      // Mid-play, the music should come straight back rather than waiting for
+      // the next snap.
+      if (phaseRef.current === "live") startDrive();
+    }
+    // Turning it off is handled inside setSfxEnabled, which stops the loop.
+  }, []);
+
   const [kits, setKits] = useState<{ us: number; them: number } | null>(null);
   useEffect(() => {
     const us = Math.floor(Math.random() * TEAMS.length);
@@ -139,7 +161,11 @@ export function CommishBowl() {
     }
     setGained(0);
     kickoff(w);
-    play("confirm");
+    play("snap");
+    /* The loop runs for the length of the down and stops at the whistle. It is
+     * bounded by the play rather than by the page, which is what keeps music
+     * on a website from being something done TO somebody. */
+    startDrive();
     goPhase("live");
   }, [goPhase]);
 
@@ -282,7 +308,11 @@ export function CommishBowl() {
         carry = 0;
         return;
       }
-      if (!last) last = t;
+      if (!last) {
+        last = t;
+        // Coming back to a down that is still live: pick the music up again.
+        if (phaseRef.current === "live") startDrive();
+      }
       carry += t - last;
       last = t;
       // Cap the catch-up. A tab that was hidden for a minute must not run
@@ -299,8 +329,9 @@ export function CommishBowl() {
         setGained(yards);
         remember(yards);
 
+        stopMusic(); // the whistle
         if (result === "touchdown") {
-          play("win");
+          fanfare();
           goPhase("touchdown");
           break;
         }
@@ -308,7 +339,17 @@ export function CommishBowl() {
         setBall(yardLine(w));
         setNeed(toGo(w));
         setDown(w.down);
-        play(outcome === "first-down" ? "confirm" : "out");
+        /* Three different endings need three different noises. Everything used
+         * to resolve to the same descending menu-rejection blip, so being
+         * brought down a yard short of the sticks and picking up a first down
+         * sounded identical. */
+        play(
+          outcome === "first-down"
+            ? "first"
+            : outcome === "turnover"
+              ? "out"
+              : "tackle",
+        );
         goPhase(
           outcome === "turnover"
             ? "over"
@@ -331,7 +372,11 @@ export function CommishBowl() {
     const io = new IntersectionObserver(
       ([entry]) => {
         seenRef.current = entry.isIntersecting;
-        if (!entry.isIntersecting) keysRef.current = {};
+        if (entry.isIntersecting) return;
+        keysRef.current = {};
+        /* Scrolled out of view pauses the play, so it has to silence the loop
+         * as well — music continuing over a paused game is worse than either. */
+        stopMusic();
       },
       { threshold: 0.25 },
     );
@@ -340,6 +385,9 @@ export function CommishBowl() {
     return () => {
       cancelAnimationFrame(raf);
       io.disconnect();
+      /* Leaving the page mid-down must not leave a marching band playing under
+       * whatever the visitor opened next. */
+      stopMusic();
     };
   }, [kits, goPhase]);
 
@@ -423,7 +471,24 @@ export function CommishBowl() {
           {ordinal} &amp; <span className="text-chalk">{chains}</span>
           <span className="ml-2 opacity-70">ON {ball}</span>
         </span>
-        <span className="text-gold tabular-nums">BEST {best} YD</span>
+        <span className="flex items-center gap-3">
+          <span className="text-gold tabular-nums">BEST {best} YD</span>
+          {/* THE GAME SHIPPED WITHOUT THIS and was therefore silent with no way
+              to fix that: sound is off until somebody turns it on, and the only
+              toggle on the site was in the landing page's cabinet. Nothing is
+              constructed for a visitor who never presses it. */}
+          <button
+            type="button"
+            onClick={toggleSfx}
+            aria-pressed={sfx}
+            aria-label={sfx ? "Turn sound off" : "Turn sound on"}
+            className={`flex h-5 w-5 items-center justify-center border border-rule text-[10px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chalk ${
+              sfx ? "bg-action text-panel" : "text-cream-dim hover:text-chalk"
+            }`}
+          >
+            &#9834;
+          </button>
+        </span>
       </div>
 
       <div className="relative">
@@ -489,7 +554,7 @@ export function CommishBowl() {
           it move. */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t-2 border-chalk px-3 py-2">
         <span className="font-matrix text-[10px] leading-4 text-cream-dim">
-          ARROWS / WASD &middot; SPACE TO SPIN
+          ARROWS / WASD &middot; SPACE TO SPIN &middot; &#9834; FOR SOUND
         </span>
         <span className="text-xs text-cream-dim">
           On a phone, hold and drag on the field to run.
