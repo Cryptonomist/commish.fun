@@ -267,6 +267,75 @@ body {
     2px 2px 0 var(--color-panel);
 }
 
+/* ── TYPE THAT MAY SIT ON THE GRASS ───────────────────────────────────────────
+   The earlier rule was "type never touches turf", which was a simplification
+   that cost the hero its field: the copy went onto a black slab and the green
+   the whole direction is built on ended up hidden behind it.
+
+   The REAL rule is narrower. What fails on turf is cream-dim (4.91:1), action
+   (3.56:1) and out (2.93:1). Chalk measures 9.92:1 there and cream 9.01:1, and
+   both are comfortably legal at any size. So words on the field are allowed,
+   they just have to be the bright end of the palette.
+
+   The outline does the rest, and it is the same trick as the tile labels and
+   the same trick NES sprite text used: a panel-coloured ring means the pair
+   the eye resolves is chalk on panel at 17.92:1 regardless of whether a mow
+   band, a yard number or a chalk line happens to pass behind a letter. It is
+   thicker here than on a tile because this type is larger and sits on a busier
+   background. */
+.field-type {
+  color: var(--color-chalk);
+  text-shadow:
+    2px 0 0 var(--color-panel),
+    -2px 0 0 var(--color-panel),
+    0 2px 0 var(--color-panel),
+    0 -2px 0 var(--color-panel),
+    2px 2px 0 var(--color-panel),
+    -2px 2px 0 var(--color-panel),
+    2px -2px 0 var(--color-panel),
+    -2px -2px 0 var(--color-panel);
+}
+
+/* THE BRAND ORANGE, ON THE FIELD, WITHOUT COMPROMISE.
+   The wordmark's .FUN was switched to a lighter #FF9450 because plain action
+   measures 3.56:1 on turf and fails as small type. That was correct and it was
+   also visibly the wrong orange: the tile beside it is #FF6A2B, and two oranges
+   an inch apart read as a mistake rather than as a rule.
+
+   The outline settles it. A panel-coloured ring means the pair the eye resolves
+   is action on panel at 6.42:1, which is legal at any size, so the real brand
+   colour can sit on the grass. Same mechanism as the tile labels, applied to
+   the one word that had to break the palette to be readable. */
+.field-action {
+  color: var(--color-action);
+  text-shadow:
+    2px 0 0 var(--color-panel),
+    -2px 0 0 var(--color-panel),
+    0 2px 0 var(--color-panel),
+    0 -2px 0 var(--color-panel),
+    2px 2px 0 var(--color-panel),
+    -2px 2px 0 var(--color-panel),
+    2px -2px 0 var(--color-panel),
+    -2px -2px 0 var(--color-panel);
+}
+
+/* The headline: the same outline, plus the orange offset print behind it. The
+   orange is decoration at 3.56:1 rather than type, which is what keeps it
+   legal on the field. */
+.field-display {
+  color: var(--color-chalk);
+  text-shadow:
+    2px 0 0 var(--color-panel),
+    -2px 0 0 var(--color-panel),
+    0 2px 0 var(--color-panel),
+    0 -2px 0 var(--color-panel),
+    2px 2px 0 var(--color-panel),
+    -2px 2px 0 var(--color-panel),
+    2px -2px 0 var(--color-panel),
+    -2px -2px 0 var(--color-panel),
+    6px 6px 0 var(--color-action);
+}
+
 /* ── DITHER, NEVER OPACITY ────────────────────────────────────────────────────
    A spent team, a bye, a disabled control. A 50% checkerboard over whatever is
    underneath.

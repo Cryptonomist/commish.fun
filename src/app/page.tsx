@@ -160,25 +160,31 @@ export default async function Home() {
                 behind the words. */}
             <FieldMarkings />
 
-            <div className="panel-primary relative flex flex-col gap-7 p-6 sm:p-10">
-              <span className="inline-flex w-fit items-center gap-2.5 border-2 border-rule bg-turf px-4 py-2 font-matrix text-[10px] leading-4">
+            {/* NO SLAB. The copy sits straight on the field again.
+                The panel version was legible and hid the grass, which is the
+                one thing this whole direction is built on. The fix is not a
+                black rectangle, it is picking the right ink: chalk is 9.92:1
+                on turf and cream is 9.01:1, both legal at any size, and the
+                panel-coloured outline holds them against a mow band or a yard
+                number passing behind a letter. Only cream-dim, action and out
+                are illegal out here, and none of them is used. */}
+            <div className="relative flex flex-col gap-7">
+              <span className="inline-flex w-fit items-center gap-2.5 border-2 border-chalk bg-panel px-4 py-2 font-matrix text-[10px] leading-4">
                 <Laces size={13} className="text-action" />
                 <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
                 <Countdown />
               </span>
 
-              {/* The 8-bit title-card offset print. It makes Anton read blocky
-                  without touching a single glyph, and the orange behind the
-                  letters is decoration at 3.56:1 rather than type, which is the
-                  only reason it is allowed there. */}
-              <h1 className="display print-offset max-w-4xl text-[clamp(2.4rem,7vw,5rem)] uppercase">
+              {/* The 8-bit title-card offset print, now with the sprite outline
+                  around it so it survives the field behind it. */}
+              <h1 className="display field-display max-w-4xl text-[clamp(2.4rem,7vw,5rem)] uppercase">
                 NFL football pools,
                 <br />
                 escrowed on-chain.
               </h1>
 
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                <p className="max-w-2xl text-lg leading-relaxed text-cream-dim sm:text-xl">
+                <p className="field-type max-w-2xl text-lg font-medium leading-relaxed sm:text-xl">
                   Members pay their buy-in into a vault that is the pool&rsquo;s
                   own account. Picks, results and payouts are recorded on chain.
                   The commissioner runs the pool and never holds the money.

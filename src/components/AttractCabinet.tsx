@@ -3,7 +3,7 @@
 /* THE CARTRIDGE BOOT.
  *
  * A visitor lands on attract mode: a 12fps loop that plays the entire product
- * in twelve seconds without a word of explanation. Twenty-four helmets drop
+ * in twelve seconds without a word of explanation. Twenty-four players drop
  * onto a field and the pot fills. A week resolves and thirteen of them get
  * crossed out. One walks to the centre and the money lands on it.
  *
@@ -50,23 +50,38 @@ const OUT = "#EC565B";
 const DIM = "#A9B8AC";
 
 /** Twenty-four clubs, taken in a fixed order so the loop is identical on every
- *  visit rather than reshuffling and looking like a bug. */
-const HELMET_COLOURS = TEAMS.slice(0, 24).map((t) => t.lead);
+ *  visit rather than reshuffling and looking like a bug. Both colours travel:
+ *  the lead paints the jersey and helmet, the trim paints the belt stripe, which
+ *  is what separates two clubs that both wear blue. */
+const ROSTER = TEAMS.slice(0, 24).map((t) => ({ lead: t.lead, trim: t.trim }));
 
-type Helmet = { x: number; y: number; target: number; colour: string; out: boolean };
+type Player = {
+  x: number;
+  /** Where this player stands when nothing is moving them. The hero walks away
+   *  from it in the payout scene and has to be able to get back, or the second
+   *  time round the loop he is already at the centre spot. */
+  homeX: number;
+  y: number;
+  target: number;
+  colour: string;
+  trim: string;
+  out: boolean;
+};
 
-/** An 8x3 grid of helmets centred on the field. */
-function layout(): Helmet[] {
+/** An 8x3 grid of players centred on the field. */
+function layout(): Player[] {
   const cols = 8;
   const gapX = 26;
-  const gapY = 30;
-  const startX = Math.round((W - (cols - 1) * gapX) / 2) - 3;
-  const startY = 34;
-  return HELMET_COLOURS.map((colour, i) => ({
-    colour,
+  const gapY = 34; // a 15-tall sprite needs more room than an 8-tall helmet did
+  const startX = Math.round((W - (cols - 1) * gapX) / 2) - 4;
+  const startY = 22;
+  return ROSTER.map(({ lead, trim }, i) => ({
+    colour: lead,
+    trim,
     x: startX + (i % cols) * gapX,
+    homeX: startX + (i % cols) * gapX,
     target: startY + Math.floor(i / cols) * gapY,
-    y: -10 - (i % cols) * 4,
+    y: -14 - (i % cols) * 4,
     out: false,
   }));
 }
@@ -170,14 +185,14 @@ export default function AttractCabinet({
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
 
-    const helmets = layout();
+    const players = layout();
     let frame = 0;
     let raf = 0;
     let last = 0;
 
     /* The field, repainted every frame beneath the sprites. This is
        FieldMarkings' logic moved to where it belongs: it is the field the
-       helmets stand on, not a texture behind some text. */
+       players stand on, not a texture behind some text. */
     const field = () => {
       ctx.fillStyle = TURF;
       ctx.fillRect(0, 0, W, H);
@@ -200,19 +215,66 @@ export default function AttractCabinet({
       }
     };
 
-    /** Two rects. A dome and a facemask, and that is a helmet. */
-    const helmet = (h: Helmet, squash: boolean) => {
-      const y = Math.round(h.y) + (squash ? 1 : 0);
-      const hh = squash ? 5 : 6;
-      ctx.fillStyle = h.out ? DIM : h.colour;
-      ctx.fillRect(Math.round(h.x), y, 6, hh);
-      ctx.fillStyle = h.out ? DIM : CHALK;
-      ctx.fillRect(Math.round(h.x), y + hh, 6, 2);
-      if (h.out) {
+    /* A PLAYER, 8 wide and 13 tall, drawn as nine rectangles.
+     *
+     * This was two rects and read as a coloured block, which is what it was.
+     * A Tecmo sprite is not much more than this but the "not much" is the whole
+     * thing: a helmet with a facemask sticking out the front, shoulders wider
+     * than the waist, a jersey in the club colour with a trim stripe, white
+     * pants, and two legs that alternate. Nine rects and the eye reads a
+     * footballer instead of a domino.
+     *
+     * `stride` alternates the legs. On an NES that was the entire running
+     * animation and it is enough here too.
+     */
+    const player = (p: Player, stride: boolean, squash: boolean) => {
+      const x = Math.round(p.x);
+      const y = Math.round(p.y) + (squash ? 1 : 0);
+      const body = p.out ? DIM : p.colour;
+      const trim = p.out ? DIM : p.trim;
+
+      // Player, 6 wide, inset one from each side of the shoulders.
+      ctx.fillStyle = body;
+      ctx.fillRect(x + 1, y, 6, 4);
+      // The crown stripe, front to back. One pixel, and it is the first thing
+      // that reads as a football helmet rather than a bean.
+      ctx.fillStyle = trim;
+      ctx.fillRect(x + 1, y, 6, 1);
+      // Facemask, poking out to the right, which is what makes it a helmet
+      // rather than a hat.
+      ctx.fillStyle = CHALK;
+      ctx.fillRect(x + 6, y + 2, 2, 1);
+
+      // A DARK LINE FOR THE NECK. Without it the helmet and the jersey are the
+      // same colour touching, so the whole top half reads as one lump. One
+      // pixel of shadow is what separates a head from a torso.
+      ctx.fillStyle = PANEL;
+      ctx.fillRect(x + 1, y + 4, 6, 1);
+
+      // Shoulders, the widest part, then the jersey a pixel narrower.
+      ctx.fillStyle = body;
+      ctx.fillRect(x, y + 5, 8, 2);
+      ctx.fillRect(x + 1, y + 7, 6, 2);
+      // The club's second colour as a belt. Two colours per club is what makes
+      // thirty-two teams instead of thirty-two rectangles.
+      ctx.fillStyle = trim;
+      ctx.fillRect(x + 1, y + 9, 6, 1);
+
+      // Pants, white the way almost every away kit is.
+      ctx.fillStyle = p.out ? DIM : "#E8EDE6";
+      ctx.fillRect(x + 1, y + 10, 6, 2);
+      // Socks in the club's trim, which is both true of the kit and the only
+      // way the stride reads: white legs under white pants are invisible.
+      ctx.fillStyle = trim;
+      ctx.fillRect(x + 1, y + 12, 2, stride ? 3 : 2);
+      ctx.fillRect(x + 5, y + 12, 2, stride ? 2 : 3);
+
+      if (p.out) {
+        // The elimination X, stamped over the whole sprite.
         ctx.fillStyle = OUT;
-        for (let i = 0; i < 6; i++) {
-          ctx.fillRect(Math.round(h.x) + i, y + i, 1, 1);
-          ctx.fillRect(Math.round(h.x) + 5 - i, y + i, 1, 1);
+        for (let i = 0; i < 8; i++) {
+          ctx.fillRect(x + i, y + 3 + i, 1, 1);
+          ctx.fillRect(x + 7 - i, y + 3 + i, 1, 1);
         }
       }
     };
@@ -228,45 +290,54 @@ export default function AttractCabinet({
       field();
 
       if (scene === 0) {
-        // THE POOL FILLS. One helmet lands every other frame.
-        helmets.forEach((h, i) => {
+        // THE POOL FILLS. One player lands every other frame, legs pumping on
+        // the way down and a one-pixel squash on the frame he touches turf.
+        players.forEach((h, i) => {
           h.out = false;
+          h.x = h.homeX;
           const due = i * 2;
+          const falling = h.y < h.target;
           if (f >= due) h.y = Math.min(h.target, h.y + 6);
-          helmet(h, f === due + Math.ceil((h.target + 10) / 6));
+          player(h, falling && f % 2 === 0, h.y === h.target && falling);
         });
         showPot(Math.min(2400, Math.round((f / 40) * 2400)));
         showAlive(24);
       } else if (scene === 1) {
-        // THE WEEK RESOLVES. Thirteen go out, one every other frame.
+        // THE WEEK RESOLVES. Thirteen go out, one every other frame. The ones
+        // still alive shift their weight; the ones out are frozen mid-stride,
+        // which is the difference between a bench and a graveyard.
         const gone = Math.max(0, Math.min(13, Math.floor((f - 8) / 2)));
-        helmets.forEach((h, i) => {
+        players.forEach((h, i) => {
           h.y = h.target;
+          h.x = h.homeX;
           h.out = i % 2 === 0 && i / 2 < gone;
+          player(h, !h.out && f % 8 < 4, false);
         });
         showAlive(24 - gone);
         showPot(2400);
       } else {
-        // THE PAYOUT. One helmet walks to the middle and the money lands.
-        const hero = helmets[1];
-        helmets.forEach((h, i) => {
-          h.y = h.target;
-          h.out = i !== 1;
-          if (i !== 1 && f > 4) return; // the rest clear off
+        // THE PAYOUT. One player walks to the middle and the money lands.
+        const hero = players[1];
+        players.forEach((h, i) => {
           if (i === 1) return;
-          helmet(h, false);
+          h.y = h.target;
+          h.x = h.homeX;
+          h.out = true;
+          if (f <= 4) player(h, false, false); // the rest clear off
         });
         hero.out = false;
         hero.x = Math.round(
-          hero.x + ((W / 2 - 3 - hero.x) * Math.min(1, f / 16)),
+          hero.x + ((W / 2 - 4 - hero.x) * Math.min(1, f / 16)),
         );
         hero.y = Math.round(
-          hero.target + ((H / 2 - 4 - hero.target) * Math.min(1, f / 16)),
+          hero.target + ((H / 2 - 7 - hero.target) * Math.min(1, f / 16)),
         );
+        // The winner's mark, painted under his feet before he is, so he stands
+        // on it rather than in front of it.
         ctx.fillStyle = ACTION;
-        ctx.fillRect(Math.round(hero.x), Math.round(hero.y), 6, 6);
-        ctx.fillStyle = CHALK;
-        ctx.fillRect(Math.round(hero.x), Math.round(hero.y) + 6, 6, 2);
+        ctx.fillRect(Math.round(hero.x) - 1, Math.round(hero.y) + 15, 10, 1);
+        // Still walking? Then keep the legs going. Arrived? Stand still.
+        player(hero, f < 16 && f % 2 === 0, false);
 
         if (f > 18) {
           const rise = Math.min(1, (f - 18) / 8);
@@ -299,9 +370,9 @@ export default function AttractCabinet({
      * over an already-correct frame. Same principle as the DOM being complete
      * before any class is added to it. */
     field();
-    helmets.forEach((h) => {
+    players.forEach((h) => {
       h.y = h.target;
-      helmet(h, false);
+      player(h, false, false);
     });
 
     if (still) {

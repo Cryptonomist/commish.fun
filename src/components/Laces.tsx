@@ -92,16 +92,22 @@ export function LacesTile({
 
 /** The lockup: the app icon, wordmark beside it.
  *
- *  COMMISH is chalk rather than cream, because at nav size it is small text
- *  sitting on the field: chalk measures 9.92:1 on turf. The .FUN is
- *  action-lit #FF9450 at 4.65:1 rather than the base orange, which would be
- *  3.56:1 and illegal at this size on this ground. */
+ *  BOTH ORANGES ARE THE SAME ORANGE, and getting there took two goes. The
+ *  wordmark sits on the field, where plain action is 3.56:1 and fails as small
+ *  type, so .FUN was briefly lightened to #FF9450. That was legible and it was
+ *  visibly a different orange from the tile an inch to its left, which reads as
+ *  a mistake rather than as a rule.
+ *
+ *  The sprite outline fixes it properly: a panel-coloured ring makes the pair
+ *  the eye resolves action on panel at 6.42:1, legal at any size, so the brand
+ *  colour survives contact with the grass. COMMISH carries the same outline in
+ *  chalk. */
 export function Wordmark({ size = 28 }: { size?: number }) {
   return (
     <span className="inline-flex items-center gap-2.5">
       <LacesTile size={size * 1.4} title="Commish" />
-      <span className="display text-chalk" style={{ fontSize: size * 1.35 }}>
-        COMMISH<span className="text-action-lit">.FUN</span>
+      <span className="display field-type" style={{ fontSize: size * 1.35 }}>
+        COMMISH<span className="field-action">.FUN</span>
       </span>
     </span>
   );
