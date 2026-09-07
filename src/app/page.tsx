@@ -148,39 +148,48 @@ export default async function Home() {
           {/* The field is scoped to the copy rather than the whole section, so
               both rows of yard numbers land inside it and neither ends up
               behind the demo card below. */}
-          <div className="relative flex flex-col gap-7 py-14 sm:py-16">
+          {/* TYPE DOES NOT TOUCH TURF, and this is where that rule earns its
+              keep. It shipped for ten minutes with the headline and body copy
+              straight on the grass and the yard numbers running through them:
+              cream-dim at 4.91:1 over a moving background, which is legal by a
+              hair and genuinely hard to read. The copy sits on a panel now and
+              the field is the thing the panel is mounted on. */}
+          <div className="relative py-10 sm:py-14">
+            {/* Outside the panel. The markings are the field, not a texture
+                behind the words. */}
             <FieldMarkings />
-            <span className="inline-flex w-fit items-center gap-2.5 rounded-none border border-night-3 bg-night-2/80 px-4 py-2 font-matrix text-[10px] leading-4">
-              <Laces size={13} className="text-action" />
-              <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
-              <Countdown />
-            </span>
 
-            <h1 className="display max-w-4xl text-[clamp(2.4rem,7vw,5rem)] uppercase">
-              NFL football pools,
-              <br />
-              <span className="text-action">escrowed</span> on-chain.
-            </h1>
+            <div className="panel-primary relative flex flex-col gap-7 p-6 sm:p-10">
+              <span className="inline-flex w-fit items-center gap-2.5 border-2 border-rule bg-turf px-4 py-2 font-matrix text-[10px] leading-4">
+                <Laces size={13} className="text-action" />
+                <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
+                <Countdown />
+              </span>
 
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <p className="max-w-2xl text-lg leading-relaxed text-cream-dim sm:text-xl">
-                Members pay their buy-in into a vault that is the pool&rsquo;s own
-                account. Picks, results and payouts are recorded on chain. The
-                commissioner runs the pool and never holds the money.
-              </p>
-              <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
-                <Link
-                  href="/pools/new"
-                  className="inline-flex h-13 items-center justify-center rounded-xl bg-action px-7 py-4 text-sm font-bold tracking-wide text-night transition-colors hover:bg-action-hi"
-                >
-                  Start a pool
-                </Link>
-                <Link
-                  href="#drive"
-                  className="inline-flex items-center justify-center rounded-xl border border-night-3 px-7 py-4 text-sm font-bold tracking-wide text-cream transition-colors hover:border-action/60"
-                >
-                  How a week works
-                </Link>
+              {/* The 8-bit title-card offset print. It makes Anton read blocky
+                  without touching a single glyph, and the orange behind the
+                  letters is decoration at 3.56:1 rather than type, which is the
+                  only reason it is allowed there. */}
+              <h1 className="display print-offset max-w-4xl text-[clamp(2.4rem,7vw,5rem)] uppercase">
+                NFL football pools,
+                <br />
+                escrowed on-chain.
+              </h1>
+
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <p className="max-w-2xl text-lg leading-relaxed text-cream-dim sm:text-xl">
+                  Members pay their buy-in into a vault that is the pool&rsquo;s
+                  own account. Picks, results and payouts are recorded on chain.
+                  The commissioner runs the pool and never holds the money.
+                </p>
+                <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
+                  <Link href="/pools/new" className="btn btn-primary">
+                    START A POOL
+                  </Link>
+                  <Link href="#drive" className="btn btn-secondary">
+                    HOW A WEEK WORKS
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

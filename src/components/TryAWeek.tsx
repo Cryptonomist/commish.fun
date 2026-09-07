@@ -24,7 +24,6 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { TEAMS, type Team } from "@/lib/nfl";
-import { ClubBar } from "@/components/TeamButton";
 
 /* Three invented weeks. Every club wins in at least one and loses in at least
  * one, so a replay is never the round you just played, and no pick is safe
@@ -89,7 +88,7 @@ export function TryAWeek() {
   const survivedThree = finished && survived && spent.length >= 2;
 
   return (
-    <div className="rounded-2xl border border-night-3 bg-night-2/50 p-4 sm:p-6">
+    <div className="panel p-4 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="font-matrix text-[10px] leading-4 text-cream-dim">
           TRY A WEEK
@@ -138,38 +137,57 @@ export function TryAWeek() {
                 aria-label={`${t.city} ${t.name}${
                   s === "spent" ? ", already used" : ""
                 }`}
+                /* THIS GRID DUPLICATES TeamButton AND ALWAYS HAS.
+                   The state models differ (yours / won / lost / spent here,
+                   picked / spent / bye there) which is why it was forked in the
+                   first place, and the cost showed up the moment the tiles were
+                   restyled: TeamButton was rebuilt as a club-coloured sprite
+                   block and this grid silently kept the old dark cards. If a
+                   third state model ever appears, merge them instead. */
+                style={
+                  s === "open" || s === "won"
+                    ? { background: t.lead }
+                    : undefined
+                }
                 className={[
                   "relative flex h-14 w-full flex-col items-center justify-center overflow-hidden",
-                  "rounded-lg border text-center transition-colors",
+                  "text-center transition-transform duration-75",
                   s === "yours"
                     ? finished
                       ? survived
-                        ? "border-alive bg-alive text-night"
-                        : "border-out bg-out text-night"
-                      : "border-action bg-action text-night"
-                    : s === "spent"
-                      ? "border-night-3 bg-night-2/40 text-cream-dim/35"
-                      : s === "won"
-                        ? "border-alive/45 bg-alive/10 text-cream"
-                        : s === "lost"
-                          ? "border-night-3 bg-night-2/40 text-cream-dim/45"
-                          : "border-night-3 bg-night-2 text-cream hover:border-action",
+                        ? "bg-alive text-panel bevel-in"
+                        : "bg-out text-panel bevel-in"
+                      : "bg-action text-panel bevel-in"
+                    : /* Dither, never opacity. A spent team keeps a fully
+                         legible label and the checkerboard carries the state. */
+                      s === "spent" || s === "lost"
+                      ? "bg-panel dither bevel"
+                      : "bevel",
+                  s === "won" ? "ring-2 ring-inset ring-alive" : "",
                   phase === "pick" && s !== "spent"
-                    ? "cursor-pointer"
+                    ? "cursor-pointer active:translate-x-[2px] active:translate-y-[2px]"
                     : "cursor-default",
                 ].join(" ")}
               >
-                {s !== "yours" ? (
-                  <ClubBar team={t} dim={s === "spent" || s === "lost"} />
+                {s === "open" || s === "won" ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-0 bottom-0 h-[4px]"
+                    style={{ background: t.trim }}
+                  />
                 ) : null}
                 <span
-                  className={`text-xs font-bold tracking-wide ${
-                    s === "spent" ? "line-through" : ""
-                  }`}
+                  className={`font-matrix text-[10px] leading-4 ${
+                    s === "yours" ? "" : "tile-label"
+                  } ${s === "spent" ? "line-through" : ""}`}
                 >
                   {t.abbr}
                 </span>
-                <span className="text-[9px] uppercase tracking-wide opacity-60">
+                <span
+                  className={`text-[9px] uppercase tracking-wide ${
+                    s === "yours" ? "text-panel" : "tile-label"
+                  }`}
+                >
                   {t.name}
                 </span>
               </button>

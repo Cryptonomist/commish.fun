@@ -142,6 +142,12 @@
      anything on a legal page. If you cannot tell which side a string falls on,
      it is --font-sans. */
   --font-matrix: var(--font-press-start), ui-monospace, monospace;
+
+  /* ONE SHADOW, AND IT HAS NO BLUR. Nothing on this site gets a soft shadow.
+     A hard offset is how 8-bit interfaces showed depth, because a blur was not
+     available to draw, and it is the cheapest single signal in the direction. */
+  --shadow-block: 4px 4px 0 var(--color-panel);
+  --shadow-block-lift: 6px 6px 0 var(--color-panel);
 }
 
 /* Anton is a display face: it is all caps in practice and needs air between
@@ -178,11 +184,190 @@ body {
    site would be sitting on a barcode. */
 .field-ground {
   background-color: var(--color-turf);
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--color-turf) 0 96px,
-    var(--color-turf-2) 96px 192px
+  background-image:
+    /* Eight vertical mow bands across the viewport, at 1.28:1 against turf.
+       Wide enough to read as mowing rather than as stripes. */
+    repeating-linear-gradient(
+      90deg,
+      var(--color-turf) 0 12.5vw,
+      var(--color-turf-2) 12.5vw 25vw
+    ),
+    /* A five-yard chalk line every 88px, at 5.5%. Any stronger and every panel
+       on the site sits on a barcode. */
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 86px,
+      rgba(251, 253, 248, 0.055) 86px 88px
+    );
+  /* NOT `fixed`, which the direction originally called for.
+   *
+   * A fixed background promotes the whole body to its own compositing layer
+   * and repaints it on every scroll frame. It is a well known jank source, iOS
+   * Safari has historically ignored it outright, and it broke rendering badly
+   * enough here that scrolled screenshots came back as flat green while the
+   * DOM was demonstrably intact.
+   *
+   * It also loses nothing. The mow bands are vertical, so scrolling past them
+   * looks identical either way, and the five-yard lines moving with the page
+   * is the more physical answer anyway: you are moving down the field rather
+   * than watching it hold still behind a window. */
+  background-attachment: scroll;
+}
+
+/* ── THE PANEL ────────────────────────────────────────────────────────────────
+   Every surface that carries type. The field is decoration and this is where
+   words live, which is the one rule holding the whole palette together.
+
+   Borders are 2px or 3px and never 1px. A hairline on a blocky system reads as
+   a leftover from the design it replaced. */
+.panel {
+  background: var(--color-panel);
+  border: 2px solid var(--color-rule);
+  box-shadow: var(--shadow-block);
+}
+/* The CRT, the format cards, the CTA blocks: things that should look mounted
+   on the field rather than resting on it. */
+.panel-primary {
+  background: var(--color-panel);
+  border: 3px solid var(--color-chalk);
+  box-shadow: var(--shadow-block);
+}
+
+/* ── THE BEVEL ────────────────────────────────────────────────────────────────
+   Two inset shadows, and the difference between "8-bit" and "a stack of divs".
+   Light from the top left, exactly as every console UI of the era assumed. */
+.bevel {
+  box-shadow:
+    inset 2px 2px 0 rgba(251, 253, 248, 0.22),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.35);
+}
+/* Pressed, picked, or held down: the light source flips and the thing looks
+   pushed into the board. */
+.bevel-in {
+  box-shadow:
+    inset -2px -2px 0 rgba(251, 253, 248, 0.14),
+    inset 2px 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* ── THE GLYPH OUTLINE ────────────────────────────────────────────────────────
+   How chalk text survives thirty-two arbitrary club colours, and how NES sprite
+   text actually worked.
+
+   Because the outline is panel-coloured and the face is chalk, the pair the eye
+   resolves is chalk on panel at 17.92:1 whatever the tile behind it happens to
+   be. That is what lets the club lead colours in lib/nfl.ts stay exactly as
+   they are, with no re-tuning, forever. */
+.tile-label {
+  color: var(--color-chalk);
+  text-shadow:
+    1px 1px 0 var(--color-panel),
+    -1px 1px 0 var(--color-panel),
+    1px -1px 0 var(--color-panel),
+    -1px -1px 0 var(--color-panel),
+    2px 2px 0 var(--color-panel);
+}
+
+/* ── DITHER, NEVER OPACITY ────────────────────────────────────────────────────
+   A spent team, a bye, a disabled control. A 50% checkerboard over whatever is
+   underneath.
+
+   THE LABEL DOES NOT DIM. Unavailability is carried by the dither, by a
+   strikethrough, by aria-disabled and by the cursor. Signalling "disabled" by
+   dropping contrast is the accessibility mistake this exists to replace, and a
+   checkerboard is both more period-correct and more legible than 40% opacity. */
+.dither {
+  background-image:
+    linear-gradient(45deg, var(--color-panel) 25%, transparent 25%, transparent 75%, var(--color-panel) 75%),
+    linear-gradient(45deg, var(--color-panel) 25%, transparent 25%, transparent 75%, var(--color-panel) 75%);
+  background-size: 4px 4px;
+  background-position: 0 0, 2px 2px;
+}
+
+/* ── BUTTONS ──────────────────────────────────────────────────────────────────
+   48px, square, matrix face at 12px, and a hard shadow that disappears when
+   you press it while the button moves into where the shadow was. That is the
+   whole illusion and it costs three declarations. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 20px;
+  font-family: var(--font-matrix);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0;
+  border: 0;
+  cursor: pointer;
+  transition: transform 60ms steps(2), box-shadow 60ms steps(2);
+}
+.btn:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: none !important;
+}
+/* Focus is never carried by the shadow, because the shadow is already busy
+   telling you the thing is pressable. */
+.btn:focus-visible {
+  outline: 2px solid var(--color-chalk);
+  outline-offset: 3px;
+}
+.btn-primary {
+  background: var(--color-action);
+  color: var(--color-panel);          /* 6.42:1 */
+  box-shadow: 4px 4px 0 #3a1405;
+}
+.btn-secondary {
+  background: var(--color-panel);
+  color: var(--color-chalk);          /* 17.92:1 */
+  border: 2px solid var(--color-chalk);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+}
+.btn-danger {
+  background: var(--color-out);
+  color: var(--color-panel);          /* 5.29:1, and the reason out is a fill */
+  box-shadow: 4px 4px 0 #3a1405;
+}
+.btn:disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ── THE HEADLINE DOUBLE-PRINT ────────────────────────────────────────────────
+   The 8-bit title-card offset. It makes Anton read blocky without touching a
+   single glyph, and the orange is decoration at 3.56:1 rather than type, which
+   is the only reason it is allowed to sit on the field at all. */
+.print-offset {
+  color: var(--color-chalk);
+  text-shadow: 4px 4px 0 var(--color-action);
+}
+.print-offset-sm {
+  color: var(--color-chalk);
+  text-shadow: 2px 2px 0 var(--color-action);
+}
+
+/* ── SCANLINES, AND THE RESTRAINT IS THE POINT ────────────────────────────────
+   One layer, inside the CRT only, never on the page.
+
+   No barrel distortion, no chromatic aberration, no rolling sweep, no vignette.
+   Those four are the tells of a filter dropped onto a website, and any one of
+   them costs more credibility than scanlines buy. Off below 640px, where at
+   typical device pixel ratios this moirés and just looks like a dirty screen,
+   and off for anyone who asked for reduced motion or more contrast. */
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.16) 0 1px,
+    transparent 1px 3px
   );
+}
+@media (max-width: 639px), (prefers-reduced-motion: reduce), (prefers-contrast: more) {
+  .scanlines::after { display: none; }
 }
 
 /* The scoreboard marquee. The track holds two identical copies of the slate

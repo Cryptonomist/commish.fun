@@ -72,34 +72,64 @@ export function TeamButton({
       aria-label={`${team.city} ${team.name}${
         spent ? ", already used this season" : bye ? ", on a bye this week" : ""
       }`}
+      /* THE TILE IS THE CLUB'S COLOUR NOW, not a dark card with a stripe on it.
+         That only works because the label carries a panel-coloured outline, so
+         the pair the eye resolves is chalk on panel at 17.92:1 over any of the
+         thirty-two leads. Without the outline this would be a legibility
+         lottery decided by whichever club you happened to support. */
+      style={
+        picked || spent || bye ? undefined : { background: team.lead }
+      }
       className={[
         "group relative flex h-16 w-full flex-col items-center justify-center gap-0.5",
-        "overflow-hidden rounded-xl border text-center transition-colors",
+        "overflow-hidden text-center",
+        "transition-transform duration-75 active:translate-x-[2px] active:translate-y-[2px]",
         picked
-          ? "border-action bg-action text-night"
+          ? "bg-action text-panel bevel-in"
           : spent || bye
-            ? "border-night-3 bg-night-2/40 text-cream-dim/40"
-            : "border-night-3 bg-night-2 text-cream hover:border-action",
+            ? /* Dither, not opacity. The label keeps full contrast and the
+                 unavailability is carried by the checkerboard, the
+                 strikethrough and the cursor. */
+              "bg-panel dither bevel"
+            : "bevel hover:brightness-110",
         dead ? "cursor-not-allowed" : "",
       ].join(" ")}
     >
       {/* Hidden once picked, when the cell means "your pick" rather than a club
-          and one clear state beats two half-signals. */}
-      {!picked ? <ClubBar team={team} dim={spent || bye} /> : null}
+          and one clear state beats two half-signals. On an available tile the
+          lead colour is now the whole background, so the bar carries only the
+          trim, which is what stops thirty-two tiles reading as thirty-two
+          flags. */}
+      {!picked && !spent && !bye ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-[4px]"
+          style={{ background: team.trim }}
+        />
+      ) : null}
 
       {/* The abbreviation is a thing you RECOGNISE, so it wears the matrix
           face. Locked to 12px with no tracking: Press Start 2P is drawn on an
           8px em, and a fractional size or any letter-spacing breaks the grid
           it is built on. */}
       <span
-        className={`font-matrix text-[12px] leading-4 ${spent ? "line-through" : ""}`}
+        className={`font-matrix text-[12px] leading-4 ${
+          picked ? "" : "tile-label"
+        } ${spent ? "line-through" : ""}`}
       >
         {team.abbr}
       </span>
       {/* The club name is LANGUAGE, so it stays in the text face. That is the
           boundary the whole direction rests on, and it would be easiest to get
-          wrong right here, two lines apart from its opposite. */}
-      <span className="text-[10px] uppercase tracking-wide opacity-70">
+          wrong right here, two lines apart from its opposite.
+
+          Full strength, never dimmed: on a spent tile the dither carries the
+          state and the words stay readable. */}
+      <span
+        className={`text-[10px] uppercase tracking-wide ${
+          picked ? "text-panel" : "tile-label"
+        }`}
+      >
         {pending ? "sending…" : bye ? "BYE" : team.name}
       </span>
     </button>
