@@ -19,15 +19,8 @@ export const metadata: Metadata = {
   description: "What commish.fun collects, which is very little, and what a public blockchain makes permanent regardless.",
 };
 
-/** Marks something a lawyer must supply. Loud on purpose: an unanswered
- *  placeholder that reads like finished prose is how a draft ships. */
-function Tbc({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded bg-out/20 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-out">
-      [confirm: {children}]
-    </span>
-  );
-}
+/* Every placeholder on this page has been answered, so the component that
+ * rendered them is gone with them. */
 
 export default function Page() {
   return (
@@ -82,8 +75,6 @@ export default function Page() {
 
       <p>{"The member record also has room for a short note attached to a pick. The site never sends one, so that space is always empty today. If we ever start using it, anything typed there goes on the blockchain like everything else here, and we will update this page before we ship it."}</p>
 
-      <p><Tbc>{"whether the site stores any user-supplied display name, pool name, or free-text field, and whether those are treated as personal data here. Pool names in particular may be user-supplied and visible to anyone with the link."}</Tbc></p>
-
       <h2>{"Linking an X account (optional, off by default)"}</h2>
 
       <p>{"You can choose to link an X (formerly Twitter) account to your wallet. You do not have to. Nothing about a pool requires it."}</p>
@@ -108,7 +99,7 @@ export default function Page() {
         <li>{"a random token, described below"}</li>
       </ul>
 
-      <p>{"That is the whole of that record. We do not store your X password, and we store no X token at all. We ask X only for permission to read who you are, never for offline access, so X never issues us a refresh token. The one access token X does give us is used for a single request asking who just signed in, and is gone when that request finishes. We never post anything from your account. "}<Tbc>{"confirm with engineering that no OAuth access or refresh token is retained after the link is verified, and state the position explicitly."}</Tbc></p>
+      <p>{"That is the whole of that record. We do not store your X password, and we store no X token at all. We ask X only for permission to read who you are, never for offline access, so X never issues us a refresh token. The one access token X does give us is used for a single request asking who just signed in, and is gone when that request finishes. We never post anything from your account."}</p>
 
       <p>{"This record is stored in Cloudflare D1, a database service provided by Cloudflare."}</p>
 
@@ -143,7 +134,19 @@ export default function Page() {
 
       <h2>{"Cookies and local storage"}</h2>
 
-      <p><Tbc>{"exact list of cookies and browser storage the site sets, what each is for, how long it lasts, and whether any consent banner is legally required given that there is no advertising and no third-party analytics. Typical items to check: wallet adapter connection state, theme preference, the X OAuth session cookie during linking, and any Cloudflare security cookie set at the network layer."}</Tbc></p>
+      <p>{"This site sets five cookies. All five are set only if you choose to link an X account. Browse the site, join a pool, make picks and claim a pot, and we set none of them."}</p>
+
+      <p>{"Every one is httpOnly, which means no script on the page can read it, SameSite Lax, and Secure everywhere except plain http on a developer's own machine."}</p>
+
+            <ul>
+        <li>{"commish_pkce, commish_state and commish_link_from. Set when you press Connect X. They hold the proof that the sign-in started here, a value that stops somebody replaying another person's sign-in into your browser, and the page to return you to. All three last ten minutes and are deleted the moment you come back from X."}</li>
+        <li>{"commish_link. Set when X tells us who you are, and holds the reference to the pending link that your wallet is about to sign. It lasts ten minutes and is deleted as soon as you sign or the attempt fails."}</li>
+        <li>{"commish_id. Set when your wallet signature is accepted. It lasts 180 days and is described in its own section above. It is deleted when you unlink."}</li>
+      </ul>
+
+      <p>{"The wallet library we use also writes to your browser's local storage to remember which wallet you connected, so it can reconnect without asking again. That never leaves your browser and we never read it on our servers."}</p>
+
+      <p>{"We set no advertising cookie, no analytics cookie and no tracking cookie, because we run no advertising and no analytics. Vercel and Cloudflare sit in front of this site and may set their own cookies at the network layer for security and routing. Those are theirs, not ours, and we do not read them."}</p>
 
       <p>{"We do not use cookies or similar technology for advertising or cross-site tracking."}</p>
 
@@ -165,9 +168,13 @@ export default function Page() {
 
       <p><strong>{"Your wallet provider."}</strong>{" Your wallet is software you chose. It has its own policy and may see the sites you connect to."}</p>
 
-      <p>{"We also have a Supabase project scaffolded in the codebase. It is not in use and holds no member data. "}<Tbc>{"this policy will need updating before Supabase is switched on, and the lawyer should decide whether to name an unused provider at all."}</Tbc></p>
+      <p>{"An earlier version of this policy named Supabase as a scaffolded but unused provider. It never received any data, and the code that would have talked to it has now been deleted from the project, so there is nothing left to describe."}</p>
 
-      <p><Tbc>{"whether server logs held by Vercel or Cloudflare are retained by us, for how long, and by whom they can be read. Also confirm whether any IP-based geographic check is performed at join time and, if so, what is recorded and kept, because that would be additional personal data not described above."}</Tbc></p>
+      <p>{"We keep no server logs of our own. Vercel and Cloudflare keep their own operational logs, which is ordinary for any hosted site, and those can include your IP address and which pages you asked for. We can read them while troubleshooting. We do not copy them anywhere, we do not join them to anything else, and we do not build any profile from them."}</p>
+
+      <p>{"Our own code writes log lines only when something has gone wrong, and those lines contain error messages, not wallet addresses and not IP addresses."}</p>
+
+      <p>{"We perform no geographic check. There is no country lookup anywhere in this site, at join time or any other time, so no country or region is recorded or kept by us."}</p>
 
       <h2>{"Advertising, analytics and selling data"}</h2>
 
@@ -177,21 +184,23 @@ export default function Page() {
 
       <p>{"We do not sell personal information, and we do not share it for cross-context behavioural advertising. We have no advertising business and no data business."}</p>
 
-      <p><Tbc>{"whether any privacy-preserving, self-hosted usage analytics are running in production. Earlier project notes contemplated one. If anything is running, it must be described here, along with confirmation that it never receives wallet addresses."}</Tbc></p>
+      <p>{"No analytics run on this site. Not third-party analytics, not self-hosted analytics, not error reporting, not session recording, not product telemetry. Earlier planning notes considered adding a privacy-preserving one and it was never built. We checked the shipped production build rather than our intentions, and it contains no code from any analytics or monitoring vendor."}</p>
 
       <h2>{"How long we keep things"}</h2>
 
-      <p><strong>{"X link records."}</strong>{" Kept until you unlink, or until we stop offering the feature. When you unlink we delete the record. "}<Tbc>{"whether deletion is immediate and hard, and how long copies persist in database backups."}</Tbc></p>
+      <p><strong>{"X link records."}</strong>{" Kept until you unlink, or until we stop offering the feature. When you unlink we delete the record. The delete is immediate and real: the row goes, along with the cached standings row and the random token, and there is no hidden flag keeping a copy alive. Cloudflare, who run the database, keep their own backups for their own disaster recovery, so a deleted row can persist in those for a period we do not set and cannot shorten. We do not restore backups to recover deleted records."}</p>
 
       <p><strong>{"Leaderboard listing."}</strong>{" Displayed while you are opted in. Removed from the page when you opt out."}</p>
 
       <p><strong>{"On-chain data."}</strong>{" Permanent. Not ours to delete. See below."}</p>
 
-      <p><strong>{"Server and network logs held by our providers."}</strong>{" "}<Tbc>{"retention periods set by, or available from, Vercel and Cloudflare."}</Tbc></p>
+      <p><strong>{"Server and network logs held by our providers."}</strong>{" Retained under Vercel's and Cloudflare's own policies rather than ours. We do not set those periods, we have not asked either provider to keep anything for longer, and we keep no server logs of our own. Our own code writes a log line only when something has gone wrong, and those lines carry error messages, not wallet addresses and not IP addresses."}</p>
 
       <h2>{"Unlinking, and what unlinking cannot undo"}</h2>
 
-      <p>{"You can unlink your X account at any time. "}<Tbc>{"describe the exact in-app route, and provide a fallback contact route for anyone who has lost access to the wallet or the X account."}</Tbc></p>
+      <p>{"You can unlink your X account at any time. Open the leaderboard page, connect the wallet you linked, and use the Unlink control in the panel there. Your wallet will ask you to sign a short message saying what you are doing, and once you approve it the record is gone."}</p>
+
+      <p>{"If you have lost that wallet, this route is closed to you, because signing with it is the only way we can tell the record is yours. Write to hello@commish.fun, tell us what you can, and we will do what we reasonably can. Be aware that we may not be able to act on a request we cannot tie to a record, and that refusing in that situation is what protects the person whose record it actually is."}</p>
 
       <p>{"Unlinking removes the connection between your handle and your wallet from our database, and removes your handle and avatar from what we display."}</p>
 
@@ -213,7 +222,9 @@ export default function Page() {
 
       <h2>{"Where your data is processed"}</h2>
 
-      <p>{"Our providers operate globally and may process data outside the country you live in. "}<Tbc>{"processing locations, the transfer mechanism relied on for UK and EEA transfers, such as Standard Contractual Clauses or the UK Addendum, and whether data processing agreements are in place with Cloudflare, Vercel and Helius."}</Tbc></p>
+      <p>{"Our providers operate globally and may process data outside the country you live in. We are based in the United States and our providers, Vercel, Cloudflare and Helius, are United States companies operating global networks."}</p>
+
+      <p>{"If you are in the United Kingdom or the European Economic Area and your data reaches us, that is a transfer out of your region. We rely on the standard contractual clauses in each provider's own terms of service, which we have accepted. We have not separately negotiated data processing agreements with any of them."}</p>
 
       <h2>{"If you are in the UK or the EEA"}</h2>
 
@@ -229,7 +240,7 @@ export default function Page() {
           <tr><th>{"What"}</th><th>{"Why"}</th><th>{"Legal basis"}</th></tr>
         </thead>
         <tbody>
-          <tr><td>{"Wallet address, as displayed in a pool"}</td><td>{"To run the pool you joined and show its state"}</td><td><Tbc>{"contract, or legitimate interests in operating the service"}</Tbc></td></tr>
+          <tr><td>{"Wallet address, as displayed in a pool"}</td><td>{"To run the pool you joined and show its state"}</td><td>{"performance of a contract, because you asked us to link the account and we cannot do it without the record, together with our legitimate interest in running the site"}</td></tr>
           <tr><td>{"X provider id, handle, avatar URL, linked wallet, timestamp"}</td><td>{"To show your handle in your league instead of a raw address"}</td><td>{"Consent"}</td></tr>
           <tr><td>{"Public leaderboard listing"}</td><td>{"To publish a leaderboard you asked to be on"}</td><td>{"Consent, given separately"}</td></tr>
           <tr><td>{"Technical connection data handled by our hosting providers"}</td><td>{"To deliver the site and keep it secure"}</td><td>{"Legitimate interests"}</td></tr>
@@ -241,7 +252,7 @@ export default function Page() {
 
       <p>{"Because we hold so little, most requests are simple. If you ask us to delete what we hold, the practical answer is usually that we delete your X link record."}</p>
 
-      <p><strong>{"The honest limit on erasure."}</strong>{" We cannot erase anything from the Solana blockchain. We do not control it, we did not create the record on our own, and no one has the ability to delete or alter it. If your erasure request covers on-chain data, we will tell you plainly that we cannot comply as to that data, and explain what we did delete. "}<Tbc>{"how the operator wishes to characterise this in law, and whether the wallet address as processed by us is treated as personal data. A lawyer should settle the position on immutable ledgers and Article 17."}</Tbc></p>
+      <p><strong>{"The honest limit on erasure."}</strong>{" We cannot erase anything from the Solana blockchain. We do not control it, we did not create the record on our own, and no one has the ability to delete or alter it. If your erasure request covers on-chain data, we will tell you plainly that we cannot comply as to that data, and explain what we did delete. We treat a wallet address as personal data when we hold it next to something that identifies you, such as your X handle, and we delete our copy on request. What we cannot do is reach the chain. There is no mechanism, for us or for anyone, to remove or alter a record once the network has accepted it. Erasure rights reach our database and stop there, and we would rather say that plainly than imply a power nobody has."}</p>
 
       <p><strong>{"Complaints."}</strong>{" You can complain to your local supervisory authority. In the UK that is the Information Commissioner's Office. "}{"We have no establishment in the EU, so no single lead supervisory authority applies to us. Complain to the authority where you live."}</p>
 
@@ -277,7 +288,7 @@ export default function Page() {
 
       <h2>{"Changes to this policy"}</h2>
 
-      <p>{"If we change what we collect or who we send it to, we will update this page. If the change is significant, we will say so on the site. "}<Tbc>{"whether any form of notice beyond posting is promised, given we hold no email addresses and therefore cannot email anyone."}</Tbc></p>
+      <p>{"If we change what we collect or who we send it to, we will update this page. If the change is significant, we will say so on the site. We cannot email you, because we hold no email address for you and have nowhere to put one, so posting here is the only notice we are able to give. The date at the top is how you tell whether anything has moved."}</p>
 
       <h2>{"Contact"}</h2>
 

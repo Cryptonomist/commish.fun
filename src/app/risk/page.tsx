@@ -19,15 +19,8 @@ export const metadata: Metadata = {
   description: "The honest list: unaudited code, a single upgrade key, and how you can lose everything you put in.",
 };
 
-/** Marks something a lawyer must supply. Loud on purpose: an unanswered
- *  placeholder that reads like finished prose is how a draft ships. */
-function Tbc({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded bg-out/20 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-out">
-      [confirm: {children}]
-    </span>
-  );
-}
+/* Every placeholder on this page has been answered, so the component that
+ * rendered them is gone with them. */
 
 export default function Page() {
   return (
@@ -50,7 +43,7 @@ export default function Page() {
 
       <p>{"An audit is not a guarantee of safety, but the absence of one means an entire class of mistakes has never been looked for by anyone independent. Bugs in the program could lock funds in a vault forever, send them to the wrong person, or let someone take funds they are not entitled to. We do not know of such a bug. That is not the same as saying there is not one."}</p>
 
-      <p><Tbc>{"whether we want to commit on this page to a specific plan or date for an audit, or say nothing beyond the fact that there has not been one"}</Tbc></p>
+      <p>{"There has been no audit and none is scheduled. We are not promising one and we are not naming a date, because a date we might miss is worth less to you than a fact you can rely on. If that changes we will say so here."}</p>
 
       <h2>{"We currently hold a single key that can replace the program code"}</h2>
 
@@ -72,7 +65,9 @@ export default function Page() {
 
       <p>{"We are not promising to change this. There is a decision to make about that key and it belongs after an audit rather than before one, because the audit changes which answer is right. Keeping it means someone can fix a bug and you are trusting us not to misuse it. Discarding it means the program is frozen exactly as written, including any bug an audit did not catch, and nobody can ever repair it. Sharing it across several holders sits between those. We have not decided, no option is promised, and no date is attached. Treat the single key as the live state of the world unless and until we publish, verifiably, that it has changed."}</p>
 
-      <p><Tbc>{"whether we should publish the current upgrade authority address on this page so a reader can check the on-chain state for themselves, and whether the page should name the decision about that key rather than leaving it open"}</Tbc></p>
+      <p>{"You do not have to take our word for any of this. The program is deployed on Solana devnet at Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa, its program data account is 6dMgvhEnxv8QvHWffRTDcB5F5AUe3t9WGMUJLtUUzR4h, and the upgrade authority is HoYb6BCszJUY89WhKt2itTpxtLHMJKuoEwXwQPdbhtVu."}</p>
+
+      <p>{"Look those up in any Solana explorer, or run solana program show on the first address. If the authority ever changes, or is removed so that the program can never be altered again, the chain will show that before we do."}</p>
 
       <h2>{"Smart contract risk more generally"}</h2>
 
@@ -92,7 +87,7 @@ export default function Page() {
 
       <p>{"If and when we deploy to Solana mainnet, real USDC will be involved and every risk on this page becomes a risk to real money. We will say clearly on the site when that happens. Do not assume the code will have been audited by then, or that the upgrade key will have moved, unless we say so specifically."}</p>
 
-      <p><Tbc>{"whether we want to commit here to giving notice before a mainnet launch, and how much"}</Tbc></p>
+      <p>{"We are not promising a notice period before a mainnet launch. What we will do is keep this page accurate about which network the program is on, so that the page you are reading always tells you whether the money at stake is real."}</p>
 
       <h2>{"You can lose everything you put in"}</h2>
 
@@ -131,7 +126,11 @@ export default function Page() {
 
       <p>{"Retrying costs you time you may not have. A transaction that fails, or that lands one second late, is the same as not having acted."}</p>
 
-      <p><Tbc>{"whether members can interact with the program directly, without our website, if commish.fun is unavailable, and if so whether we want to document how here"}</Tbc></p>
+      <p>{"Yes, and this is the most important thing on this page. Your money sits in a Solana program, not on our servers. If commish.fun is slow, broken, gone, or refusing to serve you, the program keeps working and your funds stay reachable."}</p>
+
+      <p>{"Anyone with a wallet and any Solana node can send that program instructions. Nothing requires our signature or our permission. Claiming a pot, taking a refund after the deadline, settling a member and advancing a week can each be triggered by anybody, and the program checks the rules itself rather than asking us."}</p>
+
+      <p>{"Every address involved is worked out from public information rather than handed to you by us. The pool address comes from the commissioner's wallet and the pool's number, your member address comes from the pool and your wallet, and the vault is the pool's own token account. The interface description the program publishes is in our public repository, so a developer can build the same transactions this site builds."}</p>
 
       <h2>{"Deadlines are enforced by the program, and there is no grace period"}</h2>
 
@@ -169,7 +168,13 @@ export default function Page() {
 
       <p>{"Only join pools run by people you already know and are willing to trust with money."}</p>
 
-      <p><Tbc>{"the exact veto threshold and the exact window during which members can veto, so this page matches what the program actually enforces"}</Tbc></p>
+      <p>{"A veto needs a strict majority. After each vote the program checks whether twice the number of vetoes is greater than the number of members entitled to vote. The moment that is true, the posting is struck down. In practice that is three of five, three of four, two of three, and two of two."}</p>
+
+      <p>{"Who counts depends on the pool. For a week of results it is the members still alive, and members already eliminated cannot vote. For a league payout sheet it is the members who have paid."}</p>
+
+      <p>{"Each member gets one vote per posting. A second vote on the same posting is refused. If a posting is struck down and the commissioner posts again, that is a new posting and everybody votes again, including the people who struck down the first one."}</p>
+
+      <p>{"The window opens the moment results are posted and runs for the dispute period the pool was created with. The commissioner cannot finalise a result before that period has elapsed."}</p>
 
       <h2>{"A pool can deadlock"}</h2>
 
@@ -189,11 +194,15 @@ export default function Page() {
 
       <h2>{"Fees"}</h2>
 
-      <p>{"Season one charges a zero platform fee. The fee mechanism exists in the program and is currently set to zero. Being precise about \"capped\", because it matters: each pool records an absolute ceiling in tokens chosen when the pool is created, and the fee can never exceed that or the amount actually in the vault. The percentage rate itself is only validated against a 100 percent ceiling in the code, so the protection that matters is the per pool absolute cap and the zero rate, not a low maximum rate. "}<Tbc>{"whether to add a hard rate ceiling in a future program version and say so here"}</Tbc></p>
+      <p>{"Season one charges a zero platform fee. The fee mechanism exists in the program and is currently set to zero. Being precise about \"capped\", because it matters: each pool records an absolute ceiling in tokens chosen when the pool is created, and the fee can never exceed that or the amount actually in the vault. The percentage rate itself is only validated against a 100 percent ceiling in the code, so the protection that matters is the per pool absolute cap and the zero rate, not a low maximum rate. We are not promising a hard rate ceiling in a future version of the program. If one is ever added, this page will say so and will state the number."}</p>
 
       <p>{"Because a fee mechanism exists and can be configured, and because the upgrade authority can deploy new code, you should not treat a zero fee as permanent or as a guarantee. Separately, every transaction you send costs Solana network fees in SOL, which are paid to the network and not to us."}</p>
 
-      <p><Tbc>{"the fee cap written into the program, and whether we want to state it numerically here and commit to how much notice we would give before changing the fee"}</Tbc></p>
+      <p>{"Being precise about this, because the word cap can be read more reassuringly than it deserves. Every pool records its own fee rate and its own absolute ceiling in tokens at the moment it is created, and those two numbers are fixed for that pool for its whole life. The fee taken can never exceed the ceiling recorded on the pool, and it can never exceed what is actually in the vault."}</p>
+
+      <p>{"The protection that actually binds you is that pair of numbers being copied at creation, plus the fact that the rate is currently zero. The program itself only refuses a rate above one hundred percent, so do not read the existence of a ceiling as meaning the ceiling is low."}</p>
+
+      <p>{"We can change the defaults for pools created in the future. We cannot change them for a pool that already exists, and that is enforced by the program rather than promised by us. The deal you joined is the deal that pays out."}</p>
 
       <h2>{"Legality is your problem, not ours"}</h2>
 
@@ -223,19 +232,27 @@ export default function Page() {
 
       <p>{"Commish is an early product run on a small scale. We may change it, break it, or stop running the website, with or without notice. Funds already in a vault are governed by the program rather than by the website, but if the site is gone you may find it harder to interact with your pool, and deadlines will keep running regardless."}</p>
 
-      <p><Tbc>{"what, if anything, we are willing to commit to on wind-down, for example publishing the source and instructions for interacting with the program directly"}</Tbc></p>
+      <p>{"If we stop running this site, we will publish the program's source code and instructions for calling it directly, so that anyone with funds in a pool can reach them without us."}</p>
+
+      <p>{"That is a cheap promise for us to make, and we would rather say so than dress it up. The program is already public, the source is already in a public repository, and the instructions describe something that already works today. We are committing to keep a door open, not to build one."}</p>
 
       <h2>{"No warranty, and limits on what we owe you"}</h2>
 
       <p>{"The software is provided as it is, with no warranty of any kind, and no promise that it is fit for any particular purpose or free of defects."}</p>
 
-      <p><Tbc>{"the disclaimer of warranties and limitation of liability wording, the liability cap, the operating entity's legal name, governing law and jurisdiction, and whether any of these limits are enforceable against consumers in the places our users actually live"}</Tbc></p>
+      <p>{"Commish is provided as it is and as it is available, with no warranty of any kind, express or implied. We do not warrant that the software is free of defects, that it will always be reachable, or that it is fit for any particular purpose. It has not been audited."}</p>
+
+      <p>{"To the fullest extent the law allows, HoldFi LLC is not liable for indirect, incidental, special, consequential or exemplary losses, and our total liability for all claims connected with the service is limited to one hundred United States dollars. That is a small number and we would rather you saw it now than found it later. It is the reason the rest of this page exists: the protection you are actually relying on is the program's code and the fact that we cannot reach your money, not a promise from us to make you whole."}</p>
+
+      <p>{"Some places do not allow those exclusions. If you live somewhere that gives you rights which cannot be signed away, you keep them, and where a limit here conflicts with such a right the right wins."}</p>
+
+      <p>{"Commish is operated by HoldFi LLC, a Texas limited liability company, whose registered agent is at 5900 Balcones Dr, STE 100, Austin, TX 78731. This page is governed by the laws of the State of Texas, and disputes go to the state and federal courts sitting in Travis County."}</p>
 
       <h2>{"Changes to this page"}</h2>
 
       <p>{"We will update this page as the facts change, in particular if the program is audited, if anything changes about the upgrade authority, or if we deploy to mainnet. The version you agreed to when you joined a pool is not preserved anywhere on-chain, so check back."}</p>
 
-      <p><Tbc>{"whether we notify users of changes to this page, how, and whether continued use counts as acceptance"}</Tbc></p>
+      <p>{"We will post changes to this page and update the date at the top. We hold no email address for you, so we cannot notify you any other way. Continuing to use the site after a change means you accept it, and the honest caveat is that this only works if you look, which is why the date is at the top."}</p>
 
       <h2>{"Questions"}</h2>
 

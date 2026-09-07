@@ -19,15 +19,8 @@ export const metadata: Metadata = {
   description: "The terms for using commish.fun. We are software and escrow, not a party to your pool.",
 };
 
-/** Marks something a lawyer must supply. Loud on purpose: an unanswered
- *  placeholder that reads like finished prose is how a draft ships. */
-function Tbc({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded bg-out/20 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-out">
-      [confirm: {children}]
-    </span>
-  );
-}
+/* Every placeholder on this page has been answered, so the component that
+ * rendered them is gone with them. */
 
 export default function Page() {
   return (
@@ -64,11 +57,11 @@ export default function Page() {
 
       <p>{"We are not a party to any pool. The arrangement is between the members of that pool and their commissioner. We do not organise pools, promote them, set their rules or decide who joins."}</p>
 
-      <p>{"We take no share of any pot in season one: the platform fee is set to zero. A fee mechanism exists in the program and is described under Fees below, so if that ever changes this sentence changes with it. "}<Tbc>{"whether counsel wants a commitment here not to raise the fee on pools that already exist, which the program already enforces"}</Tbc></p>
+      <p>{"We take no share of any pot in season one: the platform fee is set to zero. A fee mechanism exists in the program and is described under Fees below, so if that ever changes this sentence changes with it. "}{"We do commit to that, and so does the program. A pool records its own fee rate and its own ceiling at the moment it is created, and neither can be changed afterwards by us or by anyone. A fee we set in future reaches only pools created after we set it. The deal you joined is the deal that pays out."}</p>
 
       <p>{"We never receive, hold or control your funds at any point. Money moves from a member's wallet into an account owned by the pool's own program address, and out again only by the paths listed below. It does not pass through us, and there is no moment at which we could stop it, take it or send it somewhere else."}</p>
 
-      <p>{"The word \"escrow\" on this site describes what the program's code does. We are describing our conduct, not claiming any particular regulatory status for ourselves. "}<Tbc>{"counsel to settle the regulatory characterisation in each jurisdiction where the service is offered, and whether this section should say more or less"}</Tbc></p>
+      <p>{"The word \"escrow\" on this site describes what the program's code does. We are describing our conduct, not claiming any particular regulatory status for ourselves. "}{"To be explicit about what we are not: we are not a bank, a money transmitter, a money services business, a broker, a custodian, a trustee or a payment processor, and nothing in these terms should be read as us accepting any of those roles. We never hold your funds at any point. Whether a particular regulator in a particular place agrees with that characterisation is not something we can settle on your behalf, and if you are running a pool at a size where it matters, take your own advice."}</p>
 
       <p>{"We do not give legal, tax, financial or investment advice."}</p>
 
@@ -84,7 +77,7 @@ export default function Page() {
 
       <p>{"You must not use Commish on behalf of anyone who could not use it themselves, and you must not let a person under that age use a wallet you control to join a pool."}</p>
 
-      <p>{"We do not operate accounts and cannot verify anyone's age. Enforcement of this section relies on you being honest, and on commissioners knowing the people they invite "}<Tbc>{"whether counsel wants an explicit age attestation checkbox at pool join, and whether any state requires 21"}</Tbc>{"."}</p>
+      <p>{"We do not operate accounts and cannot verify anyone's age. Enforcement of this section relies on you being honest, and on commissioners knowing the people they invite "}{". We have not put an age tick box on the join screen. It would record a claim rather than a fact, and we would rather not create the impression that we verified something we have no way to verify. Some places set the age for this kind of pool higher than eighteen. Knowing the rule where you live is your responsibility, and a commissioner inviting people is taking on the same responsibility for the pool they run"}{"."}</p>
 
       <h2>{"The law where you are"}</h2>
 
@@ -94,7 +87,7 @@ export default function Page() {
 
       <p>{"By using Commish you confirm that doing so is lawful for you where you are, and you accept the consequences if it is not."}</p>
 
-      <p>{"You must not use Commish if you are located in, ordinarily resident in, or acting on behalf of a person in a jurisdiction subject to comprehensive sanctions, or if you are a person subject to sanctions "}<Tbc>{"which sanctions lists apply, whether any screening or geo-blocking is required at the front end, and how that squares with a permissionless program we cannot gate"}</Tbc>{"."}</p>
+      <p>{"You must not use Commish if you are located in, ordinarily resident in, or acting on behalf of a person in a jurisdiction subject to comprehensive sanctions, or if you are a person subject to sanctions "}{" We should be straight about what stands behind that. We run no sanctions screening and no country blocking, and we could not enforce either if we wanted to: the program is a public Solana program that anyone can call directly, without this website and without our permission. That paragraph is a rule you are agreeing to, not a control we operate."}{"."}</p>
 
       <h2>{"Wallets and transactions"}</h2>
 
@@ -123,7 +116,7 @@ export default function Page() {
 
       <p>{"There is no administrative withdrawal path, no sweep and no emergency route in the program as deployed. Using the site, we cannot freeze, reverse, seize, redirect or recover funds in a vault, for anyone, for any reason."}</p>
 
-      <p>{"That statement has one important limit, and we would rather state it than let you discover it. The program's upgrade authority is currently a single key that we hold. While that is true, we are not powerless over the code in the way the paragraph above might suggest: new program code could in principle be deployed, and new code could behave differently. We are not promising to change that. Once the program has been audited we will decide what happens to the key, and the honest options are to keep it, to discard it so that the program can never be changed again, or to share it. We have not chosen, there is no date, and you should treat the single key as the state of the world rather than as a stage we are passing through. See the Risks page, which spells out what that key could do in the worst case. "}<Tbc>{"how counsel wants us to describe our position if we are served with an order to use a key we hold"}</Tbc></p>
+      <p>{"That statement has one important limit, and we would rather state it than let you discover it. The program's upgrade authority is currently a single key that we hold. While that is true, we are not powerless over the code in the way the paragraph above might suggest: new program code could in principle be deployed, and new code could behave differently. We are not promising to change that. Once the program has been audited we will decide what happens to the key, and the honest options are to keep it, to discard it so that the program can never be changed again, or to share it. We have not chosen, there is no date, and you should treat the single key as the state of the world rather than as a stage we are passing through. See the Risks page, which spells out what that key could do in the worst case. "}{" If we were ever ordered by a court to use that key, we would comply with a valid order, and we would say publicly that we had been ordered to do something unless the order forbade us from saying so. We would rather you knew that now than assumed otherwise."}</p>
 
       <h2>{"Refunds"}</h2>
 
@@ -182,7 +175,7 @@ export default function Page() {
 
       <p>{"The mechanism exists in the code so that this is verifiable on chain rather than merely asserted. A fee rate and an absolute cap are recorded on each pool when it is created and cannot be changed for that pool afterwards. Pools with a zero buy-in and league pools record no fee at all and can never be charged one."}</p>
 
-      <p>{"We may set a non-zero default for pools created in future. Any such change applies only to pools created after it, never to a pool already running. We will state the current default on the site before you create a pool "}<Tbc>{"the code currently validates the fee rate only against a 100 percent ceiling; counsel and engineering to agree a real maximum, and whether these terms should state a binding cap"}</Tbc>{"."}</p>
+      <p>{"We may set a non-zero default for pools created in future. Any such change applies only to pools created after it, never to a pool already running. We will state the current default on the site before you create a pool "}{" Being precise about the word cap, because it can be read more reassuringly than it deserves. Each pool records an absolute ceiling in tokens alongside the rate, and the fee can never exceed that ceiling or the amount actually in the vault. The program itself only refuses a rate above one hundred percent, so the protection that binds you is the per-pool ceiling and the zero rate, not a low maximum written into the code. We do not commit here to adding a lower ceiling in a future version."}{"."}</p>
 
       <h2>{"Risks you accept"}</h2>
 
@@ -209,7 +202,7 @@ export default function Page() {
       <ul>
         <li>{"use Commish where doing so is unlawful for you;"}</li>
         <li>{"use Commish to launder money, to move the proceeds of crime, to evade sanctions or to finance anything unlawful;"}</li>
-        <li>{"run a pool open to strangers, advertise a pool publicly, or use Commish to operate a commercial pool-running business "}<Tbc>{"counsel to confirm how firmly to draw this line and whether it should be a warranty rather than a prohibition"}</Tbc>{";"}</li>
+        <li>{"run a pool open to strangers, advertise a pool publicly, or use Commish to operate a commercial pool-running business "}{". This is a rule you are agreeing to, not something we can detect or prevent"}{";"}</li>
         <li>{"collect any charge from members outside the program, in connection with a pool you run, without disclosing it to every member before they join;"}</li>
         <li>{"impersonate anyone, or misrepresent who controls a wallet or an X account;"}</li>
         <li>{"attack, probe, overload, scrape at volume, reverse engineer for the purpose of circumventing, or otherwise interfere with the site or its interfaces;"}</li>
@@ -245,7 +238,7 @@ export default function Page() {
 
       <p>{"We do not warrant that the site or the program will be uninterrupted, error free, secure, or free of defects, that results shown will be accurate or timely, that third party data will be correct, or that any pool will reach a correct or fair outcome."}</p>
 
-      <p>{"Some jurisdictions do not allow the exclusion of certain warranties, and nothing here removes a right you have that cannot lawfully be excluded "}<Tbc>{"consumer law carve outs for the jurisdictions we are willing to serve"}</Tbc>{"."}</p>
+      <p>{"Some jurisdictions do not allow the exclusion of certain warranties, and nothing here removes a right you have that cannot lawfully be excluded "}{". If you live somewhere that gives you rights which cannot be signed away, you keep them, and where a limit in these terms conflicts with such a right the right wins and the rest of these terms carry on unaffected"}{"."}</p>
 
       <h2>{"Limitation of liability"}</h2>
 
@@ -258,13 +251,13 @@ export default function Page() {
         <li>{"we are not liable for indirect, incidental, special, consequential or punitive damages."}</li>
       </ul>
 
-      <p>{"Our total liability to you for all claims connected with the service is limited to "}<Tbc>{"liability cap. Note the difficulty: we charge a zero fee in season one, so a \"fees paid in the last 12 months\" cap is a cap of zero. Counsel to decide whether a nominal figure is more defensible"}</Tbc>{"."}</p>
+      <p>{"Our total liability to you for all claims connected with the service is limited to "}{"one hundred United States dollars. We have picked a number rather than tying it to fees paid, because we charge no fee in season one and a limit of zero would be no limit at all, only an argument waiting to happen"}{"."}</p>
 
       <p>{"Nothing in these terms limits liability for fraud, fraudulent misrepresentation, death or personal injury caused by negligence, or anything else that cannot lawfully be limited."}</p>
 
       <h2>{"Indemnity"}</h2>
 
-      <p>{"You agree to indemnify us against claims, losses and reasonable costs arising from your use of the service in breach of these terms, from your use of it where it is unlawful for you, or from a pool you run "}<Tbc>{"scope, and whether an indemnity is appropriate for a consumer facing service in the target jurisdictions"}</Tbc>{"."}</p>
+      <p>{"You agree to indemnify us against claims, losses and reasonable costs arising from your use of the service in breach of these terms, from your use of it where it is unlawful for you, or from a pool you run "}{". This covers claims brought by somebody else because of what you did. It does not apply to a dispute between you and us, and it does not apply where the claim arises from our own failure"}{"."}</p>
 
       <h2>{"Changes to these terms"}</h2>
 

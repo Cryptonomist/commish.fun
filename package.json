@@ -16,7 +16,6 @@
     "@solana/wallet-adapter-react": "^0.15.39",
     "@solana/wallet-adapter-react-ui": "^0.9.39",
     "@solana/web3.js": "^1.98.4",
-    "@supabase/supabase-js": "^2.114.0",
     "@tanstack/react-query": "^5.102.8",
     "bn.js": "^5.2.5",
     "next": "15.5.25",
