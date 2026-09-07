@@ -145,7 +145,13 @@ export default async function Home() {
               cream-dim at 4.91:1 over a moving background, which is legal by a
               hair and genuinely hard to read. The copy sits on a panel now and
               the field is the thing the panel is mounted on. */}
-          <div className="relative py-10 sm:py-14">
+          {/* THE FIELD IS AS TALL AS THE WORDS ON IT, which is what makes this
+              padding a proportion decision rather than a spacing one. The turf
+              is `absolute inset-0` on this box, so every pixel the copy grows
+              is a pixel of extra grass. At py-14 the box measured 514px and
+              its far end sat 49px below the fold on a 1366x768 laptop once
+              chrome and a taskbar had taken their cut. */}
+          <div className="relative py-8 sm:py-10">
             {/* Outside the panel. The markings are the field, not a texture
                 behind the words. */}
             <FieldMarkings />
@@ -171,7 +177,7 @@ export default async function Home() {
                 from sm upward: on a phone the field is barely wider than the
                 text and giving away a tenth of it costs more than the
                 alignment is worth. */}
-            <div className="relative flex flex-col gap-7 sm:pl-[8.333%]">
+            <div className="relative flex flex-col gap-5 sm:pl-[8.333%]">
               <span className="inline-flex w-fit items-center gap-2.5 border-2 border-chalk bg-panel px-4 py-2 font-matrix text-[10px] leading-4">
                 <Laces size={13} className="text-action" />
                 <span className="text-cream-dim">WEEK 1 LOCKS IN</span>
@@ -187,11 +193,20 @@ export default async function Home() {
                   the two are said outright, in the order people meet them.
 
                   Three lines rather than two because the display face is a
-                  bitmap one and sets about 0.72em per character. At the 3rem
-                  ceiling that is roughly 35px a character, so a line has about
-                  twenty-five before it runs past max-w-4xl — and the shorter
-                  declaratives read better than one sentence wrapped badly. */}
-              <h1 className="display field-display max-w-4xl text-[clamp(1.5rem,4.4vw,3rem)] uppercase">
+                  bitmap one and sets about 0.72em per character. At the 2.5rem
+                  ceiling that is roughly 29px a character, so a line has about
+                  thirty before it runs past max-w-4xl and the longest of these
+                  is fifteen — and the shorter declaratives read better than one
+                  sentence wrapped badly.
+
+                  The CEILING came down from 3rem, which is what buys the three
+                  lines 30px of height. The FLOOR deliberately did not: a phone
+                  had no scrolling problem to solve — the field clears the fold
+                  there by 188px — so taking the headline down to 21.6px would
+                  have been a cost with nothing bought. It holds at 1.5rem and
+                  the clamp starts scaling at a 667px viewport, which is above
+                  every phone and below every laptop. */}
+              <h1 className="display field-display max-w-4xl text-[clamp(1.5rem,3.6vw,2.5rem)] uppercase">
                 Fantasy dues.
                 <br />
                 Weekly pick&rsquo;em.
@@ -200,17 +215,17 @@ export default async function Home() {
               </h1>
 
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                <p className="field-type max-w-2xl text-lg font-medium leading-relaxed sm:text-xl">
+                <p className="field-type max-w-2xl text-base font-medium leading-relaxed sm:text-lg">
                   Season-long league dues or a week&rsquo;s pick&rsquo;em pot:
                   every buy-in goes into a vault that is the pool&rsquo;s own
                   account. Picks, results and payouts are recorded on chain.
                   The commissioner runs the pool and never holds the money.
                 </p>
                 <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
-                  <Link href="/pools/new" className="btn btn-primary">
+                  <Link href="/pools/new" className="btn btn-compact btn-primary">
                     START A POOL
                   </Link>
-                  <Link href="#drive" className="btn btn-secondary">
+                  <Link href="#drive" className="btn btn-compact btn-secondary">
                     HOW A WEEK WORKS
                   </Link>
                 </div>

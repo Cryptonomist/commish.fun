@@ -422,6 +422,23 @@ body {
   cursor: not-allowed;
   box-shadow: none;
 }
+/* A SHORTER BUTTON, FOR THE HERO, AND THE REASON IS THE FIELD.
+   The hero's turf is drawn as `absolute inset-0` behind the copy, so the field
+   is exactly as tall as the words standing on it. At the full 48px button and
+   the full 3rem headline the box came out 514px tall, which put its far end 49
+   pixels below the fold on a 1366x768 laptop once browser chrome and a taskbar
+   have taken their cut — you had to scroll to see the end zone.
+
+   Size only. Colour, shadow and the press offset stay with .btn-primary and
+   .btn-secondary, so this composes rather than forking them. 42px is still
+   above the 40px floor for a comfortable target, and the label face sets 11px
+   at exactly 11px a character, so START A POOL is 132px of glyph. */
+.btn-compact {
+  height: 42px;
+  padding: 0 16px;
+  font-size: 11px;
+}
+
 /* THE NAV BLOCK. A smaller button, because four of them plus a mark and a
    connect button have to fit a 375px phone.
 
