@@ -44,27 +44,54 @@ export function FieldMarkings() {
          over the headline. */
       className="pointer-events-none absolute inset-0 -z-10 select-none overflow-hidden"
     >
+      {/* SIDELINES AND GOAL LINES, the frame everything else hangs on. A field
+          with yard lines and nothing enclosing them reads as graph paper,
+          which is what this was. These are the brightest marks here because
+          they are the brightest marks on grass. */}
+      <span className="absolute inset-x-0 top-0 h-[2px] bg-cream/[0.22]" />
+      <span className="absolute inset-x-0 bottom-0 h-[2px] bg-cream/[0.22]" />
+      <span className="absolute inset-y-0 left-0 w-[2px] bg-cream/[0.22]" />
+      <span className="absolute inset-y-0 right-0 w-[2px] bg-cream/[0.22]" />
+
       {LINES.map((at) => (
         <span
           key={at}
-          className={`absolute inset-y-0 w-px ${
-            at % 10 === 0 ? "bg-cream/[0.10]" : "bg-cream/[0.05]"
+          className={`absolute inset-y-0 ${
+            at % 10 === 0 ? "w-[2px] bg-cream/[0.13]" : "w-px bg-cream/[0.07]"
           }`}
           style={{ left: `${at}%` }}
         />
       ))}
 
-      {/* Hash marks: the two rows of ticks a field carries between the numbers,
-          set in from the sidelines the way the real ones are. */}
-      {[30, 70].map((top) =>
-        LINES.map((at) => (
-          <span
-            key={`${top}-${at}`}
-            className="absolute h-px w-2.5 bg-cream/[0.08]"
-            style={{ left: `calc(${at}% - 5px)`, top: `${top}%` }}
-          />
-        )),
-      )}
+      {/* HASH MARKS, EVERY YARD, and this is the detail that makes a glance
+          say NFL rather than "some sport".
+
+          On a 160-foot field the NFL puts its hashes 70 feet 9 inches in from
+          each sideline — 44.2% — a far narrower pair than college football's,
+          and the single most recognisable thing about these markings. The old
+          version had two rows at 30% and 70% with ticks only every five yards,
+          which is not any real code's geometry.
+
+          Drawn as a repeating gradient rather than as spans: every yard across
+          four rows is roughly 320 absolutely positioned elements, and this is
+          four. One yard is exactly 1% of a hundred-yard field, so the repeat
+          needs no arithmetic. */}
+      {[
+        { top: 44.2, alpha: 0.13 },
+        { top: 55.8, alpha: 0.13 },
+        /* The shorter ticks a field also carries just inside each sideline. */
+        { top: 3.5, alpha: 0.09 },
+        { top: 96.5, alpha: 0.09 },
+      ].map(({ top, alpha }) => (
+        <span
+          key={top}
+          className="absolute inset-x-0 h-[2px]"
+          style={{
+            top: `${top}%`,
+            background: `repeating-linear-gradient(to right, rgba(240,242,236,${alpha}) 0 2px, transparent 2px, transparent 1%)`,
+          }}
+        />
+      ))}
 
       {/* Both rows, the way a field carries them: one set in from each
           sideline. Both are set upright rather than mirrored — on grass the
@@ -77,22 +104,24 @@ export function FieldMarkings() {
             key={`${side}-${at}`}
             className={[
               "display absolute -translate-x-1/2 whitespace-nowrap",
-              /* 0.08, down from 0.13. The numerals were tuned against Anton, whose
-                 strokes are thin; a bitmap face is mostly filled area, so the same
-                 alpha comes out far heavier and the field started competing with
-                 the headline sitting on it. Exactly the correction the banner
-                 needed, for exactly the same reason. */
-              /* SCALED FOR THE BITMAP FACE, not just faded for it.
-                 
-                 The opacity came down when the display face changed and the
-                 SIZE did not, which is half a fix. These numerals sit in slots
-                 ten per cent of the field wide — 115px on the widest layout —
-                 and Silkscreen sets "20" plus its arrow at about 127px at the
-                 old 4rem ceiling. They were overlapping their neighbours and
-                 bunching against the arrows. The clamp is the old one times
-                 the same 0.62 every heading took, which puts the widest
-                 numeral back to about 82px in a 115px slot. */
-              "text-cream/[0.08] text-[clamp(1.1rem,3.4vw,2.5rem)] tracking-[0.06em]",
+              /* SIZE FIRST, THEN COLOUR — the first attempt only did colour.
+
+                 These numerals sit in slots ten per cent of the field wide,
+                 about 115px on the widest layout, and Silkscreen set "20" plus
+                 its arrow at roughly 127px at the old 4rem ceiling. They
+                 overlapped their neighbours and bunched against the arrows.
+                 Halving the clamp puts the widest one near 66px in that slot,
+                 with room either side.
+
+                 AND THEY ARE PROPERLY CREAM NOW, the same cream as the laces
+                 in the mark. At 8% over turf, cream does not read as cream: it
+                 reads as slightly paler grass, which is exactly why these
+                 looked grey and dead. 16% lets the colour arrive, and it can
+                 afford to because the size came down at the same time — total
+                 ink on the field is well below where it started, so the
+                 headline still wins the page while each numeral is easier to
+                 recognise as paint. */
+              "text-cream/[0.16] text-[clamp(0.95rem,2.6vw,2rem)] tracking-[0.06em]",
               side === "top" ? "top-3" : "bottom-3",
               phone ? "" : "hidden sm:inline",
             ].join(" ")}
