@@ -11,7 +11,11 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 
+import { Wordmark } from "@/components/Laces";
+import { SiteFooter } from "@/components/SiteFooter";
+import { WalletButton } from "@/components/WalletButton";
 import XLink from "@/components/XLink";
 import { formatUsdc, shortAddress } from "@/lib/format";
 import { buildLeaderboard } from "@/lib/leaderboard";
@@ -38,18 +42,28 @@ export default async function LeaderboardPage() {
   const result = await buildLeaderboard();
   const data = result.ok ? result.board : null;
 
+  /* Same shell as every other page: the mark, the wallet button, and the
+   * footer. The footer is not decoration here, it is where the terms and the
+   * privacy policy live, and this is a page that talks people into publishing
+   * their handle. It would be a strange one to leave them off. */
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-5 py-12">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-black tracking-tight text-cream">
-          Leaderboard
-        </h1>
-        <p className="max-w-xl text-sm leading-relaxed text-cream-dim">
-          Everyone here chose to be here. Linking an X account to a wallet does
-          not put you on this page; a second, separate signature does. Wins are
-          read from the chain, not from anything anyone typed.
-        </p>
+    <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-5 sm:px-8">
+      <header className="flex items-center justify-between py-6">
+        <Link href="/" aria-label="Commish home">
+          <Wordmark size={20} />
+        </Link>
+        <WalletButton />
       </header>
+
+      <main className="flex flex-col gap-8 py-10">
+        <div className="flex flex-col gap-3">
+          <h1 className="display text-4xl uppercase sm:text-5xl">Leaderboard</h1>
+          <p className="max-w-xl text-sm leading-relaxed text-cream-dim">
+            Everyone here chose to be here. Linking an X account to a wallet
+            does not put you on this page; a second, separate signature does.
+            Wins are read from the chain, not from anything anyone typed.
+          </p>
+        </div>
 
       {data === null ? (
         <p className="rounded-xl border border-night-3 bg-night-2 p-4 text-sm text-cream-dim">
@@ -146,10 +160,13 @@ export default async function LeaderboardPage() {
         </>
       )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-bold text-cream">Your listing</h2>
-        <XLink />
-      </section>
-    </main>
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-bold text-cream">Your listing</h2>
+          <XLink />
+        </section>
+      </main>
+
+      <SiteFooter />
+    </div>
   );
 }
