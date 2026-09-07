@@ -52,9 +52,13 @@ export default function Page() {
 
       <h2>{"No account, no email, no password"}</h2>
 
-      <p>{"There is no sign-up. There is no login. We do not ask for your name, your email address, your phone number or a password, and we have no way to store one."}</p>
+      <p>{"There is no sign-up and there is no login. We do not ask for your email address, your phone number or a password, and we have nowhere to put one."}</p>
 
-      <p>{"To join a pool you connect a Solana wallet and sign transactions with it. Joining is by link. There is no public directory of pools."}</p>
+      <p>{"We do ask you to type a name for yourself when you join a pool, and that name goes on the blockchain. It is described below, because it is the one piece of this that catches people out."}</p>
+
+      <p>{"To join a pool you connect a Solana wallet and sign transactions with it. Joining is by link, and we do not publish a list of pools on this site."}</p>
+
+      <p>{"That is not the same as a pool being private, and we would rather say so plainly than let the link feel like a lock. Every pool record and every member record can be read straight off the blockchain by anyone, with one ordinary request to a public Solana node. No link needed. Our own leaderboard is built exactly that way."}</p>
 
       <h2>{"Your wallet address, and why it is public"}</h2>
 
@@ -64,7 +68,19 @@ export default function Page() {
 
       <p>{"The website reads that public data back and displays it inside your pool. Where we hold a copy of on-chain data for display purposes, deleting our copy does not delete the underlying record on the blockchain."}</p>
 
-      <p>{"We do not currently collect a name for you. Pool members typically know who each other are already, because someone sent them the link."}</p>
+      <h2>{"The names you type, and where they go"}</h2>
+
+      <p>{"You type names, and the names you type go on the blockchain."}</p>
+
+      <p>{"When you join a pool you type a name for yourself. The form will not let you join without one. The limit is 24 bytes, which is 24 plain characters and fewer if you use accents or emoji. It is written into your member record on the Solana blockchain. It is public, it is permanent, we cannot edit it and we cannot delete it."}</p>
+
+      <p>{"When you create a pool you type a name for the pool, limited to 32 bytes on the same terms. If it is a league pool you also type a short label for each prize place, up to eight of them, 16 bytes each. Those go into the pool record on the blockchain. Public, permanent, and past our reach to change. A survivor pool has no prize labels, so there is nothing to type there."}</p>
+
+      <p>{"In practice this means one thing. Do not put your real name, your email address, your phone number, or anything else you would not want published into either field. Pick something your pool will know you by and nothing more."}</p>
+
+      <p>{"None of these names go into our database. Our database has no column for a display name and no column for a pool name. They exist only on the blockchain."}</p>
+
+      <p>{"The member record also has room for a short note attached to a pick. The site never sends one, so that space is always empty today. If we ever start using it, anything typed there goes on the blockchain like everything else here, and we will update this page before we ship it."}</p>
 
       <p><Tbc>{"whether the site stores any user-supplied display name, pool name, or free-text field, and whether those are treated as personal data here. Pool names in particular may be user-supplied and visible to anyone with the link."}</Tbc></p>
 
@@ -82,16 +98,27 @@ export default function Page() {
       <p>{"If you complete both steps, we store:"}</p>
 
       <ul>
-        <li>{"your X provider id (the numeric account id X gives us)"}</li>
+        <li>{"your X provider id, the numeric account id X gives us"}</li>
         <li>{"your X handle"}</li>
         <li>{"your X avatar image URL"}</li>
         <li>{"the wallet address you linked it to"}</li>
         <li>{"the date and time of the link"}</li>
+        <li>{"which provider it was, which today is always the string \"x\""}</li>
+        <li>{"whether you have opted in to the public leaderboard, which starts as no"}</li>
+        <li>{"a random token, described below"}</li>
       </ul>
 
-      <p>{"That is the whole record. We do not store your X password, and we do not store X access or refresh tokens beyond what is needed to complete the link. We never post anything from your account. "}<Tbc>{"confirm with engineering that no OAuth access or refresh token is retained after the link is verified, and state the position explicitly."}</Tbc></p>
+      <p>{"That is the whole of that record. We do not store your X password, and we store no X token at all. We ask X only for permission to read who you are, never for offline access, so X never issues us a refresh token. The one access token X does give us is used for a single request asking who just signed in, and is gone when that request finishes. We never post anything from your account. "}<Tbc>{"confirm with engineering that no OAuth access or refresh token is retained after the link is verified, and state the position explicitly."}</Tbc></p>
 
       <p>{"This record is stored in Cloudflare D1, a database service provided by Cloudflare."}</p>
+
+      <h3>{"The token, and why it exists"}</h3>
+
+      <p>{"When your wallet signature is accepted we generate 32 random bytes, store them on your row, and put a copy in your browser as a cookie called commish_id. It lasts 180 days."}</p>
+
+      <p>{"It exists because of a decision we would rather explain than hide. If this site would tell anyone which X handle owns a given wallet address, then it is a lookup table for everyone who ever linked, including everyone who read the leaderboard warning and said no. Every wallet address is already readable off the blockchain, so such a list would be trivial to build. So we do not answer that question for a bare address. This token is how your own browser proves a record is yours."}</p>
+
+      <p>{"It is not a login and it grants nothing else. It cannot list you publicly, unlist you, unlink you, or move anything. Each of those still costs a fresh signature from your wallet over a sentence saying what it does. Unlinking deletes the token along with the record, so the cookie then opens nothing."}</p>
 
       <p>{"Within a league, linking means other members of that league see your handle and avatar next to your entry instead of a raw wallet address. That is the point of it: it is easier to tell who is who."}</p>
 
