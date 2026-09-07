@@ -82,7 +82,17 @@ export function FieldMarkings() {
                  alpha comes out far heavier and the field started competing with
                  the headline sitting on it. Exactly the correction the banner
                  needed, for exactly the same reason. */
-              "text-cream/[0.08] text-[clamp(1.75rem,5.5vw,4rem)] tracking-[0.08em]",
+              /* SCALED FOR THE BITMAP FACE, not just faded for it.
+                 
+                 The opacity came down when the display face changed and the
+                 SIZE did not, which is half a fix. These numerals sit in slots
+                 ten per cent of the field wide — 115px on the widest layout —
+                 and Silkscreen sets "20" plus its arrow at about 127px at the
+                 old 4rem ceiling. They were overlapping their neighbours and
+                 bunching against the arrows. The clamp is the old one times
+                 the same 0.62 every heading took, which puts the widest
+                 numeral back to about 82px in a 115px slot. */
+              "text-cream/[0.08] text-[clamp(1.1rem,3.4vw,2.5rem)] tracking-[0.06em]",
               side === "top" ? "top-3" : "bottom-3",
               phone ? "" : "hidden sm:inline",
             ].join(" ")}
