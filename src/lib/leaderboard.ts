@@ -18,7 +18,7 @@ import "server-only";
 
 import { Connection } from "@solana/web3.js";
 
-import { d1, d1Configured } from "./d1";
+import { d1, d1Missing } from "./d1";
 import {
   PROGRAM_ID,
   decodeMember,
@@ -43,6 +43,25 @@ export type Leaderboard = {
   /** False when the chain could not be reached and these are cached numbers. */
   live: boolean;
 };
+
+/* Why the leaderboard could not be built.
+ *
+ * Two failures look identical from outside and have completely different
+ * fixes: nobody set the credentials, versus the credentials were rejected.
+ * Collapsing both into "unavailable" cost an hour the first time, so the
+ * distinction is now part of the return type rather than something to be
+ * reconstructed from logs.
+ *
+ * These strings name OUR misconfiguration. There is nothing in them a visitor
+ * could act on and nothing about any user, which is why it is safe to put them
+ * in a 503 body where whoever is deploying will actually see them. */
+export type LeaderboardProblem =
+  | { kind: "unconfigured"; missing: string[] }
+  | { kind: "rejected"; detail: string };
+
+export type LeaderboardResult =
+  | { ok: true; board: Leaderboard }
+  | { ok: false; problem: LeaderboardProblem };
 
 type IdentityRow = { wallet: string; handle: string; avatar_url: string | null };
 type StandingRow = {
@@ -138,11 +157,14 @@ async function fromChain(): Promise<Map<string, Tally>> {
   return out;
 }
 
-/** The leaderboard, or null when D1 is not configured at all. Null is a
- *  deployment problem and renders as "could not be loaded"; an empty list is a
- *  real answer and renders as "nobody has opted in". */
-export async function buildLeaderboard(): Promise<Leaderboard | null> {
-  if (!d1Configured()) return null;
+/** The leaderboard, or the reason there isn't one. A failure is a deployment
+ *  problem; an EMPTY list is a real answer and means nobody has opted in. The
+ *  two must never render the same way. */
+export async function buildLeaderboard(): Promise<LeaderboardResult> {
+  const missing = d1Missing();
+  if (missing.length > 0) {
+    return { ok: false, problem: { kind: "unconfigured", missing } };
+  }
 
   let identities: IdentityRow[];
   try {
@@ -151,10 +173,19 @@ export async function buildLeaderboard(): Promise<Leaderboard | null> {
     );
   } catch (err) {
     console.error("[leaderboard] identity read failed", err);
-    return null;
+    return {
+      ok: false,
+      problem: {
+        kind: "rejected",
+        /* Cloudflare's own message. It says things like "Authentication error"
+         * for a bad token and "no such table" for an unapplied schema, which
+         * are the two answers worth having. */
+        detail: err instanceof Error ? err.message : String(err),
+      },
+    };
   }
 
-  if (identities.length === 0) return { rows: [], live: true };
+  if (identities.length === 0) return { ok: true, board: { rows: [], live: true } };
 
   let chain: Map<string, Tally> | null = null;
   try {
@@ -232,5 +263,5 @@ export async function buildLeaderboard(): Promise<Leaderboard | null> {
       a.handle.localeCompare(b.handle),
   );
 
-  return { rows, live: chain !== null };
+  return { ok: true, board: { rows, live: chain !== null } };
 }

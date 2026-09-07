@@ -35,7 +35,8 @@ export default async function LeaderboardPage() {
    * fetching its own API is a network round trip to reach a function in the
    * same process, and it needs an absolute URL it has no reliable way to
    * know. */
-  const data = await buildLeaderboard();
+  const result = await buildLeaderboard();
+  const data = result.ok ? result.board : null;
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-5 py-12">

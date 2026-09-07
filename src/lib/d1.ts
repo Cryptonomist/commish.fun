@@ -34,8 +34,21 @@ const TOKEN = () => pick("CF_API_TOKEN", "CLOUDFLARE_API_TOKEN");
 
 /** Whether D1 is configured at all. Routes check this so a missing variable
  *  produces one clear sentence rather than a stack trace per request. */
-export const d1Configured = (): boolean =>
-  Boolean(ACCOUNT() && DATABASE() && TOKEN());
+export const d1Configured = (): boolean => d1Missing().length === 0;
+
+/* WHICH variables are missing, not just whether any are.
+ *
+ * "D1 is not available" is the same message whether nothing was set or one of
+ * three things was set under the wrong name, and those have opposite fixes.
+ * Naming the empty ones is the difference between a five-minute fix and an
+ * afternoon. Only NAMES are ever returned here, never values. */
+export function d1Missing(): string[] {
+  const missing: string[] = [];
+  if (!ACCOUNT()) missing.push("CF_ACCOUNT_ID");
+  if (!DATABASE()) missing.push("CF_D1_DATABASE_ID");
+  if (!TOKEN()) missing.push("CF_API_TOKEN");
+  return missing;
+}
 
 export class D1Error extends Error {}
 
