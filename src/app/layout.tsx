@@ -25,6 +25,16 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://commish.fun";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
+  /* Belt and braces with src/app/robots.ts, because the two are read by
+   * different things at different moments. robots.txt is a request not to
+   * CRAWL and is fetched once; this tag is a request not to INDEX and travels
+   * with every page, so it still applies to a URL a crawler reached from
+   * somebody else's link rather than from our site.
+   *
+   * REMOVE BOTH AT MAINNET. A launched product nobody can find is a bug that
+   * announces itself with total silence. `scripts/mainnet-cutover.sh` names
+   * them so this is not left to memory. */
+  robots: { index: false, follow: false, nocache: true },
   title: {
     default: "Commish · NFL football pools, escrowed on-chain",
     template: "%s · Commish",

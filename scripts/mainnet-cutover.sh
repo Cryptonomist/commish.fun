@@ -75,13 +75,30 @@ say "4. Rewrite every sentence that says this is devnet"
 # real. On mainnet each is false in the direction that matters most.
 run "node scripts/mainnet-copy.mjs '$PROGRAM_ID' '$PROGRAM_DATA' '$AUTHORITY'"
 
-say "5. Point the RPC proxy at mainnet"
+say "5. Let the site be found again"
+
+# While the program was on devnet the site asked search engines to stay away,
+# because the pages describe buy-ins and pots in the present tense and a
+# stranger arriving from a search result would read a money product and find
+# play money. On mainnet that reverses: a launched product nobody can find is a
+# bug that announces itself with complete silence, and nothing will fail to
+# make it obvious.
+run "rm -f src/app/robots.ts"
+run "sed -i '/robots: { index: false, follow: false, nocache: true },/d' src/app/layout.tsx"
+if [ "$GO" = "--go" ]; then
+  grep -q "index: false" src/app/layout.tsx \
+    && bad "the noindex tag is still in layout.tsx" \
+    || ok "noindex removed from layout.tsx"
+  [ -f src/app/robots.ts ] && bad "src/app/robots.ts still exists" || ok "robots.ts removed"
+fi
+
+say "6. Point the RPC proxy at mainnet"
 
 run "sed -i 's/\"HELIUS_CLUSTER\": \"devnet\"/\"HELIUS_CLUSTER\": \"mainnet\"/' workers/rpc-proxy/wrangler.jsonc"
 warn "the worker's HELIUS_API_KEY must be a key valid for mainnet"
 run "(cd workers/rpc-proxy && npx wrangler deploy)"
 
-say "6. Check it still builds"
+say "7. Check it still builds"
 
 if [ "$GO" = "--go" ]; then
   npx tsc --noEmit || bad "tsc failed"
@@ -91,7 +108,7 @@ if [ "$GO" = "--go" ]; then
     && bad "a legal page still says devnet" || ok "no devnet claims left in the legal copy"
 fi
 
-say "7. Set these in Vercel yourself, then redeploy"
+say "8. Set these in Vercel yourself, then redeploy"
 cat <<NEXT
   NEXT_PUBLIC_SOLANA_CLUSTER = mainnet-beta
   NEXT_PUBLIC_PROGRAM_ID     = $PROGRAM_ID
