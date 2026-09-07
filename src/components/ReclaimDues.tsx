@@ -144,7 +144,7 @@ export function ReclaimDues({
   return (
     <section className="mt-8 rounded-xl border border-out/40 bg-night-2/60 p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="display text-2xl uppercase">
+        <h2 className="display text-base uppercase">
           {pool.status === STATUS_ABANDONED
             ? "This pool was abandoned"
             : "Refunds are open"}

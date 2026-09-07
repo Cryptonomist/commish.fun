@@ -121,7 +121,7 @@ export function ClaimPot({
   return (
     <section className="mt-8 rounded-xl border border-gold/40 bg-night-2/60 p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="display text-2xl uppercase">This pool is settled</h2>
+        <h2 className="display text-base uppercase">This pool is settled</h2>
         <p className="text-sm">
           <span className="text-cream-dim">Each winner takes </span>
           <span className="font-bold text-gold">

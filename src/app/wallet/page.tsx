@@ -82,7 +82,7 @@ export default function WalletPage() {
 
       <main className="flex flex-col gap-10 py-10">
         <div className="flex flex-col gap-3">
-          <h1 className="display text-4xl uppercase sm:text-5xl">
+          <h1 className="display text-2xl uppercase sm:text-3xl">
             Getting a wallet
           </h1>
           <p className="max-w-xl text-sm leading-relaxed text-cream-dim">

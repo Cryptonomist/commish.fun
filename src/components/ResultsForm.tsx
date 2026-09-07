@@ -269,7 +269,7 @@ export function ResultsForm({
   return (
     <section className="mt-8 rounded-xl border border-night-3 bg-night-2/60 p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="display text-2xl uppercase">Post week {week}</h2>
+        <h2 className="display text-base uppercase">Post week {week}</h2>
         <p className="text-sm">
           {open ? (
             <span className="font-bold text-alive">OPEN</span>

@@ -40,7 +40,7 @@ export function LegalPage({
       </header>
 
       <main className="py-8">
-        <h1 className="display text-4xl uppercase sm:text-5xl">{title}</h1>
+        <h1 className="display text-2xl uppercase sm:text-3xl">{title}</h1>
         <p className="mt-3 text-sm text-cream-dim">Last updated {updated}</p>
         {intro ? (
           <p className="mt-5 text-lg leading-relaxed text-cream">{intro}</p>
@@ -51,7 +51,7 @@ export function LegalPage({
         <div
           className="mt-8 flex flex-col gap-5 leading-relaxed text-cream-dim
             [&_a]:text-action [&_a]:underline [&_a]:underline-offset-2
-            [&_h2]:display [&_h2]:mt-7 [&_h2]:text-2xl [&_h2]:uppercase [&_h2]:text-cream
+            [&_h2]:display [&_h2]:mt-7 [&_h2]:text-base [&_h2]:uppercase [&_h2]:text-cream
             [&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-bold [&_h3]:tracking-wide [&_h3]:text-cream
             [&_li]:pl-1 [&_strong]:text-cream
             [&_ul]:flex [&_ul]:list-disc [&_ul]:flex-col [&_ul]:gap-2 [&_ul]:pl-5"

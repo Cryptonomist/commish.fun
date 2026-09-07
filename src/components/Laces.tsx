@@ -106,7 +106,11 @@ export function Wordmark({ size = 28 }: { size?: number }) {
   return (
     <span className="inline-flex items-center gap-2.5">
       <LacesTile size={size * 1.4} title="Commish" />
-      <span className="display field-type" style={{ fontSize: size * 1.35 }}>
+      {/* 0.9, not 1.35. Silkscreen sets COMMISH.FUN 1.48 times wider than
+          Anton did — measured, on this exact string — so holding the lockup
+          at the width it has always been means taking the size down by the
+          same factor. */}
+      <span className="display field-type" style={{ fontSize: size * 0.9 }}>
         COMMISH<span className="field-action">.FUN</span>
       </span>
     </span>

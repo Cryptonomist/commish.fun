@@ -77,22 +77,56 @@ export function FieldMarkings() {
             key={`${side}-${at}`}
             className={[
               "display absolute -translate-x-1/2 whitespace-nowrap",
-              "text-cream/[0.13] text-[clamp(1.75rem,5.5vw,4rem)] tracking-[0.08em]",
+              /* 0.08, down from 0.13. The numerals were tuned against Anton, whose
+                 strokes are thin; a bitmap face is mostly filled area, so the same
+                 alpha comes out far heavier and the field started competing with
+                 the headline sitting on it. Exactly the correction the banner
+                 needed, for exactly the same reason. */
+              "text-cream/[0.08] text-[clamp(1.75rem,5.5vw,4rem)] tracking-[0.08em]",
               side === "top" ? "top-3" : "bottom-3",
               phone ? "" : "hidden sm:inline",
             ].join(" ")}
             style={{ left: `${at}%` }}
           >
-            {at < 50 ? (
-              <span className="mr-1.5 align-middle text-[0.45em]">◄</span>
-            ) : null}
+            {at < 50 ? <Arrow dir="left" /> : null}
             {yards}
-            {at > 50 ? (
-              <span className="ml-1.5 align-middle text-[0.45em]">►</span>
-            ) : null}
+            {at > 50 ? <Arrow dir="right" /> : null}
           </span>
         )),
       )}
     </div>
+  );
+}
+
+/* THE DIRECTION MARKER, DRAWN RATHER THAN TYPED.
+ *
+ * These were ◄ and ► — U+25C4 and U+25BA, geometric shapes, which are not in
+ * the Latin subset of any of the three faces this site ships. The browser was
+ * quietly pulling them from whatever system font had them, which nobody
+ * noticed while the numerals beside them were set in a smooth condensed face.
+ * The moment the numerals became a bitmap, a soft anti-aliased triangle next
+ * to a stack of hard squares is the most obvious thing on the field.
+ *
+ * A stepped triangle in an SVG viewBox of whole units, scaled by font size and
+ * painted in currentColor, so it inherits the numeral's colour and its opacity
+ * and cannot fall back to anything. Five rows of pixels: this is the arrow the
+ * machine would have drawn. */
+function Arrow({ dir }: { dir: "left" | "right" }) {
+  return (
+    <svg
+      viewBox="0 0 5 9"
+      aria-hidden="true"
+      className={`inline-block h-[0.45em] w-[0.25em] align-middle ${
+        dir === "left" ? "mr-1.5" : "ml-1.5"
+      }`}
+      style={{ transform: dir === "left" ? "scaleX(-1)" : undefined }}
+      fill="currentColor"
+    >
+      <rect x="0" y="0" width="1" height="9" />
+      <rect x="1" y="1" width="1" height="7" />
+      <rect x="2" y="2" width="1" height="5" />
+      <rect x="3" y="3" width="1" height="3" />
+      <rect x="4" y="4" width="1" height="1" />
+    </svg>
   );
 }

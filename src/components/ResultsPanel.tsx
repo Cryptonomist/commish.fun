@@ -159,7 +159,7 @@ export function ResultsPanel({
       <>
         <section className="mt-8 rounded-xl border border-action/40 bg-night-2/60 p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="display text-2xl uppercase">Week {week} posted</h2>
+            <h2 className="display text-base uppercase">Week {week} posted</h2>
             <p className="text-sm">
               {closed ? (
                 <span className="font-bold text-cream-dim">WINDOW CLOSED</span>
@@ -307,7 +307,7 @@ export function ResultsPanel({
   if (postingOpen) {
     return (
       <section className="mt-8 rounded-xl border border-night-3 bg-night-2/60 p-5">
-        <h2 className="display text-2xl uppercase">
+        <h2 className="display text-base uppercase">
           Week {pool.currentWeek} is not posted
         </h2>
         <p className="mt-2 text-sm text-cream-dim">

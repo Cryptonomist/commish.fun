@@ -221,7 +221,7 @@ export function PickGrid({
   if (!alive) {
     return (
       <div className="mt-8 rounded-xl border border-out/40 bg-out/10 p-6">
-        <h2 className="display text-2xl uppercase">
+        <h2 className="display text-base uppercase">
           Out in week {member.eliminatedWeek}
         </h2>
         <p className="mt-2 text-sm text-cream-dim">
@@ -255,7 +255,7 @@ export function PickGrid({
       </p>
 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="display text-2xl uppercase">Week {pool.currentWeek}</h2>
+        <h2 className="display text-base uppercase">Week {pool.currentWeek}</h2>
         <p className="text-sm">
           {locked ? (
             <span className="font-bold text-out">LOCKED</span>

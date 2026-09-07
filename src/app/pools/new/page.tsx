@@ -331,7 +331,7 @@ export default function NewPool() {
       </header>
 
       <main className="py-10">
-        <h1 className="display text-4xl uppercase sm:text-5xl">Start a pool</h1>
+        <h1 className="display text-2xl uppercase sm:text-3xl">Start a pool</h1>
         <p className="mt-3 leading-relaxed text-cream-dim">
           Set the buy-in and share the join link. The vault is created on-chain
           when you confirm. Nobody, you included, can move what is in it except
@@ -404,7 +404,7 @@ export default function NewPool() {
                         : "border-night-3 bg-night-2 hover:border-action/50"
                     }`}
                   >
-                    <span className="display block text-base uppercase text-cream">
+                    <span className="display block text-[11px] uppercase text-cream">
                       {m.title}
                     </span>
                     <span className="mt-0.5 block text-xs leading-snug text-cream-dim">
@@ -708,7 +708,7 @@ function Created({
 }) {
   return (
     <div className="mt-10 flex flex-col gap-4 rounded-xl border border-alive/40 bg-alive/10 p-6">
-      <h2 className="display text-2xl uppercase">{name} is live</h2>
+      <h2 className="display text-base uppercase">{name} is live</h2>
       <p className="text-sm text-cream-dim">
         Buy-in <span className="font-bold text-gold">{formatUsdc(buyIn)}</span>.
         The vault exists and is owned by the pool, not by you.

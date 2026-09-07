@@ -331,7 +331,7 @@ export default function PoolPage() {
           <p className="text-cream-dim">Reading the pool…</p>
         ) : (
           <>
-            <h1 className="display text-4xl uppercase sm:text-5xl">{pool.name}</h1>
+            <h1 className="display text-2xl uppercase sm:text-3xl">{pool.name}</h1>
             {/* A league has no weeks. Saying "week 1" on one is not a cosmetic
                 slip — it tells a member to expect a pick screen that will
                 never appear. */}

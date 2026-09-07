@@ -57,7 +57,7 @@ export default async function LeaderboardPage() {
 
       <main className="flex flex-col gap-8 py-10">
         <div className="flex flex-col gap-3">
-          <h1 className="display text-4xl uppercase sm:text-5xl">Leaderboard</h1>
+          <h1 className="display text-2xl uppercase sm:text-3xl">Leaderboard</h1>
           {/* One line. The mechanics of the second opt-in belong on the panel
               below, where somebody is actually deciding, and on the privacy
               page. Explaining them here made a leaderboard read like a policy

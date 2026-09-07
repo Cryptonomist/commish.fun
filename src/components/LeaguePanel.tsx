@@ -179,7 +179,7 @@ export function LeaguePanel({
   return (
     <section className="mt-8 flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="display text-2xl uppercase">The pot</h2>
+        <h2 className="display text-base uppercase">The pot</h2>
         <p className="text-sm text-cream-dim">
           {pool.paidMembers} paid ·{" "}
           {vaultAmount === null ? "…" : formatUsdc(vaultAmount)} in the vault
@@ -242,7 +242,7 @@ export function LeaguePanel({
       {pool.status === STATUS_LOCKED ? (
         isCommissioner ? (
           <div className="rounded-xl border border-night-3 bg-night-2/60 p-4">
-            <h3 className="display text-lg uppercase">Who gets paid</h3>
+            <h3 className="display text-xs uppercase">Who gets paid</h3>
             <p className="mt-1 text-sm text-cream-dim">
               Members get {Math.round(pool.disputeWindowSecs / 3600)} hours to
               throw this out once you post it. You can post it again if they do.
@@ -490,7 +490,7 @@ function ClaimYourSlot({
 
   return (
     <div className="rounded-xl border border-alive/40 bg-alive/5 p-4">
-      <h3 className="display text-lg uppercase">Yours to take</h3>
+      <h3 className="display text-xs uppercase">Yours to take</h3>
       {mine.map((slot) => (
         <button
           key={slot.index}

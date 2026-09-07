@@ -41,7 +41,7 @@ export default function ArcadePage() {
 
       <main className="flex flex-col gap-8 py-6">
         <div className="flex flex-col gap-3">
-          <h1 className="display field-display text-4xl uppercase sm:text-5xl">
+          <h1 className="display field-display text-2xl uppercase sm:text-3xl">
             Commish Bowl
           </h1>
           <p className="field-type max-w-xl text-sm font-medium leading-relaxed">

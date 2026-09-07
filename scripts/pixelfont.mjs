@@ -2,11 +2,11 @@
  *
  * WHY NOT JUST SHIP A PIXEL FONT. The brand kit rasterises SVG through
  * librsvg, which resolves fonts through fontconfig and knows nothing about
- * @font-face — that is why `brand/fonts/Anton-Regular.ttf` has to be installed
- * into the user's font directory before anything carrying the wordmark can be
- * built. Adding a second font would mean a second copy of that problem, a
- * second licence to carry, and a build that renders differently on a machine
- * where the install step quietly failed.
+ * @font-face — so this script used to install Anton into the user's font
+ * directory before anything carrying the wordmark could be built. Shipping a
+ * font here would mean keeping a copy of that problem, a licence to carry, and
+ * a build that renders differently on any machine where the install quietly
+ * failed.
  *
  * Letters made of rectangles have none of those failure modes. They are also
  * exactly what the rest of this product draws: the sprites, the field and the

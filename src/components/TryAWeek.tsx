@@ -142,7 +142,7 @@ export function TryAWeek() {
       </div>
 
       <p
-        className="display mt-2 text-2xl uppercase sm:text-3xl"
+        className="display mt-2 text-base uppercase sm:text-xl"
         aria-live="polite"
       >
         {phase === "pick" ? (

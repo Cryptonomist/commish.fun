@@ -177,7 +177,7 @@ export default async function Home() {
 
               {/* The 8-bit title-card offset print, now with the sprite outline
                   around it so it survives the field behind it. */}
-              <h1 className="display field-display max-w-4xl text-[clamp(2.4rem,7vw,5rem)] uppercase">
+              <h1 className="display field-display max-w-4xl text-[clamp(1.5rem,4.4vw,3rem)] uppercase">
                 NFL football pools,
                 <br />
                 escrowed on-chain.
@@ -212,7 +212,7 @@ export default async function Home() {
 
         {/* ── What you can run ────────────────────────────────────────────── */}
         <section className="border-t border-night-3 py-14">
-          <h2 className="display text-3xl uppercase sm:text-4xl">
+          <h2 className="display text-xl uppercase sm:text-2xl">
             What you can run
           </h2>
           <div className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-night-3 bg-night-3 md:grid-cols-2">
@@ -227,7 +227,7 @@ export default async function Home() {
                 >
                   {f.status}
                 </span>
-                <h3 className="display mt-4 text-2xl uppercase">{f.h}</h3>
+                <h3 className="display mt-4 text-base uppercase">{f.h}</h3>
                 <p className="mt-2 leading-relaxed text-cream-dim">{f.p}</p>
                 <p className="mt-3 text-sm leading-relaxed text-cream-dim/80">
                   {f.detail}
@@ -239,7 +239,7 @@ export default async function Home() {
 
         {/* ── The drive ───────────────────────────────────────────────────── */}
         <section id="drive" className="scroll-mt-8 border-t border-night-3 py-14">
-          <h2 className="display text-3xl uppercase sm:text-4xl">
+          <h2 className="display text-xl uppercase sm:text-2xl">
             How a week actually works
           </h2>
           <p className="mt-3 max-w-2xl leading-relaxed text-cream-dim">
@@ -251,7 +251,7 @@ export default async function Home() {
           <ol className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-night-3 bg-night-3 sm:grid-cols-2 lg:grid-cols-5">
             {DRIVE.map((d) => (
               <li key={d.yard} className="flex flex-col bg-night-2/60 p-5">
-                <span className="display text-xl tracking-widest text-action">
+                <span className="display text-sm tracking-widest text-action">
                   {d.yard}
                 </span>
                 <h3 className="mt-3 font-bold text-cream">{d.h}</h3>
@@ -265,7 +265,7 @@ export default async function Home() {
 
         {/* ── The trust model ─────────────────────────────────────────────── */}
         <section className="border-t border-night-3 py-14">
-          <h2 className="display text-3xl uppercase sm:text-4xl">
+          <h2 className="display text-xl uppercase sm:text-2xl">
             The commissioner cannot
           </h2>
           <ul className="mt-8 divide-y divide-night-3 border-y border-night-3">
@@ -289,7 +289,7 @@ export default async function Home() {
 
         {/* ── Getting started ─────────────────────────────────────────────── */}
         <section className="border-t border-night-3 py-14">
-          <h2 className="display text-3xl uppercase sm:text-4xl">
+          <h2 className="display text-xl uppercase sm:text-2xl">
             Running one
           </h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">

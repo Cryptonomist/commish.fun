@@ -61,10 +61,11 @@ cannot fail that way, and they rasterise exactly at any size.
 
 There is no font install step any more, and no font dependency.
 
-`fonts/Anton-Regular.ttf` and `fonts/OFL.txt` stay. Anton is still the site's
-display face, and that pair is where its licence is recorded — SIL Open Font
-License 1.1, which permits redistribution and embedding and requires the
-licence travel with the font.
+Anton is gone from the repository. It was kept here for a while after this
+script stopped needing it, because it was still the site's display face; then
+the headings moved to Silkscreen as well, and a 170KB TTF that nothing anywhere
+renders is just weight. The site's own faces live in `src/app/fonts/`, each
+with its licence beside it.
 
 ## The field
 

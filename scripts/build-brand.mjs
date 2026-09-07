@@ -99,8 +99,10 @@ const tileSvg = (ground, fill) =>
  * anyway. Letters made of rectangles cannot fail that way, and nothing in the
  * kit sets type through a font any more.
  *
- * `brand/fonts/Anton-Regular.ttf` and its licence stay: Anton is still the
- * site's display face, and that file is where the licence is recorded.
+ * Anton is gone from the repository entirely. It was kept for a while after
+ * this script stopped needing it, on the grounds that it was still the site's
+ * display face — and then the headings moved to Silkscreen too, which left a
+ * 170KB TTF and a licence file that nothing anywhere rendered.
  */
 
 /* -- THE PIXEL BANNER ------------------------------------------------------ */

@@ -7,10 +7,37 @@ import "./globals.css";
  * on every page load is a privacy leak and a render-blocking dependency we do
  * not control, and `next/font/local` inlines the metrics so there is zero
  * layout shift when the face swaps in. */
-const anton = localFont({
-  src: "./fonts/anton.woff2",
-  variable: "--font-anton",
-  weight: "400",
+/* THE DISPLAY FACE. Silkscreen: a bitmap face, and the reason the headings on
+ * this site are made of squares.
+ *
+ * IT REPLACED ANTON, which was the last thing here still speaking the old
+ * language. The comment below this one used to say Anton was the cartridge
+ * label and the bitmap face was what was printed on the screen inside it —
+ * genuinely how NES sports titles worked, heavy condensed poster type on the
+ * box and bitmap type in the game. That pairing was right for a site with one
+ * blocky panel on it. It stopped being right once the attract loop, the
+ * sprites, the field, the playable drive and the profile header were all
+ * drawn from rectangles: at that point the smooth condensed headline was the
+ * odd one out, and the box was the only thing left that was not the screen.
+ *
+ * WHY NOT JUST USE PRESS START 2P for the headings and keep one bitmap face.
+ * Because it is exactly one em wide per character, so a 24px section heading
+ * set in it has to come down to about 10px to fit the same column — which is
+ * the size the rails and labels already use, and a heading indistinguishable
+ * from a label is not a heading. Silkscreen runs about 0.7em per character,
+ * measured, which is what makes it work at size.
+ *
+ * The two are still doing different jobs, which is what keeps this a system
+ * rather than one gimmick: Silkscreen is the voice, Press Start 2P is the
+ * furniture.
+ *
+ * SIL Open Font License 1.1, carried in ./fonts/silkscreen-OFL.txt. */
+const silkscreen = localFont({
+  src: [
+    { path: "./fonts/silkscreen.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/silkscreen-bold.woff2", weight: "700", style: "normal" },
+  ],
+  variable: "--font-silkscreen",
   display: "swap",
 });
 
@@ -21,15 +48,14 @@ const grotesk = localFont({
   display: "swap",
 });
 
-/* The in-game face. Anton is the cartridge label, this is what is printed on
- * the screen inside it, and running both is what makes the pairing read as
- * considered rather than as one gimmick: NES sports titles did exactly this,
- * bitmap type in the game and heavy condensed poster type on the box.
+/* The furniture face: rails, tile labels, buttons, counters.
  *
  * IT IS RATIONED, and the rules live next to --font-matrix in globals.css.
  * Labels only, never language. The moment it sets a sentence, a paragraph, an
  * error message or a legal page, this stops looking like a design and starts
- * looking like a game jam.
+ * looking like a game jam. Headings are not language in that sense — they are
+ * three or four words — but they are not labels either, which is why they go
+ * to Silkscreen above and not here.
  *
  * Latin subset, vendored rather than requested from Google at page load, for
  * the same reason as the two above. 12KB. */
@@ -95,7 +121,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${anton.variable} ${grotesk.variable} ${pressStart.variable}`}
+      className={`${silkscreen.variable} ${grotesk.variable} ${pressStart.variable}`}
     >
       <body className="field-ground min-h-dvh antialiased">
         <Providers>{children}</Providers>

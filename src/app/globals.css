@@ -120,7 +120,7 @@
   --radius-3xl: 0px;
   --radius-4xl: 0px;
 
-  --font-display: var(--font-anton), "Arial Narrow", sans-serif;
+  --font-display: var(--font-silkscreen), ui-monospace, monospace;
   --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
 
   /* PRESS START 2P, AND THE RULES THAT KEEP IT FROM READING AS A GAME JAM.
@@ -150,12 +150,34 @@
   --shadow-block-lift: 6px 6px 0 var(--color-panel);
 }
 
-/* Anton is a display face: it is all caps in practice and needs air between
-   letters at large sizes or it reads as a wall. */
+/* THE HEADING STYLE, retuned for a bitmap face.
+ *
+ * Anton is an ultra-condensed poster face and wanted the numbers below it had:
+ * a hair of tracking and a line-height under one, because its caps are tall
+ * and its sidebearings are almost nothing. Silkscreen wants the opposite on
+ * both counts. Its glyphs already carry their own spacing inside the cell, and
+ * 0.92 line-height on a face whose caps fill most of the em makes two-line
+ * headings collide.
+ *
+ * MEASURED, NOT GUESSED: Silkscreen sets the same string 1.61 times wider than
+ * Anton on average and 1.77 times wider at worst — lowercase costs it as much
+ * as caps, where Anton's lowercase is narrow. Every heading size in the app
+ * came down by about a third to pay for that, which is why this commit touches
+ * thirty files and not one. */
 .display {
   font-family: var(--font-display);
-  letter-spacing: 0.015em;
-  line-height: 0.92;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  /* Short headings that wrap should break into even lines rather than leaving
+     one word alone on the second. Cheap, and it matters more now that a
+     heading takes more lines than it used to. */
+  text-wrap: balance;
+  /* A heading must never be the thing that makes the page scroll sideways.
+     Pool names are user-supplied and up to 32 bytes, and 32 unbroken
+     characters of a face this wide is wider than a phone. `break-word` only
+     breaks a word that cannot fit on a line of its own, so ordinary headings
+     are untouched. */
+  overflow-wrap: break-word;
 }
 
 html {
@@ -402,9 +424,16 @@ body {
 }
 
 /* ── THE HEADLINE DOUBLE-PRINT ────────────────────────────────────────────────
-   The 8-bit title-card offset. It makes Anton read blocky without touching a
-   single glyph, and the orange is decoration at 3.56:1 rather than type, which
-   is the only reason it is allowed to sit on the field at all. */
+   The 8-bit title-card offset: a hard orange copy behind the headline, no blur
+   and no softening, exactly as a title screen printed one.
+
+   IT USED TO BE DOING A DIFFERENT JOB. With Anton set above it, this was what
+   made a smooth condensed face read as blocky at all. The face is made of
+   squares now, so the effect is no longer carrying the whole look — it is a
+   flourish, and it stays because a title card is precisely what a hero is.
+
+   The orange is decoration at 3.56:1 rather than type, which is the only
+   reason it is allowed to sit on the field at all. */
 .print-offset {
   color: var(--color-chalk);
   text-shadow: 4px 4px 0 var(--color-action);
