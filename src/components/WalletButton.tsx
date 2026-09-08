@@ -50,6 +50,7 @@ export function WalletButton() {
   const [error, setError] = useState<string | null>(null);
   const wantsConnect = useRef(false);
 
+
   /* THE SERVER HAS NO WALLET, AND SAYING SO IS THE ONLY WAY TO MATCH IT.
    *
    * Reported as: the button will not connect, but refreshing the page comes
@@ -164,11 +165,56 @@ export function WalletButton() {
   }, [connect]);
 
   /* Only for the case where selecting actually moves the wallet. When it does
-   * not, `choose` connects directly — see the note there. */
+   * not, `choose` connects directly — see the note there.
+   *
+   * IT YIELDS TO THE PROVIDER FIRST, AND THAT IS THE WHOLE FIX.
+   *
+   * Reported precisely: disconnect, then REFRESH, then connect — dead button,
+   * nothing in the console. Disconnect and connect without refreshing was
+   * always fine. That difference is the tell, and it is in the library.
+   *
+   * WalletProviderBase runs its own auto-connect exactly once per page load,
+   * behind `didAttemptAutoConnectRef` (WalletProviderBase.js:167). Disconnect
+   * clears the stored wallet name, so after a refresh there is no adapter, the
+   * guard returns early WITHOUT setting that flag, and the first click is the
+   * first time it fires — the provider calls adapter.connect() on the very
+   * click we are also handling. When the page loaded already connected, the
+   * flag is long since set and the provider stays out of the way, which is why
+   * that path never broke.
+   *
+   * React runs child effects before parent effects, so this one went first,
+   * read `connecting` as false because the provider had not set it yet, and
+   * connected. The provider then connected too. The adapter answers a second
+   * concurrent connect by returning early — no error, no rejection, nothing to
+   * catch — and the click is swallowed.
+   *
+   * A microtask is enough to reverse the order. Deferred, this runs after the
+   * provider's effect, so `connecting` is true by the time it is read and this
+   * backs off — and when the provider is NOT going to act, nothing has changed
+   * and it connects as before. The intent is only spent once a connect is
+   * actually issued, so a back-off still retries when `connecting` falls. */
   useEffect(() => {
     if (!wantsConnect.current || !wallet || connected || connecting) return;
-    wantsConnect.current = false;
-    tryConnect();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled || !wantsConnect.current) return;
+      /* THE ADAPTER, NOT REACT STATE, and the distinction decides whether any
+       * of this works. `connecting` here is a prop from a render that has
+       * already happened; the provider calling setConnecting schedules a NEW
+       * render, and a microtask runs before that render exists. So the React
+       * copy is guaranteed stale at exactly the moment it matters.
+       *
+       * The adapter sets its own flags synchronously inside connect(), so they
+       * are already true by the time this runs — which is the only reliable
+       * way to see that the provider got there first. */
+      const a = wallet.adapter as { connecting?: boolean; connected?: boolean };
+      if (a.connecting || a.connected) return;
+      wantsConnect.current = false;
+      tryConnect();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [wallet, connected, connecting, tryConnect]);
 
   const choose = useCallback(
