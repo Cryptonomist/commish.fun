@@ -368,8 +368,8 @@ export function WalletButton() {
           </ul>
 
           <p className="mt-3 text-xs leading-relaxed text-cream-dim">
-            Open does nothing if the app is not installed — there is no way for
-            a web page to check. Install first if that happens.
+            Open does nothing if the app is not installed, because a web page has
+            no way to check. Install it first if that happens.
           </p>
         </div>
       ) : null}

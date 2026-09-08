@@ -106,7 +106,7 @@ export function GetFunded({
         You need two things, and the second one surprises people. The buy-in is
         in <strong className="text-cream">USDC</strong>, a dollar-pegged token.
         Solana also charges rent for the small accounts a pool creates, paid in{" "}
-        <strong className="text-cream">SOL</strong> — about{" "}
+        <strong className="text-cream">SOL</strong>. That is about{" "}
         {solNeeded("create")} SOL to create a pool and {solNeeded("join", false)}{" "}
         to join one, which is a few cents. A wallet full of USDC and empty of
         SOL cannot do either.
@@ -142,7 +142,7 @@ export function GetFunded({
               <div className="flex flex-wrap gap-2">
                 <dt className="w-14 shrink-0 text-cream-dim/70">SOL</dt>
                 <dd>
-                  has {gap.haveSol.toFixed(4)}, needs {gap.needSol} —{" "}
+                  has {gap.haveSol.toFixed(4)}, needs {gap.needSol}, so{" "}
                   <strong className="text-cream">add {gap.addSol}</strong>
                 </dd>
               </div>
@@ -151,7 +151,7 @@ export function GetFunded({
               <div className="flex flex-wrap gap-2">
                 <dt className="w-14 shrink-0 text-cream-dim/70">USDC</dt>
                 <dd>
-                  has {gap.haveUsdc.toFixed(2)}, needs {gap.needUsdc} —{" "}
+                  has {gap.haveUsdc.toFixed(2)}, needs {gap.needUsdc}, so{" "}
                   <strong className="text-cream">add {gap.addUsdc}</strong>
                 </dd>
               </div>
@@ -180,9 +180,8 @@ export function GetFunded({
 
         <Route n={2} title="Already hold SOL? Swap some">
           Both wallets have a <em>Swap</em> tab. Trade a little SOL for the USDC
-          you need. Keep {solNeeded("create")} SOL back for rent — swapping the
-          lot leaves you exactly where the buy-in is covered and nothing can be
-          signed.
+          you need. Keep {solNeeded("create")} SOL back for rent. Swapping all of it
+          leaves you with the buy-in covered and nothing able to be signed.
         </Route>
 
         <Route n={3} title="Or withdraw from an exchange">
@@ -191,9 +190,9 @@ export function GetFunded({
           <strong className="text-cream">
             the withdrawal network must be Solana
           </strong>
-          . USDC exists on a dozen chains and they are not interchangeable —
-          sent on Ethereum or Polygon to a Solana address, it does not arrive
-          and cannot be recovered. Withdraw a little SOL too, or you will have
+          . USDC exists on a dozen chains and they are not interchangeable. Sent
+          on Ethereum or Polygon to a Solana address, it does not arrive and
+          cannot be recovered. Withdraw a little SOL too, or you will have
           dollars you cannot spend.
         </Route>
       </ol>

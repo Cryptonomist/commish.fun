@@ -65,8 +65,8 @@ export default function ArcadePage() {
             made of rectangles and about four hundred lines of arithmetic.
           </p>
           <p>
-            Team colours are used the same way they are on the rest of the site
-            — as a way to tell thirty-two clubs apart at a glance. No club
+            Team colours are used the same way they are on the rest of the site,
+            as a way to tell thirty-two clubs apart at a glance. No club
             marks, no logos, no affiliation, no endorsement.
           </p>
         </div>

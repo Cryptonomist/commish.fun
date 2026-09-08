@@ -65,7 +65,7 @@ import { solNeeded } from "@/lib/funding";
 export const metadata: Metadata = {
   title: "Getting a wallet",
   description:
-    "How to install a Solana wallet — Phantom, Solflare, Backpack or Jupiter — on a PC, a Mac, an iPhone or an Android phone, and what you need in it before you join a pool.",
+    "How to install a Solana wallet (Phantom, Solflare, Backpack or Jupiter) on a PC, a Mac, an iPhone or an Android phone, and what you need in it before you join a pool.",
 };
 
 const CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet";
@@ -97,7 +97,7 @@ const WALLETS: Wallet[] = [
     browsers: "Chrome, Brave, Edge",
     firefox: false,
     mobile: "iPhone and Android",
-    catch: "No Firefox. The old Firefox add-on is abandoned — use Solflare there.",
+    catch: "No Firefox. The old Firefox add-on is abandoned, so use Solflare there.",
   },
   {
     name: "Solflare",
@@ -228,7 +228,7 @@ export default function WalletPage() {
           </h2>
           <p className="max-w-xl text-sm leading-relaxed text-cream-dim">
             Any of these four works here, and the pool page finds whichever one
-            you install on its own — there is nothing to configure. If you have
+            you install on its own, so there is nothing to configure. If you have
             no opinion, take Phantom. If you use Firefox, take Solflare, which
             is the only one of the four that still supports it.
           </p>
@@ -268,7 +268,7 @@ export default function WalletPage() {
               <h3 className="text-sm font-bold text-cream">Firefox</h3>
               <p className="text-sm leading-relaxed text-cream-dim">
                 Solflare. It is the only one of the four with a Firefox build
-                that is still maintained — Phantom&rsquo;s exists but has not
+                that is still maintained. Phantom&rsquo;s exists but has not
                 been updated since 2025, and a wallet that far behind on
                 security updates is not one to keep money in.
               </p>
@@ -313,12 +313,12 @@ export default function WalletPage() {
             <Step n={3} title="Add a little SOL">
               Solana charges rent for the small accounts a pool creates, paid
               in SOL. {solNeeded("join", false)} SOL covers joining and{" "}
-              {solNeeded("create")} covers creating a pool — a few cents either
+              {solNeeded("create")} covers creating a pool, a few cents either
               way. Every one of these wallets can buy some for you.
             </Step>
             <Step n={4} title="Add the buy-in">
               Pools are paid in USDC, a dollar-pegged token. You need the
-              buy-in amount, and the SOL from step 3 as well — USDC alone
+              buy-in amount, and the SOL from step 3 as well. USDC alone
               cannot pay the rent, so a wallet holding only dollars is stuck.
             </Step>
             <Step n={5} title="Open the pool link and press Connect">

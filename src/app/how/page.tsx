@@ -26,7 +26,7 @@ import { LegalPage } from "@/components/LegalPage";
 export const metadata: Metadata = {
   title: "How it works",
   description:
-    "Survivor, Loser and League dues, explained plainly — how picks work, how you go out, and how the money is paid.",
+    "Survivor, Loser and League dues, explained plainly. How picks work, how you go out, and how the money is paid.",
 };
 
 export default function Page() {
@@ -40,14 +40,14 @@ export default function Page() {
     >
       <h2>{"Survivor"}</h2>
 
-      <p>{"Each week you pick one team you think will win. That is the whole move — not a score, not a spread. If your team wins you are still in. If it loses, you are out for the season."}</p>
+      <p>{"Each week you pick one team you think will win. That is the whole move. You do not predict a score or a spread. If your team wins you are still in. If it loses, you are out for the season."}</p>
 
       <p>{"Three rules catch people out, and they are the ones worth reading twice."}</p>
 
       <ul>
         <li>
           <strong>{"A team can be used only once all season. "}</strong>
-          {"Pick Kansas City in week 1 and they are spent — you cannot pick them again in week 9 against somebody terrible. That is what makes this a game of judgement rather than a coin flip: you are spending your good teams, and deciding when."}
+          {"Pick Kansas City in week 1 and they are spent. You cannot pick them again in week 9 against a weaker opponent. That is what makes this a game of judgement rather than a coin flip: you are spending your good teams, and deciding when."}
         </li>
         <li>
           <strong>{"No pick is a losing pick. "}</strong>
@@ -58,17 +58,17 @@ export default function Page() {
         </li>
       </ul>
 
-      <p>{"A tie knocks you out. A cancelled game does not. If the game is played and ends level, your team did not win, so you are gone. If it is cancelled or voided entirely, you carry on — but that team is still used up."}</p>
+      <p>{"A tie knocks you out. A cancelled game does not. If the game is played and ends level, your team did not win, so you are gone. If it is cancelled or voided entirely, you carry on, but that team is still used up."}</p>
 
       <h2>{"Loser pool"}</h2>
 
       <p>{"The same shape, inverted: you pick a team you think will LOSE. If they lose, you are still in. If they win, you are out."}</p>
 
-      <p>{"Everything else carries over — one use per team, a missed pick is a loss, no picking a bye. The two differ on a tie: nobody won, which is fatal in Survivor and survivable here. A cancelled game carries you in both, even if the team you picked would have won."}</p>
+      <p>{"Everything else carries over: one use per team, a missed pick is a loss, and you cannot pick a team on a bye. The two differ on a tie: nobody won, which is fatal in Survivor and survivable here. A cancelled game carries you in both, even if the team you picked would have won."}</p>
 
       <h2>{"League dues"}</h2>
 
-      <p>{"Your season runs somewhere else entirely — ESPN, Sleeper, a spreadsheet. Commish only holds the pot."}</p>
+      <p>{"Your season runs somewhere else entirely, whether that is ESPN, Sleeper or a spreadsheet. Commish only holds the pot."}</p>
 
       <p>{"Members pay in until the dues deadline. After that the commissioner locks it and posts a payout sheet saying who finished where. Every member then has a window to vote it down; if enough do, it is thrown out and the commissioner posts again. Once the window passes, each winner claims their share."}</p>
 
@@ -76,7 +76,7 @@ export default function Page() {
 
       <h2>{"How a week runs"}</h2>
 
-      <p>{"Picks lock at the first kickoff of the week. Games are played. The commissioner posts the results, and members get a window — the commissioner sets it, at least an hour, usually longer — to vote down a result they think is wrong. When the window passes the week is finalized, everyone who lost is knocked out, and the next week opens."}</p>
+      <p>{"Picks lock at the first kickoff of the week. Games are played. The commissioner posts the results, and members get a window to vote down a result they believe is wrong. The commissioner sets the length of that window, which must be at least an hour and is usually longer. When the window passes the week is finalized, everyone who lost is knocked out, and the next week opens."}</p>
 
       <p>{"The dispute window exists because a commissioner posts the results by hand. It is the members' check on that, and it is enforced by the program rather than by anybody's good manners."}</p>
 
@@ -85,9 +85,9 @@ export default function Page() {
       <p>{"Usually one person is left standing and takes the pot. Not always, and all three endings are written into the program:"}</p>
 
       <ul>
-        <li>{"One survivor — they take everything."}</li>
-        <li>{"Everyone still alive is knocked out in the same week — the pot splits among everyone who was alive when that week began."}</li>
-        <li>{"More than one person survives all eighteen weeks — they split it."}</li>
+        <li>{"One survivor, who takes everything."}</li>
+        <li>{"Everyone still alive is knocked out in the same week, in which case the pot is split among everyone who was alive when that week began."}</li>
+        <li>{"More than one person survives all eighteen weeks, in which case they split the pot."}</li>
       </ul>
 
       <p>{"You claim your winnings yourself. Nothing is pushed to your wallet; you go and take it, and until you do it stays in the vault where nobody else can reach it either."}</p>
@@ -98,11 +98,11 @@ export default function Page() {
 
       <p>{"Because of the cap it is three per cent up to a pot of about 1,667 USDC and a flat 50 above that. On a 500 USDC pot the fee is 15; on a 5,000 USDC pot it is 50, not 150."}</p>
 
-      <p>{"League pools and pools with no buy-in are charged nothing and cannot be — the program records a zero rate on both when they are created. A pool's fee and its ceiling are fixed at the moment it is created and cannot be changed afterwards by us or by anybody, so the deal you joined is the deal that pays out."}</p>
+      <p>{"League pools and pools with no buy-in are charged nothing, and cannot be. The program records a zero rate on both when they are created. A pool's fee and its ceiling are fixed at the moment it is created and cannot be changed afterwards by us or by anybody, so the deal you joined is the deal that pays out."}</p>
 
       <h2>{"If a pool never finishes"}</h2>
 
-      <p>{"Every pool has a refund deadline. If it has not settled by then — the commissioner vanished, the season fell apart, anything — every member who paid in can take their share back. Nobody has to agree to it and nobody can stop it, including us. The first person to reclaim fixes the per-member amount so the last one out is not shortchanged."}</p>
+      <p>{"Every pool has a refund deadline. If it has not settled by then, for any reason at all, every member who paid in can take their share back. Nobody has to agree to it and nobody can stop it, including us. The first person to reclaim fixes the per-member amount so the last one out is not shortchanged."}</p>
 
       <h2>{"Before you put money in"}</h2>
 

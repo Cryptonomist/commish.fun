@@ -214,7 +214,7 @@ export default function Page() {
 
       <p>{"Being precise about this, because the word cap can be read more reassuringly than it deserves. Every pool records its own fee rate and its own absolute ceiling in tokens at the moment it is created, both copied from our platform defaults as they stood at that moment, and those two numbers are fixed for that pool for its whole life. Today those defaults are three per cent and a ceiling of 50 USDC. A league pool and a pool with no buy-in record zero for both, because no fee can ever be charged on either. The fee taken can never exceed the ceiling recorded on the pool, and it can never exceed what is actually in the vault."}</p>
 
-      <p>{"The protection that actually binds you is that pair of numbers being copied at creation. The program itself only refuses a rate above one hundred percent, so do not read the existence of a ceiling as meaning the ceiling is low \u2014 what binds is the 50 USDC recorded on your pool, not anything in the code."}</p>
+      <p>{"The protection that actually binds you is that pair of numbers being copied at creation. The program itself only refuses a rate above one hundred percent, so do not read the existence of a ceiling as meaning the ceiling is low. What binds is the 50 USDC recorded on your pool, not anything in the code."}</p>
 
       <p>{"We can change the defaults for pools created in the future, and doing it is easier than the rest of this page might suggest: one signature from our admin key, no new code, no redeploy, and every pool created after that copies the new numbers. We cannot change them for a pool that already exists, and that is enforced by the program rather than promised by us. The deal you joined is the deal that pays out."}</p>
 

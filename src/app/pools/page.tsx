@@ -62,9 +62,9 @@ function state(p: PoolView): string {
     case STATUS_OPEN:
       return league ? "Collecting dues" : "Open to join";
     case STATUS_LOCKED:
-      return league ? "Dues locked — post the payout" : "Running";
+      return league ? "Dues locked, post the payout" : "Running";
     case STATUS_RESULTS_POSTED:
-      return "Results posted — in the dispute window";
+      return "Results posted, in the dispute window";
     case STATUS_FINALIZED:
       return "Week finalized";
     case STATUS_SETTLED:
@@ -72,9 +72,9 @@ function state(p: PoolView): string {
     case STATUS_ABANDONED:
       return "Abandoned";
     case STATUS_SHEET_POSTED:
-      return "Payout posted — in the dispute window";
+      return "Payout posted, in the dispute window";
     case STATUS_SHEET_FINALIZED:
-      return "Payout final — claimable";
+      return "Payout final, claimable";
     default:
       return `Status ${p.status}`;
   }

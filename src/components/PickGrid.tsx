@@ -250,8 +250,8 @@ export function PickGrid({
         }`}
       >
         {loserPool
-          ? "LOSER POOL — pick a team you think will LOSE. If they win, you are out."
-          : "SURVIVOR — pick a team you think will WIN. If they lose, you are out."}
+          ? "LOSER POOL. Pick a team you think will LOSE. If they win, you are out."
+          : "SURVIVOR. Pick a team you think will WIN. If they lose, you are out."}
       </p>
 
       <div className="flex flex-wrap items-baseline justify-between gap-2">

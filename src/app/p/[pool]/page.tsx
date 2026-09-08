@@ -461,7 +461,7 @@ export default function PoolPage() {
                   <Link className="text-action underline" href="/how">
                     How it works
                   </Link>
-                  {" — how picks work, how you go out, and how the money is paid."}
+                  {". How picks work, how you go out, and how the money is paid."}
                 </p>
                 {/* Before the name field, because the name is the only one of
                     these a keyboard can solve. All three at once, so somebody

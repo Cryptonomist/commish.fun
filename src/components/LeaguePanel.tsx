@@ -346,8 +346,8 @@ export function LeaguePanel({
                 {pool.slotCount} prizes and {roster.length}{" "}
                 {roster.length === 1 ? "person" : "people"} who paid, so the
                 same member can take more than one. Every slot still has to be
-                filled — a slot left empty is never claimable, and its share
-                waits in the vault until the refund deadline.
+                filled. A slot left empty is never claimable, and its share waits
+                in the vault until the refund deadline.
               </p>
             ) : null}
 
