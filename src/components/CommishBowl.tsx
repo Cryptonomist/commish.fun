@@ -655,8 +655,8 @@ export function CommishBowl() {
              * lib/mobile.ts. `dvh` tracks Safari's collapsing toolbar; `vh`
              * would be measured against the taller pre-scroll viewport and
              * hang off the bottom by the height of it. */
-            "panel-primary scanlines fixed inset-0 z-50 flex h-[100dvh] w-[100dvw] flex-col justify-center overflow-hidden"
-          : "panel-primary scanlines relative overflow-hidden"
+            "game-surface panel-primary scanlines fixed inset-0 z-50 flex h-[100dvh] w-[100dvw] flex-col justify-center overflow-hidden"
+          : "game-surface panel-primary scanlines relative overflow-hidden"
       }
     >
       {/* TOP RAIL, the same furniture as the attract cabinet on the landing

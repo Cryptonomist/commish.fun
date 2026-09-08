@@ -358,7 +358,10 @@ export default function AttractCabinet({
   }, [started, still, showPot, showAlive]);
 
   return (
-    <div ref={shellRef} className="panel-primary scanlines relative overflow-hidden">
+    <div
+      ref={shellRef}
+      className="game-surface panel-primary scanlines relative overflow-hidden"
+    >
       {/* TOP RAIL. Fixed height, never moves between states. */}
       <div className="flex items-center justify-between gap-3 border-b-2 border-chalk px-3 py-2 font-matrix text-[10px] leading-4">
         <span className="text-chalk">COMMISH BOWL</span>

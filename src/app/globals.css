@@ -580,3 +580,40 @@ body {
 .wallet-adapter-modal-button-close {
   background: var(--color-night-3) !important;
 }
+
+/* A GAME SURFACE, WHICH IS NOT A DOCUMENT.
+ *
+ * Dragging a finger across a canvas is, to a browser, somebody trying to
+ * select text. It paints a selection over the field, the sprites and whatever
+ * rail text the finger crosses, and on iOS a held touch raises the Copy /
+ * Look Up callout on top of the play. Reported as the screen highlighting
+ * itself while trying to run the ball.
+ *
+ * Three rules, and each turns off a different reflex:
+ *
+ *   user-select     the blue selection drag paints over everything
+ *   touch-callout   the iOS long-press menu, which arrives mid-play
+ *   tap-highlight   the grey flash Android paints on every tap
+ *
+ * The alternative was on-screen buttons, and they would have cost the thing
+ * that makes it feel like a game: you drag where you want the runner to go.
+ * This keeps the drag and removes only the browser's opinion about what a drag
+ * is for.
+ *
+ * TOUCH-ACTION IS DELIBERATELY NOT HERE, and it is the one that looks like it
+ * belongs. It stops the browser scrolling in response to a drag, which is
+ * exactly right ON THE CANVAS and wrong on the shell around it: in portrait
+ * the game is a block in the middle of a long page, and a shell that swallows
+ * scroll traps anyone whose thumb happens to land on it while reading past.
+ * So it stays on the canvas, where it already was, and the play area is the
+ * only thing that refuses to scroll.
+ *
+ * SCOPED TO THE GAMES ON PURPOSE. Site-wide even these three would be a bug —
+ * a pool address, a program id and four pages of legal text all exist to be
+ * selected and copied. They belong on the surfaces somebody plays on. */
+.game-surface {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
