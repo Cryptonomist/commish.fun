@@ -11,6 +11,38 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-09-07",
 
+  /* THE CUSTOM DOMAIN, WHICH IS WHAT MAKES RATE LIMITING POSSIBLE AT ALL.
+     Deploying with this provisions rpc.commish.fun — DNS record and
+     certificate — inside the commish.fun zone. That matters because the
+     `ratelimits` binding further down is inert on *.workers.dev, which
+     Cloudflare treats as a Free website outside your zones, and a WAF Rate
+     Limiting Rule can only be attached to a zone. So the domain is the
+     prerequisite for the one control that actually works.
+
+     AND CLOSING THE OLD URL IS HALF THE FIX. `workers_dev` and `preview_urls`
+     both default to TRUE, so adding this domain does not retire
+     commish-rpc.<subdomain>.workers.dev — it runs alongside. A WAF rule on the
+     zone does nothing to traffic that arrives at the workers.dev hostname, so
+     leaving it up leaves the rule bypassable by anyone who knows the old URL,
+     which is anyone who ever read the bundle. The rule would look configured
+     and enforce nothing, which is this repository's most familiar failure.
+
+     THE ORDER MATTERS, because getting it wrong takes the site down. Flipping
+     workers_dev to false while Vercel still points NEXT_PUBLIC_RPC_URL at the
+     old hostname breaks every page that talks to the chain. So:
+
+       1. deploy with this route, both hostnames live
+       2. set NEXT_PUBLIC_RPC_URL = https://rpc.commish.fun in Vercel, redeploy,
+          and confirm a pool page still loads
+       3. only then uncomment the two lines below and deploy again
+       4. add the WAF Rate Limiting Rule on the zone
+
+     Steps 1 and 2 are safe at any time. Step 3 is the one that must come
+     second, and it is why these are left commented rather than set. */
+  "routes": [{ "pattern": "rpc.commish.fun", "custom_domain": true }],
+  // "workers_dev": false,
+  // "preview_urls": false,
+
   // Logs go to `wrangler tail`. The worker logs no request bodies and no
   // credentials, so this carries method names and status codes, which is what
   // you want when a screen starts calling something the allowlist refuses.
