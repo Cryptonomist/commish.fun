@@ -68,7 +68,7 @@ export default function Page() {
 
       <p>{"We are not a party to any pool. The arrangement is between the members of that pool and their commissioner. We do not organise pools, promote them, set their rules or decide who joins."}</p>
 
-      <p>{"We take no share of any pot in season one: the platform fee is set to zero. A fee mechanism exists in the program and is described under Fees below, so if that ever changes this sentence changes with it. "}{"We do commit to that, and so does the program. A pool records its own fee rate and its own ceiling at the moment it is created, and neither can be changed afterwards by us or by anyone. A fee we set in future reaches only pools created after we set it. The deal you joined is the deal that pays out."}</p>
+      <p>{"We take a platform fee of three per cent of the pot on Survivor and Loser pools that have a buy-in, capped at 50 USDC. It is taken once, when the pool settles, out of the vault and before the pot is divided. League pools and pools with no buy-in are charged nothing and cannot be: the program records a zero rate on both when they are created. "}{"A pool records its own fee rate and its own ceiling at the moment it is created, and neither can be changed afterwards by us or by anyone. A fee we change in future reaches only pools created after we change it. The deal you joined is the deal that pays out."}</p>
 
       <p>{"We never receive, hold or control your funds at any point. Money moves from a member's wallet into an account owned by the pool's own program address, and out again only by the paths listed below. It does not pass through us, and there is no moment at which we could take it or send it somewhere else. There is one way we could delay a winner's claim, and we set it out under How money leaves a vault rather than leave you to find it."}</p>
 
@@ -126,7 +126,7 @@ export default function Page() {
         <li><strong>{"A winner's claim."}</strong>{" In a Survivor or Loser pool, a member who passes the pool's winner test claims from a settled pool."}</li>
         <li><strong>{"A prize slot claim."}</strong>{" In a league, the member assigned to a finalized slot on the payout sheet claims that slot."}</li>
         <li><strong>{"A refund."}</strong>{" After the pool's refund deadline has passed, any paid member can reclaim their own pro rata share of the vault. They do not need our permission or the commissioner's. Each member has to call it for themselves, and the mechanics are under Refunds below. In a league there is one exception, also described there: a refund waits while a prize slot is still owed."}</li>
-        <li><strong>{"A platform fee"}</strong>{", to the treasury address recorded on the pool when it was created. It is zero on every pool created today. See Fees below."}</li>
+        <li><strong>{"A platform fee"}</strong>{", to the treasury address recorded on the pool when it was created. Three per cent of the vault, capped at 50 USDC, on a Survivor or Loser pool with a buy-in; nothing on a league or a free pool. See Fees below."}</li>
       </ul>
 
       <p>{"There is no administrative withdrawal path, no sweep and no emergency route in the program as deployed. We cannot reverse, seize, redirect or recover funds in a vault, for anyone, for any reason. Two limits on that sentence follow, and both of them are ours: the upgrade key, and one way we could hold up a winner's claim."}</p>
@@ -193,7 +193,9 @@ export default function Page() {
 
       <h2>{"Fees"}</h2>
 
-      <p>{"Season one charges a platform fee of "}<strong>{"zero"}</strong>{"."}</p>
+      <p>{"The platform fee is "}<strong>{"three per cent of the pot, capped at 50 USDC"}</strong>{", on a Survivor or Loser pool with a buy-in. A league pool and a pool with no buy-in are charged nothing, and the program will not let them be."}</p>
+
+      <p>{"Because of the cap, the fee is three per cent until the pot reaches about 1,667 USDC and a flat 50 USDC above that. On a twelve-person pool at 100 USDC the fee is 36 USDC; on a fifty-person pool at the same buy-in it is 50 USDC rather than 150."}</p>
 
       <p>{"The mechanism exists in the code so that this is verifiable on chain rather than merely asserted. A fee rate and an absolute cap are recorded on each pool when it is created and cannot be changed for that pool afterwards. Pools with a zero buy-in and league pools record no fee at all and can never be charged one."}</p>
 

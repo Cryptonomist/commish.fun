@@ -46,7 +46,8 @@ Weekly results enter through the commissioner's confirmation, checked against pu
 Money leaves a vault by four paths and there is no fifth: a winner's claim, a
 prize-slot claim in a league, a pro-rata refund after the refund deadline, and
 the platform fee to the treasury recorded on the pool when it is created. That
-fee is zero this season, and a league records no fee at all. There is no admin
+fee is three per cent of the pot capped at 50 USDC on a Survivor or Loser
+pool with a buy-in, and a league records no fee at all. There is no admin
 withdrawal and no emergency sweep — that is a property of the instruction set,
 not a promise. It is also a property of the code as deployed today, and a
 single key can still replace that code. See "Not yet", below.

@@ -46,8 +46,29 @@ const USDC_MINT = new PublicKey(
       ? "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
       : "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
 );
-const FEE_BPS = 0;
-const FEE_CAP = 50_000_000; // 50 USDC, only meaningful once FEE_BPS is non-zero
+/* THREE PER CENT, TAKEN ONCE, CAPPED.
+ *
+ * `platform_fee` is min(vault * bps / 10000, cap), computed on the whole vault
+ * at settlement and deducted before the pot is divided (lib.rs:672). So this is
+ * 3% of the pot rather than 3% of anybody's individual winnings — the same
+ * number in a winner-take-all pool, and still 3% off the top when there are
+ * co-winners.
+ *
+ * WHAT IT DOES NOT TOUCH, which matters more than the rate. `create_pool`
+ * forces both of these to zero for every league and for every pool with a zero
+ * buy-in (lib.rs:251-258), and a league settles through finalize_sheet and
+ * never reaches advance_week, which is the only instruction that charges a fee
+ * at all. So this earns on Survivor and Loser pools with a buy-in, and on
+ * nothing else in the product.
+ *
+ * THE CAP IS LEFT AT 50 USDC, which makes the fee 3% up to a pot of about
+ * $1,667 and a flat $50 above it. That is a deliberate choice rather than an
+ * oversight: it is the number already published on the Risks page, and a fee
+ * that stops scaling is the thing that keeps it reading as a charge for the
+ * software rather than a share of the action. Raising it is one number here
+ * plus one `update_config`, and it reaches only pools created afterwards. */
+const FEE_BPS = 300;
+const FEE_CAP = 50_000_000; // 50 USDC. The 3% binds below a ~$1,667 pot.
 const CREATION_FEE = 0;
 
 function loadKeypair(): Keypair {

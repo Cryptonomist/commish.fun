@@ -138,9 +138,40 @@ mod tests {
         }
     }
 
+    /* Renamed. This was `season_one_takes_no_fee`, which stopped being true the
+     * day the default went to 300bps — the assertion is still correct and still
+     * worth having, because a zero RATE is what `create_pool` forces onto every
+     * league and every pool with no buy-in, and that is the guarantee those
+     * pools rest on. */
     #[test]
-    fn season_one_takes_no_fee() {
+    fn a_zero_rate_charges_nothing() {
         assert_eq!(platform_fee(20_000_000, 0, 50_000_000).unwrap(), 0);
+        // However large the vault, and whatever ceiling is recorded.
+        assert_eq!(platform_fee(40_000_000_000, 0, 50_000_000).unwrap(), 0);
+    }
+
+    /* THE NUMBERS THAT ARE PUBLISHED, checked here so the pages cannot drift
+     * from the program. Terms, Risks, Playing Responsibly and the README all
+     * state 3% capped at 50 USDC, with two worked examples and a crossover.
+     * If this test fails, four pages are lying. */
+    #[test]
+    fn the_published_three_percent_is_what_the_program_charges() {
+        const BPS: u16 = 300;
+        const CAP: u64 = 50_000_000; // 50 USDC
+        let usdc = |n: u64| n * 1_000_000;
+
+        // "On a twelve-person pool at 100 USDC the fee is 36 USDC."
+        assert_eq!(platform_fee(usdc(1_200), BPS, CAP).unwrap(), usdc(36));
+
+        // "on a fifty-person pool at the same buy-in it is 50 USDC rather
+        //  than 150."
+        assert_eq!(platform_fee(usdc(5_000), BPS, CAP).unwrap(), usdc(50));
+
+        /* "three per cent until the pot reaches about 1,667 USDC and a flat 50
+         * USDC above that." The cap bites at 50/0.03 = 1,666.67, so a pot of
+         * 1,666 is still on the percentage and 1,667 is over the line. */
+        assert_eq!(platform_fee(usdc(1_666), BPS, CAP).unwrap(), 49_980_000);
+        assert_eq!(platform_fee(usdc(1_667), BPS, CAP).unwrap(), CAP);
     }
 
     #[test]
