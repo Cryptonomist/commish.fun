@@ -54,12 +54,23 @@ export function SiteNav({ markSize = 20 }: { markSize?: number }) {
         <WalletButton />
       </div>
 
-      {/* `-mx-5 px-5` lets the strip run to both screen edges when it scrolls,
-          so a cut-off button reads as "there is more this way" rather than as
-          a layout fault. The negative margin is undone at sm, where it fits. */}
+      {/* IT WRAPS NOW; IT USED TO SCROLL, and the difference is one nav item.
+
+          As a scrolling strip — `-mx-5 px-5 overflow-x-auto`, so a cut-off
+          button read as "there is more this way" — this was fine at four
+          items, which is what it had. Adding MY POOLS made five, and on a
+          375px screen the last two then sat entirely past the right edge:
+          measured at right 430 and 522. A button nobody can see is not a
+          button that scrolled into view, it is a button that does not exist,
+          and WALLET is the page somebody goes looking for precisely when they
+          are stuck.
+
+          Wrapping shows all five without asking for a gesture nothing on the
+          screen suggests. At sm the row is wide enough for one line anyway, so
+          nothing changes there. */}
       <nav
         aria-label="Main"
-        className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0"
+        className="flex flex-wrap gap-2 pb-1 sm:flex-nowrap sm:pb-0"
       >
         {ITEMS.map((item) => {
           /* Exact match only. `startsWith` would light NEW POOL on every pool

@@ -104,12 +104,86 @@ export function registerStopper(fn: () => void): () => void {
  * caller is inside a click or a key press. A browser will not start a context
  * outside a gesture, and will not honour resume() outside one either, so this
  * is the moment it can actually wake up. */
+/* THE SILENT SWITCH, WHICH IS WHY A PHONE PLAYS NOTHING WHILE EVERYTHING
+ * ELSE WORKS.
+ *
+ * Reported as: no sound on mobile, for the arcade game or the pick'em on the
+ * landing page. The gesture path is not the problem — every caller is inside
+ * an onClick or an onPointerDown, both of which iOS accepts.
+ *
+ * The problem is that WebAudio on iOS defaults to the "ambient" audio session,
+ * and an ambient session is silenced by the hardware ring/silent switch. A
+ * phone with that switch flipped — which is most phones, most of the time —
+ * runs this code perfectly, resumes the context, schedules every note, and
+ * emits nothing. Nothing in the console, no fault to record, no way to tell
+ * from the desktop that anything is wrong.
+ *
+ * Two ways out, in order of how modern they are:
+ *
+ *   navigator.audioSession.type = "playback" is the direct statement of intent
+ *   and is what Safari added for exactly this. Where it exists, it is enough.
+ *
+ *   Otherwise, playing a moment of silence through an ordinary <audio> element
+ *   promotes the session as a side effect. It has to be a real element with a
+ *   real (if empty) source, it has to be `playsinline` or iOS may take over the
+ *   screen, and it has to happen inside the same gesture.
+ *
+ * Both are attempted once, and both are wrapped: a browser that has neither is
+ * a browser where sound was already going to work or already going to fail,
+ * and neither case is improved by throwing. */
+let sessionPromoted = false;
+
+function promoteAudioSession(): void {
+  if (sessionPromoted) return;
+  sessionPromoted = true;
+
+  try {
+    const nav = navigator as Navigator & { audioSession?: { type: string } };
+    if (nav.audioSession) {
+      nav.audioSession.type = "playback";
+      return; // The supported route. No need for the trick below.
+    }
+  } catch {
+    // Setting it is not allowed here. Fall through.
+  }
+
+  try {
+    /* Guarded, because this module also runs under mocha, where there is no
+     * document and reaching for one would throw inside the audio path. */
+    if (typeof document === "undefined") return;
+    /* 44 bytes of WAV header describing zero samples: a valid, decodable,
+     * completely silent clip, with nothing to download. */
+    const el = document.createElement("audio");
+    el.src =
+      "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=";
+    el.setAttribute("playsinline", "");
+    el.preload = "auto";
+    el.volume = 0.01;
+    void el.play().catch(() => {});
+  } catch {
+    // No document, or no media element support. Nothing to do.
+  }
+}
+
 function context(): AudioContext | null {
   load();
   if (!on) return null;
   if (!ctx) {
     try {
-      ctx = new AudioContext();
+      /* webkitAudioContext for Safari old enough to lack the unprefixed one.
+       * Cheap to keep, and the alternative is silence on those devices.
+       *
+       * Off globalThis rather than window: the tests install their fake on
+       * globalThis, and reading `window.AudioContext` here quietly found
+       * nothing, disabled sound, and failed fourteen of them. A module that
+       * must run in a browser and under mocha has one global to agree on. */
+      const g = globalThis as unknown as {
+        AudioContext?: typeof AudioContext;
+        webkitAudioContext?: typeof AudioContext;
+      };
+      const Ctor = g.AudioContext ?? g.webkitAudioContext;
+      if (!Ctor) throw new Error("no WebAudio");
+      ctx = new Ctor();
     } catch {
       // No WebAudio here at all. Give up quietly rather than retry forever.
       ctx = null;
@@ -117,6 +191,9 @@ function context(): AudioContext | null {
       return null;
     }
   }
+  /* Before the resume, because the session category decides whether anything
+   * the context then plays is audible at all. */
+  promoteAudioSession();
   // Safari starts a context suspended even inside a gesture.
   if (ctx.state === "suspended") void ctx.resume();
   return ctx;
