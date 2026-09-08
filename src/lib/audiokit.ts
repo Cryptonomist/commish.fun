@@ -44,6 +44,26 @@ export type Track =
  * costs at most two requests. */
 const EXTENSIONS = ["mp3", "wav"] as const;
 
+/* WHAT WENT WRONG, KEPT RATHER THAN DISCARDED.
+ *
+ * Every risky call in this module sits in a bare `catch {}`, which was the
+ * right instinct — a missing audio file must never be a console full of red —
+ * and it is also why a real fault here has been invisible through three
+ * attempts at the music stacking. A swallowed exception in stopLoop looks
+ * exactly like a loop that stopped.
+ *
+ * So failures are recorded. Nothing is thrown and nothing is logged unbidden;
+ * the list is readable through the probe at the bottom of this file, which is
+ * how somebody reproducing the bug can say what actually happened instead of
+ * what it sounded like. */
+const faults: { at: string; message: string; when: number }[] = [];
+
+function noteFault(at: string, err: unknown): void {
+  const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  faults.push({ at, message, when: Date.now() });
+  if (faults.length > 40) faults.shift();
+}
+
 /** Decoded and ready. A track that failed is stored as null so the failure is
  *  cached too and a missing file is not re-fetched on every play. */
 const cache = new Map<Track, AudioBuffer | null>();
@@ -151,8 +171,9 @@ export function stopOneShots(): void {
   if (!s) return;
   try {
     s.stop();
-  } catch {
-    // Already finished.
+  } catch (err) {
+    // Already finished, usually. Recorded in case it is not.
+    noteFault("stopOneShots", err);
   }
 }
 
@@ -200,7 +221,8 @@ export function playOnce(
     shotName = name;
     shotDone = onEnded ?? null;
     return true;
-  } catch {
+  } catch (err) {
+    noteFault("playOnce", err);
     return false;
   }
 }
@@ -221,8 +243,12 @@ export function startLoop(name: Track, level = 0.5): boolean {
     void load(ctx, name);
     return false;
   }
+  /* Declared out here so the catch can still reach it. A source that threw
+   * after start() would otherwise be playing with nothing holding a reference
+   * to it, which is unstoppable by construction. */
+  let src: AudioBufferSourceNode | null = null;
   try {
-    const src = ctx.createBufferSource();
+    src = ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
     /* SAMPLE-ACCURATE LOOP POINTS, which is the entire reason for decoding
@@ -239,7 +265,15 @@ export function startLoop(name: Track, level = 0.5): boolean {
     loop = { src, gain };
     unregister = registerStopper(stopLoop);
     return true;
-  } catch {
+  } catch (err) {
+    /* A source that threw after start() would be playing with nothing holding
+     * a reference to it — unstoppable. Stop it here rather than leak it. */
+    noteFault("startLoop", err);
+    try {
+      src?.stop();
+    } catch {
+      // It never started; nothing to stop.
+    }
     loop = null;
     return false;
   }
@@ -254,14 +288,44 @@ export function stopLoop(): void {
   const current = loop;
   loop = null;
   if (!current) return;
+  /* THE RAMP IS A COURTESY. THE STOP IS NOT.
+   *
+   * These used to share one try block, in that order, so anything the gain
+   * ramp threw took the stop down with it — and the source kept playing while
+   * `loop` had already been cleared, which is precisely the shape of the
+   * reported bug: the whistle appears to do nothing, and the next snap starts
+   * a second copy over the first. The ramp only exists to stop a click.
+   *
+   * So they are separated. The ramp may fail; the stop is then attempted
+   * regardless, and if THAT fails the source is stopped without a schedule as
+   * a last resort. A click is a worse sound than silence. Two tracks at once
+   * is worse than either. */
   try {
     const ctx = current.gain.context;
     current.gain.gain.cancelScheduledValues(ctx.currentTime);
     current.gain.gain.setValueAtTime(current.gain.gain.value, ctx.currentTime);
     current.gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.03);
-    current.src.stop(ctx.currentTime + 0.05);
-  } catch {
-    // Already stopped.
+  } catch (err) {
+    noteFault("stopLoop:ramp", err);
+  }
+
+  try {
+    current.src.stop(current.gain.context.currentTime + 0.05);
+  } catch (err) {
+    noteFault("stopLoop:stop", err);
+    try {
+      current.src.stop();
+    } catch (err2) {
+      noteFault("stopLoop:stop-now", err2);
+    }
+  }
+
+  /* And disconnect, so that even a source this module has somehow lost its
+   * grip on is no longer routed to anything audible. */
+  try {
+    current.gain.disconnect();
+  } catch (err) {
+    noteFault("stopLoop:disconnect", err);
   }
 }
 
@@ -278,3 +342,33 @@ export const oneShotPlaying = (): Track | null => shotName;
 /** True when a file is loaded for this track, so a caller can decide between
  *  the sample and the synth without triggering either. */
 export const hasFile = (name: Track): boolean => Boolean(cache.get(name));
+
+/* A WINDOW ONTO WHAT IS ACTUALLY SOUNDING.
+ *
+ * Attached in the browser as `window.__commishAudio()`. It exists because the
+ * music stacking has been reported three times and described accurately every
+ * time, and description is not evidence: "the same music twice" fits two
+ * completely different faults, and nothing here could be asked which one it
+ * was. Reading it costs nothing and it collects nothing.
+ */
+export type AudioProbe = {
+  looping: boolean;
+  oneShot: Track | null;
+  /** Tracks decoded and held in memory. */
+  cached: Track[];
+  /** Anything a catch block would previously have thrown away. */
+  faults: { at: string; message: string; when: number }[];
+};
+
+export function probe(): AudioProbe {
+  return {
+    looping: loop !== null,
+    oneShot: shotName,
+    cached: [...cache.entries()].filter(([, v]) => v).map(([k]) => k),
+    faults: [...faults],
+  };
+}
+
+if (typeof window !== "undefined") {
+  (window as unknown as Record<string, unknown>).__commishAudio = probe;
+}
