@@ -19,29 +19,53 @@
      Limiting Rule can only be attached to a zone. So the domain is the
      prerequisite for the one control that actually works.
 
-     AND CLOSING THE OLD URL IS HALF THE FIX. `workers_dev` and `preview_urls`
-     both default to TRUE, so adding this domain does not retire
-     commish-rpc.<subdomain>.workers.dev — it runs alongside. A WAF rule on the
-     zone does nothing to traffic that arrives at the workers.dev hostname, so
-     leaving it up leaves the rule bypassable by anyone who knows the old URL,
-     which is anyone who ever read the bundle. The rule would look configured
-     and enforce nothing, which is this repository's most familiar failure.
+     THE OLD HOSTNAME CLOSES ITSELF, AND THIS COMMENT SAID THE OPPOSITE.
 
-     THE ORDER MATTERS, because getting it wrong takes the site down. Flipping
-     workers_dev to false while Vercel still points NEXT_PUBLIC_RPC_URL at the
-     old hostname breaks every page that talks to the chain. So:
+     It claimed workers_dev defaults to true, so adding a route would leave
+     commish-rpc.<subdomain>.workers.dev running alongside, and that a second
+     deploy with workers_dev:false would be needed to retire it. The bare
+     default really is true — the configuration reference says so, which is
+     where that claim came from — but the routing page carries the rule that
+     actually applies here: "If you do not specify workers_dev = false but add
+     a routes component to your Wrangler configuration file, the value of
+     workers_dev will be inferred as false on the next deploy."
+     (/workers/configuration/routing/workers-dev/). Two pages, one of them
+     answering the question. Deploying this config retired the old hostname on
+     the spot.
 
-       1. deploy with this route, both hostnames live
-       2. set NEXT_PUBLIC_RPC_URL = https://rpc.commish.fun in Vercel, redeploy,
-          and confirm a pool page still loads
-       3. only then uncomment the two lines below and deploy again
-       4. add the WAF Rate Limiting Rule on the zone
+     Observed, minutes after the first deploy with this route:
 
-     Steps 1 and 2 are safe at any time. Step 3 is the one that must come
-     second, and it is why these are left commented rather than set. */
+       commish-rpc.<subdomain>.workers.dev  -> 404, error code 1042
+       rpc.commish.fun                      -> 200 {"result":"ok"}
+
+     Good outcome, wrong prediction — and the wrong prediction cost something,
+     because the comment then laid out a four-step order designed around a
+     window that never existed. NEXT_PUBLIC_RPC_URL was still pointing at the
+     workers.dev hostname when it went dark, so the live site lost every chain
+     read until Vercel was updated. The hazard was real and correctly
+     described; it simply arrives at step 1 rather than step 3.
+
+     SO THE ORDER IS: change NEXT_PUBLIC_RPC_URL to https://rpc.commish.fun in
+     Vercel and redeploy IN THE SAME SITTING as the deploy that adds this
+     route. There is no safe gap between them to work in.
+
+     BOTH ARE NOW WRITTEN OUT RATHER THAN INFERRED, and that is not tidiness.
+     Cloudflare's own caution: "If you disable your workers.dev route in the
+     Cloudflare dashboard but do not update your Worker's Wrangler file with
+     workers_dev = false, the workers.dev route will be RE-ENABLED the next
+     time you deploy your Worker with Wrangler." An inferred value is one
+     `routes` edit away from silently reopening the exact bypass that makes the
+     WAF rule meaningless, and it would reopen quietly, on a deploy about
+     something else entirely. Explicit survives that.
+
+     preview_urls matters for the same reason and is easy to miss: a preview
+     URL is <version>-<name>.<subdomain>.workers.dev, which is also outside the
+     zone and also unmetered by a WAF rule on it. Wrangler 4.44+ defaults it to
+     match workers_dev, so it is false already; it is pinned here so that
+     "already" does not depend on the version somebody deploys with. */
   "routes": [{ "pattern": "rpc.commish.fun", "custom_domain": true }],
-  // "workers_dev": false,
-  // "preview_urls": false,
+  "workers_dev": false,
+  "preview_urls": false,
 
   // Logs go to `wrangler tail`. The worker logs no request bodies and no
   // credentials, so this carries method names and status codes, which is what
