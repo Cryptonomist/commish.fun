@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Laces } from "@/components/Laces";
 import { Countdown } from "@/components/Countdown";
 import { FieldMarkings } from "@/components/FieldMarkings";
+import { HeroKick } from "@/components/HeroKick";
 import { ScoreTicker } from "@/components/ScoreTicker";
 import { TryAWeek } from "@/components/TryAWeek";
 import { fetchScoreboard } from "@/lib/scores";
@@ -155,6 +156,15 @@ export default async function Home() {
             {/* Outside the panel. The markings are the field, not a texture
                 behind the words. */}
             <FieldMarkings />
+
+            {/* THE KICK, on this field's own uprights. It is a sibling of the
+                markings and inside the same box on purpose: it reads the goal
+                posts' position out of the same fractions FieldMarkings uses, so
+                the two cannot drift apart, and it takes no layout of its own —
+                an overlay with one button parked in the dead corner. Desktop
+                only, and that is a decision rather than an oversight: below lg
+                the field is taller than it is wide and the copy fills it. */}
+            <HeroKick />
 
             {/* NO SLAB. The copy sits straight on the field again.
                 The panel version was legible and hid the grass, which is the
