@@ -14,6 +14,11 @@ import Link from "next/link";
 import { Laces } from "@/components/Laces";
 
 const LINKS = [
+  /* FIRST, because it is the one somebody handed a join link actually needs.
+     The rules lived only in the Terms until now — correct for a document that
+     has to be binding, useless as the place a new member learns that a missed
+     pick is a loss and a team is spent once used. */
+  { href: "/how", label: "How it works" },
   { href: "/leaderboard", label: "Leaderboard" },
   /* The game. In the footer rather than the header, because it is a toy and
    * the header is for the product — but on every page rather than only the

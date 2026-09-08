@@ -18,6 +18,8 @@ import { useParams } from "next/navigation";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
+import Link from "next/link";
+
 import { Laces } from "@/components/Laces";
 import SharePool from "@/components/SharePool";
 import { SiteNav } from "@/components/SiteNav";
@@ -448,6 +450,19 @@ export default function PoolPage() {
               </p>
             ) : (
               <form className="mt-8 flex flex-col gap-4" onSubmit={onJoin}>
+                {/* THE RULES, ONE TAP AWAY, AT THE MOMENT THEY MATTER.
+                    This screen is where somebody handed a link decides to pay,
+                    and until now the only full statement of what they were
+                    agreeing to was the Terms. A missed pick being a loss and a
+                    team being spent once used are not things to discover in
+                    week three. */}
+                <p className="text-sm text-cream-dim">
+                  New to this?{" "}
+                  <Link className="text-action underline" href="/how">
+                    How it works
+                  </Link>
+                  {" — how picks work, how you go out, and how the money is paid."}
+                </p>
                 {/* Before the name field, because the name is the only one of
                     these a keyboard can solve. All three at once, so somebody
                     fixes everything in one trip rather than being told about
