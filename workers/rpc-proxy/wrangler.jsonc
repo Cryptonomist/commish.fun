@@ -32,13 +32,36 @@
     // while this is empty, on purpose: an open proxy holding a live key is the
     // one thing that must not be what happens when somebody forgets a
     // variable.
-    "CORS_ALLOW_ORIGIN": "https://commish.fun,https://www.commish.fun"
+    "CORS_ALLOW_ORIGIN": "https://commish.fun,https://www.commish.fun",
 
-    // The program getProgramAccounts is allowed to scan. Set this and an
-    // unfiltered scan of somebody else's program stops being reachable on this
-    // key. Left commented because the id belongs with the deploy, not here:
-    //   npx wrangler deploy --var PROGRAM_ID:<your program id>
-    // "PROGRAM_ID": ""
+    // The one program getProgramAccounts may scan.
+    //
+    // THIS WAS COMMENTED OUT, ON THE REASONING THAT "the id belongs with the
+    // deploy, not here", to be supplied as `--var PROGRAM_ID:<id>` at cutover.
+    // That reasoning was wrong twice over.
+    //
+    // It was wrong in fact: the id is a constant. It comes from
+    // target/deploy/commish-keypair.json, it is `declare_id!` in lib.rs, it is
+    // baked into src/idl/commish.json, and it is the SAME on devnet and
+    // mainnet. There is no per-deploy value to supply.
+    //
+    // And it was wrong in effect, which is the part that was measured rather
+    // than argued. With it unset the guard in index.ts:153 is skipped entirely
+    // and only the weaker "must carry filters" test at :156 runs. Probed
+    // against the live worker on 2026-09-08, forging nothing but an Origin
+    // header:
+    //
+    //   getProgramAccounts, someone else's program, no filters -> 403
+    //   getProgramAccounts, someone else's program, WITH a filter -> 200 []
+    //
+    // So the deployed proxy would scan any program on Solana for anybody who
+    // attached a dataSize filter, on our Helius key, with no working rate limit
+    // in front of it. A protection that depends on somebody remembering a CLI
+    // flag during a cutover is not a protection; it is a plan to have one.
+    //
+    // Here it survives every deploy. The `--var` in mainnet-cutover.sh still
+    // passes the same value and simply agrees with this line.
+    "PROGRAM_ID": "Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa"
   },
 
   /* RATE LIMITING — AND IT DOES NOT CURRENTLY WORK. READ THIS BEFORE TRUSTING

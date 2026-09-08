@@ -34,10 +34,18 @@ export async function GET() {
      * So the kind goes to the caller and the message goes to the log, where
      * whoever is deploying can read it and nobody else can.
      *
-     * The variable names are a different matter. They are in `.env.example` in
-     * a public repository, they say nothing about this deployment, and naming
-     * them is the entire difference between a five-minute fix and an
-     * afternoon.
+     * The variable names are a different matter, though NOT for the reason
+     * this comment used to give. It said they were "in `.env.example` in a
+     * public repository", and the repository is private — so that justified
+     * publishing them with a fact that was not true, which is the same failure
+     * as the one two paragraphs up.
+     *
+     * The real reason is that a variable NAME is a schema and a variable VALUE
+     * is a credential. `CF_ACCOUNT_ID` names nothing about this deployment;
+     * `CF_ACCOUNT_ID=<the id>` is the thing worth withholding, and it is the
+     * account id that Cloudflare's error 7003 quotes back inside a URL. So the
+     * names go out, the values and the upstream text do not, and naming them
+     * is the entire difference between a five-minute fix and an afternoon.
      *
      * Never cached: a 503 stuck in a CDN for a minute after the fix lands is
      * its own small trap. */

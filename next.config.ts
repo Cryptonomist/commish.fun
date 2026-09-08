@@ -36,6 +36,28 @@ import type { NextConfig } from "next";
  * Report-Only mode — which is exactly why the framing directives are enforced
  * here and now instead of waiting for the rest of the policy.
  *
+ * THREE MORE DIRECTIVES ARE ENFORCED ANYWAY, because every one of those four
+ * blockers is about where code, sockets and images may come FROM — script-src,
+ * connect-src, img-src — and these three constrain none of those. They were
+ * checked against this app one at a time rather than assumed:
+ *
+ *   base-uri 'self' — a single injected <base> tag silently re-points every
+ *   relative URL on the page, including the fetches to /api/auth/*. There is no
+ *   <base> anywhere in src, so nothing can regress by turning this on, and it
+ *   is the cheapest defence there is against the one injection that survives
+ *   having no XSS sinks.
+ *
+ *   form-action 'self' — both forms in this app (pools/new and p/[pool]) are
+ *   onSubmit handlers with no action attribute, so neither ever navigates.
+ *   Verified before adding, because an external form post is the one thing this
+ *   would break.
+ *
+ *   object-src 'none' — no <object>, <embed> or <applet> in src. Plugin content
+ *   is a scripting surface this app has no use for.
+ *
+ * None of the three needs a nonce, which is what makes them separable from the
+ * staged rollout the rest of the policy still needs.
+ *
  * STRICT-TRANSPORT-SECURITY IS HERE NOW, and this comment used to say the
  * opposite: that Vercel injects it at the edge, that RFC 6797 §8.1 makes a
  * second header a silent race, and that includeSubDomains "belongs in the
@@ -65,7 +87,11 @@ const SECURITY_HEADERS = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains",
   },
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  {
+    key: "Content-Security-Policy",
+    value:
+      "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+  },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
