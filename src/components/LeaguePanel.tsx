@@ -171,10 +171,34 @@ export function LeaguePanel({
     return (w: PublicKey) => by.get(w.toBase58()) ?? shortAddress(w.toBase58(), 4);
   }, [roster]);
 
+  /* NO DUPLICATE WINNERS — UNLESS THAT MAKES PAYING OUT IMPOSSIBLE.
+   *
+   * Requiring every slot to go to a different member is the right check for an
+   * ordinary league: the same person in first and second is a mistake worth
+   * catching before it is posted on chain and has to survive a dispute window.
+   *
+   * But the slot count is fixed at creation and the turnout is not, and this
+   * check was unconditional, so a league with fewer payers than prize slots
+   * could never post a sheet at all. The button read "Fill all 3 slots"
+   * forever, with nothing to explain why filling them did not help. The
+   * default split is 60/30/10, so any league that sets it up and then has two
+   * people pay in walks into that — dues locked, pot settled, payout
+   * unreachable, and the money waiting on the refund deadline a month later.
+   *
+   * The program never had this rule: post_payout_sheet checks each assignee is
+   * a paid member and that the slot is unassigned, and is perfectly happy to
+   * put one member in three slots. So the interface was the whole constraint.
+   *
+   * A partial sheet is not the way out either. finalize_sheet only finalizes
+   * slots in SLOT_PENDING, so an unassigned slot never becomes claimable and
+   * its share sits in the vault until reclaim_dues opens. Filling every slot,
+   * repeating people when there are not enough of them, pays the pot out in
+   * full today. */
   const assigned = Object.values(draft).filter(Boolean);
+  const enoughForDistinct = roster.length >= pool.slotCount;
   const draftComplete =
     assigned.length === pool.slotCount &&
-    new Set(assigned).size === assigned.length;
+    (!enoughForDistinct || new Set(assigned).size === assigned.length);
 
   return (
     <section className="mt-8 flex flex-col gap-4">
@@ -298,9 +322,23 @@ export function LeaguePanel({
               </p>
             ) : null}
 
-            {assigned.length > 0 && new Set(assigned).size !== assigned.length ? (
+            {/* The same two states the completeness rule above turns on, said
+              * out loud. Without the second line, a commissioner with fewer
+              * payers than slots sees a rule quietly stop applying and has no
+              * way to tell whether that is intended. */}
+            {enoughForDistinct &&
+            assigned.length > 0 &&
+            new Set(assigned).size !== assigned.length ? (
               <p className="mt-3 text-sm text-out">
                 Somebody is in two slots. Each prize goes to one person.
+              </p>
+            ) : !enoughForDistinct ? (
+              <p className="mt-3 text-sm text-cream-dim">
+                {pool.slotCount} prizes and {roster.length}{" "}
+                {roster.length === 1 ? "person" : "people"} who paid, so the
+                same member can take more than one. Every slot still has to be
+                filled — a slot left empty is never claimable, and its share
+                waits in the vault until the refund deadline.
               </p>
             ) : null}
 
