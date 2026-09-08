@@ -141,7 +141,12 @@ if [ "$GO" = "--go" ]; then
   # program; on devnet it is an empty account, 0 bytes owned by the system
   # program, because somebody once sent lamports to it.
   say "   asking the proxy which chain it reaches"
-  PROXY_URL="${PROXY_URL:-https://commish-rpc.therealcryptonomist.workers.dev}"
+  # THE workers.dev HOSTNAME IS RETIRED, and defaulting to it made this probe
+  # test a URL that returns 404 — which reads as "the proxy is down" rather
+  # than "this default is stale". It stopped answering the moment the worker
+  # gained a `routes` entry, because wrangler infers workers_dev:false once
+  # routes is present.
+  PROXY_URL="${PROXY_URL:-https://rpc.commish.fun}"
   PROBE=$(curl -s --max-time 25 -X POST "$PROXY_URL"     -H "content-type: application/json"     -H "Origin: https://commish.fun"     -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccountInfo\",\"params\":[\"$MAINNET_USDC\",{\"encoding\":\"base64\",\"dataSlice\":{\"offset\":0,\"length\":0}}]}"     2>/dev/null || true)
 
   case "$PROBE" in
@@ -186,13 +191,26 @@ if [ "$GO" = "--go" ]; then
   ok "no devnet or test-token claim left in the legal copy"
 fi
 
-say "8. Set these in Vercel yourself, then redeploy"
+say "8. COMMIT AND PUSH, or steps 2, 4 and 5 change nothing"
+cat <<GIT
+  Steps 2, 4 and 5 edited files on THIS MACHINE and nowhere else: the vendored
+  IDL, the rewritten legal copy, and the removal of the noindex tag. None of it
+  reaches anybody until it is pushed and Vercel rebuilds. Skipping this leaves
+  a site that still tells its readers the money is not real, while the chain
+  says otherwise — which is the exact pairing step 4 exists to prevent.
+
+    git add -A && git commit -m 'Mainnet cutover: real money copy, IDL, indexable'
+    git push
+
+GIT
+
+say "9. Set these in Vercel yourself, then redeploy"
 cat <<NEXT
   NEXT_PUBLIC_SOLANA_CLUSTER = mainnet-beta
   NEXT_PUBLIC_PROGRAM_ID     = $PROGRAM_ID
   NEXT_PUBLIC_USDC_MINT      = $MAINNET_USDC
   NEXT_PUBLIC_FAST_CLOCK     =            (must be EMPTY)
-  NEXT_PUBLIC_RPC_URL        = https://commish-rpc.therealcryptonomist.workers.dev
+  NEXT_PUBLIC_RPC_URL        = https://rpc.commish.fun
   RPC_URL                    = a mainnet Helius URL, server side only
 
   NEXT_PUBLIC_ values are compiled in at build time, so changing them without a
