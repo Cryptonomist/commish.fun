@@ -106,6 +106,46 @@ export function storeFor(w: MobileWallet, platform: Platform): string {
   return platform === "android" ? w.store.android : w.store.ios;
 }
 
+/* PLAYING SIDEWAYS, AND WHY IT IS NOT THE FULLSCREEN API.
+ *
+ * The obvious build is: listen for orientationchange, call requestFullscreen.
+ * It cannot work, for two independent reasons, and both are worth writing down
+ * so nobody spends an afternoon rediscovering them.
+ *
+ *   requestFullscreen requires transient user activation. An orientation
+ *   change is not a user gesture, so the call is rejected — by specification,
+ *   in every browser, permanently.
+ *
+ *   Safari on iPhone does not implement Element.requestFullscreen at all. Only
+ *   video elements can go fullscreen there. So on the device most likely to be
+ *   turned sideways, there is no API to call even from a tap.
+ *
+ * What actually fills the screen is CSS: a fixed element at 100dvw by 100dvh
+ * covers everything the page can cover, needs no permission, no gesture and no
+ * API, and behaves identically on an iPhone and a Pixel. `dvh` rather than
+ * `vh` because it tracks Safari's collapsing toolbar instead of being measured
+ * against the taller pre-scroll viewport and overflowing by the height of it.
+ *
+ * The real fullscreen API is then an ENHANCEMENT on top, offered as a button
+ * where it exists, which is how it gets its gesture.
+ */
+
+/** Is this a device worth expanding for — a phone or tablet held sideways?
+ *
+ *  `pointer: coarse` rather than a width test: a narrow desktop window is not
+ *  a phone and should keep its page. Both halves are needed, since a coarse
+ *  pointer in portrait is a phone that has not been turned yet. */
+export const LANDSCAPE_PLAY_QUERY =
+  "(orientation: landscape) and (pointer: coarse)";
+
+/** Whether the browser can actually take an element fullscreen. iPhone Safari
+ *  cannot, so the control that offers it must not be shown there. */
+export function canGoFullscreen(el: Element | null): boolean {
+  if (!el) return false;
+  return typeof (el as Element & { requestFullscreen?: unknown })
+    .requestFullscreen === "function";
+}
+
 /**
  * Whether the page is already running inside a wallet's in-app browser.
  *

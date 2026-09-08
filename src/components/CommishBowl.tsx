@@ -67,6 +67,7 @@ import {
 import * as kit from "@/lib/audiokit";
 import { fanfare, startDrive, stopMusic } from "@/lib/chiptune";
 import { createGameMusic, type Phase as MusicPhase } from "@/lib/gamemusic";
+import { LANDSCAPE_PLAY_QUERY } from "@/lib/mobile";
 import { TEAMS } from "@/lib/nfl";
 import { drawField, drawPlayer, PX } from "@/lib/pixel";
 import { play, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
@@ -130,6 +131,45 @@ function pickOpponent(us: number): number {
 
 export function CommishBowl() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  /* SIDEWAYS ON A PHONE FILLS THE SCREEN.
+   *
+   * Asked for as "auto fullscreen when they turn the phone", which cannot be
+   * built as described: requestFullscreen needs a user gesture and an
+   * orientation change is not one, and iPhone Safari has no element fullscreen
+   * at all. Both are set out in lib/mobile.ts.
+   *
+   * What does work is CSS — a fixed 100dvw by 100dvh shell — and it works on
+   * every phone rather than the subset with the API. Turning the phone is
+   * enough; nothing has to be tapped and nothing can refuse.
+   *
+   * A media query listener rather than an orientationchange handler: the query
+   * is the actual condition, it fires for a window resized on a desktop too,
+   * and it does not need the deprecated screen.orientation dance. */
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const [sideways, setSideways] = useState(false);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(LANDSCAPE_PLAY_QUERY);
+    const apply = () => setSideways(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  /* While the shell covers the page, the page behind it must not scroll — a
+   * document that still moves under a fixed overlay is how a phone ends up
+   * showing half a game and half a footer. Restored on the way out, including
+   * when the phone is turned back. */
+  useEffect(() => {
+    if (!sideways) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [sideways]);
 
   const [phase, setPhase] = useState<Phase>("select");
   const [down, setDown] = useState(1);
@@ -605,7 +645,20 @@ export function CommishBowl() {
   const ordinal = ["1ST", "2ND", "3RD", "4TH"][Math.min(DOWNS - 1, down - 1)];
 
   return (
-    <div className="panel-primary scanlines relative overflow-hidden">
+    <div
+      ref={shellRef}
+      className={
+        sideways
+          ? /* Sideways on a phone: cover everything. Fixed rather than a
+             * fullscreen request, because an orientation change is not a user
+             * gesture and iPhone Safari has no element fullscreen at all — see
+             * lib/mobile.ts. `dvh` tracks Safari's collapsing toolbar; `vh`
+             * would be measured against the taller pre-scroll viewport and
+             * hang off the bottom by the height of it. */
+            "panel-primary scanlines fixed inset-0 z-50 flex h-[100dvh] w-[100dvw] flex-col justify-center overflow-hidden"
+          : "panel-primary scanlines relative overflow-hidden"
+      }
+    >
       {/* TOP RAIL, the same furniture as the attract cabinet on the landing
           page, because this is the same machine running a second cartridge. */}
       <div className="flex items-center justify-between gap-3 border-b-2 border-chalk px-3 py-2 font-matrix text-[10px] leading-4">
@@ -642,15 +695,62 @@ export function CommishBowl() {
         </span>
       </div>
 
-      <div className="relative">
+      <div
+        className={
+          sideways
+            ? /* min-h-0 is load-bearing: a flex child defaults to min-height
+               * auto, which refuses to shrink below its content and would push
+               * the field off the bottom of the screen instead of fitting it. */
+              "relative flex min-h-0 flex-1 items-center justify-center"
+            : "relative"
+        }
+      >
         <canvas
           ref={canvasRef}
           width={VIEW_W}
           height={VIEW_H}
           role="img"
           aria-label="A pixel football field. Your runner carries the ball from left to right while the defence pursues."
-          className="block w-full touch-none"
-          style={{ imageRendering: "pixelated", aspectRatio: "16 / 9" }}
+          className={sideways ? "block touch-none" : "block w-full touch-none"}
+          /* Portrait: full width, height follows the ratio. Sideways: both
+           * maxima plus the ratio, which is the standard way to make a fixed
+           * aspect box fit a container without stretching — width alone would
+           * make a 16:9 field taller than a phone held sideways and squash it
+           * to fit. */
+          style={
+            sideways
+              ? {
+                  imageRendering: "pixelated",
+                  aspectRatio: "16 / 9",
+                  /* width GROWS it, the maxima FIT it. `max-*` alone only
+                   * constrains, so the canvas sat at its intrinsic 320x180 in
+                   * the middle of a 740px screen — a fullscreen shell around a
+                   * postage stamp. With a ratio set, clamping the height pulls
+                   * the width back with it, so it stays 16:9 either way.
+                   *
+                   * Deliberately NOT object-fit: contain, which is the other
+                   * way to do this. That letterboxes the bitmap INSIDE the box
+                   * while the box stays the wrong shape, and the pointer maths
+                   * below divides by the box — every touch would land offset
+                   * from where the player aimed. */
+                  /* HEIGHT DRIVES IT, and that is the whole trick.
+                   *
+                   * `width: 100%` plus `max-height` was measured at 734x282 —
+                   * a ratio of 2.60 against the 1.78 it is drawn at. The
+                   * clamp shortened the box without narrowing it, so the field
+                   * was stretched sideways and every sprite with it.
+                   *
+                   * Sideways, the space is always wider than 16:9, so height
+                   * is the binding dimension: take all of it and let the ratio
+                   * set the width. max-width is a belt-and-braces guard for a
+                   * viewport narrower than 16:9, where the letterboxing would
+                   * flip to the other axis. */
+                  height: "100%",
+                  width: "auto",
+                  maxWidth: "100%",
+                }
+              : { imageRendering: "pixelated", aspectRatio: "16 / 9" }
+          }
           onPointerDown={(e) => {
             if (phaseRef.current !== "live") return;
             e.currentTarget.setPointerCapture(e.pointerId);
