@@ -25,6 +25,14 @@ import { WalletReadyState } from "@solana/wallet-adapter-base";
 import type { WalletName } from "@solana/wallet-adapter-base";
 
 import { shortAddress } from "@/lib/format";
+import {
+  detectPlatform,
+  inWalletBrowser,
+  isIpadPretendingToBeAMac,
+  MOBILE_WALLETS,
+  storeFor,
+  type Platform,
+} from "@/lib/mobile";
 
 export function WalletButton() {
   const {
@@ -75,6 +83,80 @@ export function WalletButton() {
       w.readyState === WalletReadyState.Loadable,
   );
 
+  /* THE PHONE, WHERE THERE IS NOTHING TO DETECT.
+   *
+   * A wallet on a desktop is a browser extension and the Wallet Standard finds
+   * it. On a phone there is no extension, so `available` is empty and this
+   * button used to say "No Solana wallet found in this browser" — to somebody
+   * with Phantom installed on the same device, open in the next app across.
+   * True, useless, and the end of the road.
+   *
+   * The way in is the wallet's own in-app browser: a universal link hands it
+   * this URL, it opens, the wallet injects itself, and every other line in
+   * this component works exactly as it does on a desktop.
+   *
+   * A page cannot ask a phone what is installed — both platforms removed that
+   * because it is a fingerprinting surface — so there is no dispatching to be
+   * done, only an offer: the link, which opens the app when it is there, and
+   * the store beside it for when it is not.
+   *
+   * Read after mount, never during render: a user agent is not available to
+   * the server, and deciding layout from it during hydration is the same
+   * mismatch that ate the click on this very button. */
+  const [platform, setPlatform] = useState<Platform>("desktop");
+  const [insideWallet, setInsideWallet] = useState(false);
+  /* The page to come back to. Captured after mount for the same reason as the
+   * platform, and it is the CURRENT page rather than the home page: somebody
+   * following a pool invitation must land back on that pool, not on a site
+   * they then have to navigate from scratch inside a wallet's browser. */
+  const [href, setHref] = useState("");
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setHref(window.location.href);
+    setOrigin(window.location.origin);
+    const ua = navigator.userAgent;
+    setPlatform(
+      isIpadPretendingToBeAMac(ua, navigator.maxTouchPoints)
+        ? "ios"
+        : detectPlatform(ua),
+    );
+    setInsideWallet(inWalletBrowser(ua));
+  }, []);
+
+  /* INSTALLED, NOT AVAILABLE, AND THE DIFFERENCE IS THE WHOLE ANDROID STORY.
+   *
+   * This first tested `available.length === 0` and the panel never appeared on
+   * Android. Running it explained why: @solana-mobile/wallet-adapter-mobile is
+   * in the tree and REGISTERS ITSELF through the Wallet Standard on Android, so
+   * `available` already holds a LocalSolanaMobileWalletAdapterWallet at
+   * readyState Loadable. Android has had Mobile Wallet Adapter all along, and
+   * MWA is the right path there: it hands off to whichever wallet app is
+   * actually installed, which is exactly "call the wallet on their phone".
+   *
+   * What it cannot do is help somebody with no wallet app at all. It tries,
+   * fails — "Local Network Access permission denied" in this browser, an
+   * unanswered intent on a real phone — and leaves them where they started.
+   *
+   * So the test is whether anything is INSTALLED. A Loadable entry is a
+   * promise to go and find a wallet, not a wallet; on iOS there is not even
+   * that. Either way the panel below is what turns a dead end into a choice,
+   * and on Android it offers the MWA hand-off first, because when a wallet IS
+   * installed that is the better route. */
+  const installed = available.filter(
+    (w) => w.readyState === WalletReadyState.Installed,
+  );
+  const handoff = available.find(
+    (w) => w.readyState === WalletReadyState.Loadable,
+  );
+
+  const needsMobileHelp =
+    hydrated &&
+    !connected &&
+    platform !== "desktop" &&
+    !insideWallet &&
+    installed.length === 0;
+
   const tryConnect = useCallback(() => {
     connect().catch((e: unknown) => {
       setError(e instanceof Error ? e.message : "Could not connect.");
@@ -119,6 +201,23 @@ export function WalletButton() {
       disconnect().catch(() => {});
       return;
     }
+    /* THE PHONE CASE IS TESTED FIRST, and it has to be.
+     *
+     * This used to start from `available.length`, and on Android that is 1
+     * before any wallet exists — the Mobile Wallet Adapter registers itself as
+     * Loadable whether or not a wallet app is installed. So the click went
+     * straight to it, MWA failed to find anything to hand off to, and the
+     * panel this exists to show was never reached. Nothing on screen changed;
+     * the only trace was a WalletConnectionError in the console.
+     *
+     * A Loadable entry is a promise to go and look, not a wallet. When nothing
+     * is Installed and this is a phone, the panel is the answer — and it
+     * offers the hand-off as its first option, so a real installed wallet
+     * still takes the better route. */
+    if (needsMobileHelp) {
+      setPicking((p) => !p);
+      return;
+    }
     if (available.length === 0) {
       setError("No Solana wallet found in this browser.");
       return;
@@ -129,7 +228,8 @@ export function WalletButton() {
       return;
     }
     setPicking((p) => !p);
-  }, [connected, disconnect, available, choose]);
+  }, [connected, disconnect, available, choose, needsMobileHelp]);
+
 
   /* Upper case, and no ellipsis character. The label face is Press Start 2P
    * and it sits in a row of nav blocks that are all caps; a mixed-case
@@ -160,7 +260,75 @@ export function WalletButton() {
         {label}
       </button>
 
-      {picking ? (
+      {/* THE PHONE PANEL. Two rows per wallet, and both are needed because a
+        * page cannot know which one applies: OPEN dispatches to the app when
+        * it is installed, INSTALL goes to the right store for this platform.
+        * Ordinary links, not buttons — a universal link has to be navigated
+        * to, and iOS treats a real link as a stronger signal of intent than a
+        * scripted location change. */}
+      {picking && needsMobileHelp ? (
+        <div className="absolute right-0 z-20 mt-2 w-72 border-2 border-chalk bg-panel p-3 shadow-[4px_4px_0_rgba(0,0,0,0.5)]">
+          <p className="font-matrix text-[10px] leading-4 text-chalk">
+            OPEN IN A WALLET
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-cream-dim">
+            Phone browsers cannot hold a wallet. Open this page inside a wallet
+            app and it will connect there.
+          </p>
+
+          {/* ANDROID FIRST, WHEN IT IS OFFERED. Mobile Wallet Adapter hands
+            * off to whichever wallet app is installed, whatever it is — a
+            * better route than guessing at two by name, and the only one that
+            * reaches a wallet this list has never heard of. It is absent on
+            * iOS, where MWA does not exist, so the deep links below are the
+            * whole answer there. */}
+          {handoff ? (
+            <button
+              type="button"
+              onClick={() => choose(handoff.adapter.name)}
+              className="btn btn-compact btn-primary mt-3 w-full"
+            >
+              Use an installed wallet
+            </button>
+          ) : null}
+
+          <ul className="mt-3 flex flex-col gap-3">
+            {MOBILE_WALLETS.map((w) => (
+              <li key={w.id} className="flex flex-col gap-1.5">
+                <span className="font-matrix text-[10px] leading-4 text-cream">
+                  {w.name}
+                </span>
+                <span className="text-xs leading-relaxed text-cream-dim">
+                  {w.note}
+                </span>
+                <span className="flex gap-2">
+                  <a
+                    href={w.browse ? w.browse(href, origin) : "#"}
+                    className="btn btn-compact btn-primary flex-1 text-center"
+                  >
+                    Open
+                  </a>
+                  <a
+                    href={storeFor(w, platform)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="btn btn-compact btn-secondary flex-1 text-center"
+                  >
+                    Install
+                  </a>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-3 text-xs leading-relaxed text-cream-dim">
+            Open does nothing if the app is not installed — there is no way for
+            a web page to check. Install first if that happens.
+          </p>
+        </div>
+      ) : null}
+
+      {picking && !needsMobileHelp ? (
         <ul className="absolute right-0 z-20 mt-2 w-60 overflow-hidden border-2 border-chalk bg-panel shadow-[4px_4px_0_rgba(0,0,0,0.5)]">
           {available.map((w) => (
             <li key={w.adapter.name}>
