@@ -17,9 +17,27 @@
  * the console first, because a wallet registered twice is worse than one
  * registered not at all.
  *
- * RPC: NEXT_PUBLIC_RPC_URL is a Helius endpoint restricted to the commish.fun
- * domain in the Helius dashboard. It is public by nature — it ships in the
- * browser bundle — so the domain restriction is what protects it, not secrecy.
+ * RPC: NEXT_PUBLIC_RPC_URL IS THE WORKER PROXY, NOT A HELIUS ENDPOINT.
+ *
+ * This said the opposite: that it was "a Helius endpoint restricted to the
+ * commish.fun domain in the Helius dashboard", and that "the domain
+ * restriction is what protects it, not secrecy". Both halves were wrong, and
+ * the second was the dangerous one — it was tested against the live endpoint
+ * and did not hold. Every origin got a 200 and an
+ * `access-control-allow-origin: *`, including origins with no connection to
+ * this site, and so did a request carrying no Origin header at all. A
+ * credential published in a bundle and guarded by a control that does not
+ * work is simply a published credential.
+ *
+ * So the key moved into a Cloudflare Worker as an encrypted secret, and this
+ * variable became that worker's URL — rpc.commish.fun, which carries no
+ * credential and is therefore safe to ship. What protects the key now is that
+ * the browser never receives it.
+ *
+ * See workers/rpc-proxy for what that proxy does and, more usefully, what it
+ * does not: CORS is a browser rule, so it stops other websites and not curl,
+ * and anyone who forges an Origin header still gets through.
+ *
  * Never put a server-side key in a NEXT_PUBLIC_ variable.
  */
 
