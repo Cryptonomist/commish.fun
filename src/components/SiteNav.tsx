@@ -30,7 +30,12 @@ import { usePathname } from "next/navigation";
 import { Wordmark } from "@/components/Laces";
 import { WalletButton } from "@/components/WalletButton";
 
+/* MY POOLS SITS FIRST, ahead of starting a new one, because finding the pool
+ * you already have is the more common need and was the one with no route at
+ * all: a pool is reachable only by its address, and the address only ever
+ * appears in a share link. Close the tab and the site offered no way back. */
 const ITEMS = [
+  { href: "/pools", label: "MY POOLS" },
   { href: "/pools/new", label: "NEW POOL" },
   { href: "/leaderboard", label: "LEADERS" },
   { href: "/arcade", label: "ARCADE" },

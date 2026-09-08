@@ -920,6 +920,42 @@ export function discriminatorFilter(account: "Pool" | "Member" | "Config") {
   ];
 }
 
+/* FINDING YOUR OWN POOLS, WHICH NOTHING COULD DO.
+ *
+ * A pool is reachable only by its address, and the address is only ever handed
+ * out as a share link. So a commissioner who created a pool and lost the tab
+ * had no route back to it from this site at all — the money was safe and
+ * visible on chain, and the interface to it was a URL in somebody's history.
+ *
+ * Both cuts are one filtered scan, because the fields sit at fixed offsets
+ * after the eight-byte discriminator:
+ *
+ *   Pool   { commissioner, usdc_mint, vault, ... }   commissioner at 8
+ *   Member { pool, wallet, ... }                     wallet at 8 + 32 = 40
+ *
+ * Filtered, and against this program, which is what the RPC proxy allows —
+ * an unfiltered scan is refused and so is any other program's. */
+const WALLET_IN_POOL = 8;
+const WALLET_IN_MEMBER = 8 + 32;
+
+/** Pools this wallet created. */
+export function poolsByCommissioner(wallet: PublicKey) {
+  return [
+    ...discriminatorFilter("Pool"),
+    { memcmp: { offset: WALLET_IN_POOL, bytes: wallet.toBase58() } },
+  ];
+}
+
+/** Memberships this wallet holds. The pool each one points at is the second
+ *  half of the answer, and it is a field on the member rather than another
+ *  scan. */
+export function membershipsByWallet(wallet: PublicKey) {
+  return [
+    ...discriminatorFilter("Member"),
+    { memcmp: { offset: WALLET_IN_MEMBER, bytes: wallet.toBase58() } },
+  ];
+}
+
 /** A member account as `getProgramAccounts` returns it, decoded. */
 export type MemberEntry = { address: PublicKey; member: MemberView };
 
