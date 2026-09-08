@@ -305,9 +305,18 @@ export function LeaguePanel({
                     className="rounded-xl border border-night-3 bg-night-2 px-4 py-3 text-cream outline-none focus:border-action"
                   >
                     <option value="">Nobody yet</option>
+                    {/* THE ADDRESS IS ALWAYS SHOWN, not only when a name is
+                        missing. Display names are typed by members and nothing
+                        stops two of them being "Mike" — and picking the wrong
+                        Mike is a real payment to a real stranger, undone only
+                        by members noticing and vetoing inside the window. The
+                        name is what a commissioner recognises; the address is
+                        what makes two of them different. */}
                     {roster.map((r) => (
                       <option key={r.wallet.toBase58()} value={r.wallet.toBase58()}>
-                        {r.name || shortAddress(r.wallet.toBase58(), 4)}
+                        {r.name
+                          ? `${r.name} · ${shortAddress(r.wallet.toBase58(), 4)}`
+                          : shortAddress(r.wallet.toBase58(), 4)}
                       </option>
                     ))}
                   </select>
@@ -340,6 +349,58 @@ export function LeaguePanel({
                 filled — a slot left empty is never claimable, and its share
                 waits in the vault until the refund deadline.
               </p>
+            ) : null}
+
+            {/* WHAT YOU ARE ABOUT TO SIGN, IN FULL, BEFORE YOU SIGN IT.
+              *
+              * Up to here a commissioner has been choosing from dropdowns one
+              * at a time, and never sees the whole sheet at once — which is
+              * exactly when a slot picked two minutes ago goes unchecked. The
+              * amounts are on the labels above, but scattered; the total is
+              * nowhere.
+              *
+              * This is the thing that makes it hard to get wrong: every slot,
+              * every recipient with the address that separates two people of
+              * the same name, every amount, and a total that has to equal the
+              * vault. Posting is not undoable on its own — it takes members
+              * noticing and voting it down inside the window — so the review
+              * belongs before the signature, not in the dispute that follows. */}
+            {draftComplete && vaultAmount !== null ? (
+              <div className="mt-4 rounded-xl border border-night-3 bg-night/60 p-3">
+                <p className="text-xs font-bold tracking-[0.14em] text-cream-dim">
+                  ABOUT TO POST
+                </p>
+                <ul className="mt-2 flex flex-col gap-1.5">
+                  {pool.prizeSlots.map((slot) => {
+                    const who = roster.find(
+                      (r) => r.wallet.toBase58() === draft[slot.index],
+                    );
+                    return (
+                      <li
+                        key={slot.index}
+                        className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
+                      >
+                        <span className="text-cream">
+                          {slot.label}
+                          {" · "}
+                          <span className="text-cream-dim">
+                            {who?.name ? `${who.name} ` : ""}
+                            {shortAddress(draft[slot.index] ?? "", 4)}
+                          </span>
+                        </span>
+                        <span className="font-bold text-gold tabular-nums">
+                          {formatUsdc(slotAmount(slot.bps, vaultAmount))}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-2 border-t border-night-3 pt-2 text-xs text-cream-dim">
+                  {formatUsdc(vaultAmount)} in the vault, paid in full. Members
+                  get {Math.round(pool.disputeWindowSecs / 3600)} hours to vote
+                  this down; nothing moves until that passes.
+                </p>
+              </div>
             ) : null}
 
             <button

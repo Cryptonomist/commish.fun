@@ -147,8 +147,28 @@ export default function MyPools() {
     void load();
   }, [load]);
 
-  const started = rows?.filter((r) => r.started) ?? [];
-  const joinedOnly = rows?.filter((r) => !r.started && r.joined) ?? [];
+  /* FINISHED POOLS MOVE OUT OF THE WAY.
+   *
+   * A settled pool is not a thing anybody has to do something about, and left
+   * in the same list it competes for attention with the ones that do — which
+   * is the opposite of what this page is for. It stays reachable, because the
+   * chain keeps it forever and somebody will want to look at what a pool paid
+   * six months from now.
+   *
+   * SETTLED AND ABANDONED ONLY. Not STATUS_SHEET_FINALIZED, which looks
+   * finished and is not: the payout is agreed but the money is still in the
+   * vault waiting to be claimed, and a claim is exactly the kind of thing this
+   * page exists to remind somebody about. A pool becomes past when the last
+   * claim empties it and the program marks it settled. */
+  const isPast = (r: Row) =>
+    r.pool.status === STATUS_SETTLED || r.pool.status === STATUS_ABANDONED;
+
+  const live = rows?.filter((r) => !isPast(r)) ?? [];
+  const started = live.filter((r) => r.started);
+  const joinedOnly = live.filter((r) => !r.started && r.joined);
+  /* Started and joined are not split here. Once a pool is over, which side of
+   * it somebody was on stops being how they look for it. */
+  const past = rows?.filter(isPast) ?? [];
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-5 sm:px-8">
@@ -196,6 +216,14 @@ export default function MyPools() {
           <>
             <Group title="POOLS YOU STARTED" rows={started} />
             <Group title="POOLS YOU JOINED" rows={joinedOnly} />
+            {/* Dimmed rather than hidden: a finished pool is a record, and the
+                chain keeps it whether this page lists it or not. */}
+            <Group title="FINISHED" rows={past} muted />
+            {live.length === 0 && past.length > 0 ? (
+              <p className="text-sm leading-relaxed text-cream-dim">
+                Nothing live. Every pool this wallet has been in is finished.
+              </p>
+            ) : null}
           </>
         )}
       </main>
@@ -205,11 +233,23 @@ export default function MyPools() {
   );
 }
 
-function Group({ title, rows }: { title: string; rows: Row[] }) {
+function Group({
+  title,
+  rows,
+  muted,
+}: {
+  title: string;
+  rows: Row[];
+  muted?: boolean;
+}) {
   if (rows.length === 0) return null;
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="font-matrix text-[11px] leading-4 text-chalk">{title}</h2>
+    <section className={`flex flex-col gap-3 ${muted ? "opacity-70" : ""}`}>
+      <h2
+        className={`font-matrix text-[11px] leading-4 ${muted ? "text-cream-dim" : "text-chalk"}`}
+      >
+        {title}
+      </h2>
       <ul className="flex flex-col gap-2">
         {rows.map((r) => (
           <li key={r.address}>
