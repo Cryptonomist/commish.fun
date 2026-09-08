@@ -57,6 +57,19 @@ say "3. Config, and the treasury token account"
 # and it is idempotent: run against an existing config it only fills in a
 # missing token account. That account must exist or NO POOL CAN EVER SETTLE,
 # because advance_week names it on every call even at a zero fee.
+# WHAT IS ABOUT TO BE WRITTEN, SHOWN BEFORE IT IS PERMANENT. Every pool copies
+# the treasury and the fee at creation, so neither can be corrected afterwards
+# for a pool that already exists. Read these two lines before --go.
+TREASURY="${FEE_TREASURY:-$(grep -oE 'const FEE_TREASURY = "[^"]+"' scripts/init-config.ts | grep -oE '"[^"]+"' | tr -d '"')}"
+FEEBPS=$(grep -oE 'const FEE_BPS = [0-9]+' scripts/init-config.ts | grep -oE '[0-9]+')
+say "   fee treasury  $TREASURY"
+say "   platform fee  ${FEEBPS} bps"
+[ -n "$TREASURY" ] || bad "no fee treasury: set FEE_TREASURY or fix scripts/init-config.ts"
+case "$TREASURY" in
+  HoYb6BCszJUY89WhKt2itTpxtLHMJKuoEwXwQPdbhtVu)
+    bad "the treasury is the DEPLOY KEY. That key already holds the upgrade authority and the config admin; do not add the money to it." ;;
+esac
+
 run "RPC_URL='$RPC' npx tsx scripts/init-config.ts"
 
 if [ "$GO" = "--go" ]; then

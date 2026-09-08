@@ -10,11 +10,15 @@
  * The signer is your Solana CLI keypair, which becomes the config admin. On
  * mainnet that key should be a multisig, not a file on a laptop.
  *
- * SEASON ONE TAKES NO FEE. fee_bps is 0 below, deliberately. The fee plumbing
- * is implemented and tested, but charging players in the first season while the
- * program has never been audited is not a trade worth making. Change this only
- * when you mean it — the value is copied onto every pool at creation and cannot
- * be raised on a pool that already exists.
+ * THE FEE IS 3% AND THE TREASURY IS A COLD ADDRESS, both set below. This header
+ * used to say season one took none, which was true until the owner decided
+ * otherwise; the reasoning for the rate and the cap is on the constants
+ * themselves.
+ *
+ * Both are copied onto every pool at creation and neither can be changed for a
+ * pool that already exists, so a mistake here is only correctable for pools made
+ * after it is noticed. That is why the treasury is written down rather than
+ * defaulted to whoever happens to be signing.
  */
 
 import fs from "fs";
@@ -67,6 +71,25 @@ const USDC_MINT = new PublicKey(
  * that stops scaling is the thing that keeps it reading as a charge for the
  * software rather than a share of the action. Raising it is one number here
  * plus one `update_config`, and it reaches only pools created afterwards. */
+/* WHERE THE FEE GOES, WRITTEN DOWN RATHER THAN REMEMBERED.
+ *
+ * This used to fall back to the signer's own key, which meant that forgetting
+ * one environment variable silently put the money on the same key that holds
+ * the upgrade authority and the config admin — and it cannot be corrected for
+ * pools that already exist, because each one copies the treasury at creation.
+ * A default that quietly does the wrong thing is worse than no default.
+ *
+ * It is a cold address that signs nothing. The program never asks the treasury
+ * for a signature — it is an UncheckedAccount at lib.rs:1188 and money only
+ * ever moves toward it — so keeping it somewhere unreachable costs nothing at
+ * all. It is deliberately NOT the deploy key and NOT the browser wallet the
+ * leaderboard has seen.
+ *
+ * Public by nature: it goes on chain into Config and into every pool, so there
+ * is nothing to hide by keeping it out of the repository. FEE_TREASURY still
+ * overrides it. */
+const FEE_TREASURY = "BB6S4LCYYf6VjfFTdB7ETzY958aNw7dyMAPNRMkuCUxt";
+
 const FEE_BPS = 300;
 const FEE_CAP = 50_000_000; // 50 USDC. The 3% binds below a ~$1,667 pot.
 const CREATION_FEE = 0;
@@ -100,7 +123,7 @@ async function main() {
   // creation, so pointing it somewhere wrong is not fixable for pools that
   // already exist.
   const treasury = new PublicKey(
-    process.env.FEE_TREASURY ?? admin.publicKey.toBase58(),
+    process.env.FEE_TREASURY ?? FEE_TREASURY,
   );
 
   /* THE TREASURY'S TOKEN ACCOUNT MUST EXIST OR NO POOL CAN EVER SETTLE.
