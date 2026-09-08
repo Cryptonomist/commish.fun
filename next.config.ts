@@ -36,13 +36,35 @@ import type { NextConfig } from "next";
  * Report-Only mode — which is exactly why the framing directives are enforced
  * here and now instead of waiting for the rest of the policy.
  *
- * ALSO NOT HERE: Strict-Transport-Security. Vercel injects it per-domain at the
- * edge, and RFC 6797 §8.1 says a user agent honours only the FIRST such header
- * it receives. Emitting a second one risks the weaker of the two winning,
- * silently, on ordering nobody controls. includeSubDomains belongs in the
- * Vercel dashboard, not in this file.
+ * STRICT-TRANSPORT-SECURITY IS HERE NOW, and this comment used to say the
+ * opposite: that Vercel injects it at the edge, that RFC 6797 §8.1 makes a
+ * second header a silent race, and that includeSubDomains "belongs in the
+ * Vercel dashboard, not in this file".
+ *
+ * The RFC is quoted correctly — §8.1 really does say a UA processes only the
+ * first STS header — but the conclusion was wrong, because there is no such
+ * dashboard setting to move it to. Vercel documents one way to change this
+ * header and it is this file: "You can modify the Strict-Transport-Security
+ * header by configuring custom response headers in your project."
+ * (vercel.com/docs/cdn-security/encryption.) The platform default applies to a
+ * response that does not already carry one; setting it here replaces it rather
+ * than racing it.
+ *
+ * What the default gets wrong is the scope, not the age. A custom domain gets
+ * `max-age=63072000` and nothing else, so the two years covers commish.fun and
+ * not one subdomain of it — while rpc.commish.fun is a planned host for the RPC
+ * proxy. So the age is kept and includeSubDomains is added.
+ *
+ * NO PRELOAD. That is a hardcoded list inside the browsers themselves, removal
+ * is slow and at somebody else's discretion, and it commits every future
+ * subdomain forever. includeSubDomains is reversible in two years; preload is
+ * not reversible on any schedule we control.
  */
 const SECURITY_HEADERS = [
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains",
+  },
   { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
