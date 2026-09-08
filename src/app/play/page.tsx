@@ -27,7 +27,7 @@ export default function Page() {
   return (
     <LegalPage
       title={"Playing Responsibly"}
-      updated={"7 September 2026"}
+      updated={"8 September 2026"}
       intro={"This is meant to be entertainment among people who know each other. If it stops being that, the rest of this page is for you."}
     >
       <p>{"Commish is meant to be fun. It is a few friends putting money in a pot and arguing about football for a few months. For most people that is all it ever is. This page is here for the times when it is not."}</p>

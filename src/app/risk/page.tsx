@@ -26,7 +26,7 @@ export default function Page() {
   return (
     <LegalPage
       title={"Risk Disclosure"}
-      updated={"7 September 2026"}
+      updated={"8 September 2026"}
       intro={"This is the least comfortable page on the site, and it is the one worth reading. If any of it is unacceptable to you, do not put money in."}
     >
       <p>{"This is the page where we tell you what can go wrong. It is deliberately blunt. Please read all of it before you put any money into a pool."}</p>
@@ -87,7 +87,7 @@ export default function Page() {
 
       <p>{"The program is deployed to Solana mainnet and pools hold real USDC. The money is real, the transactions are final, and nothing on this page is hypothetical any more. Everything above applies in full, and it applies to money you cannot get back if it goes wrong."}</p>
 
-      <p>{"If and when we deploy to Solana mainnet, real USDC will be involved and every risk on this page becomes a risk to real money. We will say clearly on the site when that happens. Do not assume the code will have been audited by then, or that the upgrade key will have moved, unless we say so specifically."}</p>
+      <p>{"We are on Solana mainnet. Real USDC is involved and every risk on this page is a risk to real money, now, not at some later date. Neither of the two things you might reasonably hope had changed by this point has: the code has still not been audited, and the upgrade key is still a single key we hold. Both are stated plainly above rather than left to be assumed."}</p>
 
       <p>{"We are not promising a notice period before a mainnet launch. What we will do is keep this page accurate about which network the program is on, so that the page you are reading always tells you whether the money at stake is real."}</p>
 

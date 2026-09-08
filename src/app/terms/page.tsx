@@ -26,7 +26,7 @@ export default function Page() {
   return (
     <LegalPage
       title={"Terms of Service"}
-      updated={"7 September 2026"}
+      updated={"8 September 2026"}
       intro={"We provide software and an escrow program. We are not a party to your pool, we do not hold your money, and we cannot decide who won."}
     >
       <p>{"These terms are an agreement between you and "}{"HoldFi LLC, a Texas limited liability company, whose registered agent is at 5900 Balcones Dr, STE 100, Austin, TX 78731"}{" (\"we\", \"us\", \"our\"). They cover your use of the commish.fun website and the interface it provides to the Commish Solana program."}</p>
@@ -80,7 +80,7 @@ export default function Page() {
 
       <p>{"The program is deployed to Solana "}<strong>{"mainnet"}</strong>{" and pools hold real USDC. The money is real, the transactions are permanent, and there is no reset and no recovery. A mistake here costs what it appears to cost."}</p>
 
-      <p>{"If and when the program is deployed to mainnet, real value will be at risk. Read the Risks section before you send anything you cannot afford to lose."}</p>
+      <p>{"Read the Risks page before you send anything you cannot afford to lose. Two things on it matter more than the rest: the program has never been audited, and its upgrade authority is a single key we hold."}</p>
 
       <h2>{"Eligibility"}</h2>
 
@@ -133,7 +133,7 @@ export default function Page() {
 
       <p>{"That statement has one important limit, and we would rather state it than let you discover it. The program's upgrade authority is currently a single key that we hold. While that is true, we are not powerless over the code in the way the paragraph above might suggest: new program code could in principle be deployed, and new code could behave differently. We are not promising to change that. Once the program has been audited we will decide what happens to the key, and the honest options are to keep it, to discard it so that the program can never be changed again, or to share it. We have not chosen, there is no date, and you should treat the single key as the state of the world rather than as a stage we are passing through. See the Risks page, which spells out what that key could do in the worst case. "}{" If we were ever ordered by a court to use that key, we would comply with a valid order, and we would say publicly that we had been ordered to do something unless the order forbade us from saying so. We would rather you knew that now than assumed otherwise."}</p>
 
-      <p>{"There is a second limit, smaller but more immediate. Closing a week in a Survivor or Loser pool requires a USDC account belonging to our fee treasury to exist. The program names that account every time, whether or not a fee is charged, and season one charges none. Settling the pool is what opens the winner's claim, so if that account is missing, no Survivor or Loser pool can settle and no winner can claim until it exists again. It does not put the money within our reach: the pro rata refund after the refund deadline still works, and would then be the only way out. It is a dependency on us, and you should know it is there. A league never runs that step and is not affected."}</p>
+      <p>{"There is a second limit, smaller but more immediate. Closing a week in a Survivor or Loser pool requires a USDC account belonging to our fee treasury to exist. The program names that account every time, whether or not a fee is actually charged — and on a Survivor or Loser pool with a buy-in, one is. Settling the pool is what opens the winner's claim, so if that account is missing, no Survivor or Loser pool can settle and no winner can claim until it exists again. It does not put the money within our reach: the pro rata refund after the refund deadline still works, and would then be the only way out. It is a dependency on us, and you should know it is there. A league never runs that step and is not affected."}</p>
 
       <h2>{"Refunds"}</h2>
 
@@ -275,7 +275,7 @@ export default function Page() {
         <li>{"we are not liable for indirect, incidental, special, consequential or punitive damages."}</li>
       </ul>
 
-      <p>{"Our total liability to you for all claims connected with the service is limited to "}{"one hundred United States dollars. We have picked a number rather than tying it to fees paid, because we charge no fee in season one and a limit of zero would be no limit at all, only an argument waiting to happen"}{"."}</p>
+      <p>{"Our total liability to you for all claims connected with the service is limited to "}{"one hundred United States dollars. We have picked a number rather than tying it to fees paid, because the fee is a small share of a pot and is capped at 50 USDC, so a limit measured against it would be trivially small in most pools and zero in a league or a free pool — no limit at all, only an argument waiting to happen"}{"."}</p>
 
       <p>{"Nothing in these terms limits liability for fraud, fraudulent misrepresentation, death or personal injury caused by negligence, or anything else that cannot lawfully be limited."}</p>
 

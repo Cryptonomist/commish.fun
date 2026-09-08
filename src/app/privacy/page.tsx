@@ -26,7 +26,7 @@ export default function Page() {
   return (
     <LegalPage
       title={"Privacy Policy"}
-      updated={"7 September 2026"}
+      updated={"8 September 2026"}
       intro={"No account, no email, no password. What little we do store is listed here, along with the parts of a public blockchain that nobody, including us, can undo."}
     >
       <h2>{"The short version"}</h2>
