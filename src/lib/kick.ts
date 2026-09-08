@@ -52,6 +52,28 @@ export type Shot = {
 
 export type Outcome = "flying" | "good" | "wide" | "short";
 
+/* THE METER READING, FOLDED OUT OF THE RAW SWEEP.
+ *
+ * The sweep runs 0 to 2 and wraps, which is a cheap way to get a bar that
+ * travels up and back so the moment to press arrives twice a cycle instead of
+ * once. What it is NOT is the value the meter is showing: past 1 the bar is on
+ * its way back down, and the reading is 2 minus the sweep.
+ *
+ * That fold was missing, and it went wrong in three places at once rather than
+ * one. The bar was drawn at `width * sweep`, so on the return half it ran to
+ * TWICE the track and overshot the black — which is the visible symptom. Worse,
+ * the captured values were raw too: power arrived here as 0..2 against a
+ * function documented for 0..1, and aim as sweep*2-1, which is -1..3 against a
+ * function documented for -1..1. So the meters had been handing the simulation
+ * values outside the domain every test in kick.test.ts exercises.
+ *
+ * One function now, used by the bar, by power and by aim, so the number drawn
+ * and the number played are the same number. */
+export function meterReading(sweep: number): number {
+  const v = ((sweep % 2) + 2) % 2; // tolerate a negative or a runaway sweep
+  return v <= 1 ? v : 2 - v;
+}
+
 /** The spot, walked back as makes accumulate. */
 export function teeFor(made: number): number {
   const t = Math.min(1, Math.max(0, made) / LADDER);

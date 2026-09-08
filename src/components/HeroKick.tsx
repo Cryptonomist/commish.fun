@@ -36,6 +36,7 @@ import {
   BAR_X,
   GAP_HALF,
   launch,
+  meterReading,
   type Shot,
   stepShot,
   teeFor,
@@ -59,7 +60,9 @@ export function HeroKick() {
    * has no business re-rendering for a ball position; the only things that
    * become state are the ones the DOM actually shows. */
   const phaseRef = useRef<Phase>("idle");
-  const meterRef = useRef(0); // 0..1, sweeps while choosing
+  /** The raw sweep, 0..2 and wrapping. Never read directly — meterReading()
+   *  folds it into what the bar is actually showing. */
+  const meterRef = useRef(0);
   const powerRef = useRef(0.5);
   const aimRef = useRef(0);
   const shotRef = useRef<Shot | null>(null);
@@ -93,7 +96,7 @@ export function HeroKick() {
       return;
     }
     if (p === "power") {
-      powerRef.current = meterRef.current;
+      powerRef.current = meterReading(meterRef.current);
       meterRef.current = 0;
       goPhase("aim");
       play("move");
@@ -102,7 +105,7 @@ export function HeroKick() {
     if (p === "aim") {
       /* The aim meter runs -1..1 across the middle of its sweep, so stopping
        * it dead centre is a straight kick and either edge is a hook. */
-      aimRef.current = meterRef.current * 2 - 1;
+      aimRef.current = meterReading(meterRef.current) * 2 - 1;
       shotRef.current = launch(
         teeX(),
         powerRef.current,
@@ -186,7 +189,8 @@ export function HeroKick() {
         ctx.fillStyle = PX.panel;
         ctx.fillRect(mx - 1, my - 1, mw + 2, 5);
         ctx.fillStyle = p === "power" ? PX.action : PX.gold;
-        ctx.fillRect(mx, my, Math.max(1, Math.round(mw * meterRef.current)), 3);
+        const fill = Math.min(mw, Math.round(mw * meterReading(meterRef.current)));
+        ctx.fillRect(mx, my, Math.max(1, fill), 3);
         if (p === "aim") {
           // The centre notch: hit it and the kick goes straight.
           ctx.fillStyle = PX.chalk;
@@ -310,6 +314,41 @@ export function HeroKick() {
         aria-hidden="true"
         className="h-full w-full [image-rendering:pixelated]"
       />
+
+      {/* WHAT THE BAR IS, SAID NEXT TO THE BAR.
+          The button already changes to SET POWER and SET AIM, but it lives in
+          the far corner of the field and the meter is out by the ball, so the
+          two never got read as one thing — the bar was an unlabelled rectangle
+          filling and emptying.
+
+          Real DOM text rather than glyphs drawn into the canvas, which is the
+          same split the attract loop and the game use: the field and the
+          sprites are pixels, every word is a node. Positioned from the same
+          fraction the tee is drawn at, so it tracks the ball as the spot walks
+          back rather than sitting at a remembered offset.
+
+          aria-hidden because the button carries an aria-live label saying the
+          same words; announcing both would read the phase change twice. */}
+      {phase === "power" || phase === "aim" ? (
+        <span
+          aria-hidden="true"
+          /* `field-type` rather than a dim colour, because this sits on grass.
+             The hero's own rule: chalk and cream are legal on turf at any size
+             and cream-dim is not, so a 9px label in cream-dim was a contrast
+             failure by this project's own measurement. The class carries the
+             panel-coloured outline that holds small type against a mow band or
+             a yard number passing behind it.
+
+             46px clears the meter. The bar is drawn at ty+7 in canvas pixels
+             and the canvas runs at three screen pixels to one, so the track
+             occupies roughly centre+21 to centre+36; the first attempt put the
+             label at centre+34 and it landed on top of the bar. */
+          className="pointer-events-none absolute -translate-x-1/2 font-matrix text-[9px] leading-3 field-type"
+          style={{ left: `${teeX() * 100}%`, top: "calc(50% + 46px)" }}
+        >
+          {phase === "power" ? "POWER" : "AIM"}
+        </span>
+      ) : null}
 
       {/* The one interactive thing, and it is a real button: focusable, in the
           tab order, operable with Enter or Space like any other.

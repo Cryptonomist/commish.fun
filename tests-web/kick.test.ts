@@ -19,6 +19,7 @@ import {
   GAP_HALF,
   LADDER,
   MAX_AGE,
+  meterReading,
   resolve,
   teeFor,
   windFrom,
@@ -165,5 +166,65 @@ describe("the field goal", () => {
       expect(windFrom(42).wind).to.equal(windFrom(42).wind);
       expect(windFrom(42).wind).to.not.equal(windFrom(43).wind);
     });
+  });
+});
+
+/* THE METER, WHICH WAS LYING TO BOTH THE EYE AND THE SIMULATION.
+ *
+ * The sweep runs 0..2 and wraps, to make a bar that travels up and back. The
+ * fold that turns that into a reading was missing, so past 1 the bar was drawn
+ * at up to twice the width of its own track — reported as "the meter runs well
+ * past the end of the black" — and, less visibly, the captured values went out
+ * of range too: power 0..2 into a function documented 0..1, aim -1..3 into one
+ * documented -1..1.
+ *
+ * These pin the fold. Each one fails against the raw sweep.
+ */
+describe("the meter reading", () => {
+  it("never exceeds the track, anywhere in the sweep", () => {
+    for (let sweep = 0; sweep < 2; sweep += 0.001) {
+      const r = meterReading(sweep);
+      expect(r, `sweep ${sweep.toFixed(3)} drew past the end`).to.be.at.most(1);
+      expect(r, `sweep ${sweep.toFixed(3)} drew below zero`).to.be.at.least(0);
+    }
+  });
+
+  it("travels up and back rather than snapping", () => {
+    expect(meterReading(0)).to.equal(0);
+    expect(meterReading(0.5)).to.be.closeTo(0.5, 1e-9);
+    expect(meterReading(1)).to.equal(1);      // the top of the sweep
+    expect(meterReading(1.5)).to.be.closeTo(0.5, 1e-9); // coming back down
+    expect(meterReading(2)).to.equal(0);
+  });
+
+  it("offers the centre twice a cycle, which is what makes it playable", () => {
+    const hits: number[] = [];
+    for (let sweep = 0; sweep < 2; sweep += 0.001) {
+      if (Math.abs(meterReading(sweep) - 0.5) < 0.0006) hits.push(sweep);
+    }
+    // Two separate crossings, not one.
+    const gaps = hits.filter((v, i) => i === 0 || v - hits[i - 1] > 0.01);
+    expect(gaps.length, "the centre is reachable only once per cycle").to.equal(2);
+  });
+
+  it("keeps power inside the range launch() documents", () => {
+    for (let sweep = 0; sweep < 2; sweep += 0.001) {
+      const power = meterReading(sweep);
+      expect(power).to.be.within(0, 1);
+    }
+  });
+
+  it("keeps aim inside the range launch() documents", () => {
+    for (let sweep = 0; sweep < 2; sweep += 0.001) {
+      const aim = meterReading(sweep) * 2 - 1;
+      expect(aim).to.be.within(-1, 1);
+    }
+  });
+
+  it("survives a sweep that has run away or gone negative", () => {
+    for (const sweep of [-0.5, -3, 7.25, 1e6]) {
+      const r = meterReading(sweep);
+      expect(r, `sweep ${sweep}`).to.be.within(0, 1);
+    }
   });
 });
