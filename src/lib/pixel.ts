@@ -129,9 +129,31 @@ export function drawPlayer(
   const body = o.out ? PX.dim : kit.lead;
   const trim = o.out ? PX.dim : kit.trim;
 
-  // Helmet, 6 wide, inset one from each side of the shoulders.
+  /* THE OUTLINE, FIRST, UNDER EVERYTHING. Tecmo's players are drawn against a
+   * green field the same way ours are, and the reason theirs sit ON the pitch
+   * instead of dissolving into it is a hard dark edge on every side. Without
+   * it a navy jersey on turf is two dark shapes touching. This is one silhouette
+   * pass a pixel out in each direction, painted before the body so every
+   * coloured rect lands on top of it and only the fringe survives. */
+  /* Each band is one pixel PROUD of whatever is painted over it, which is the
+   * whole job and is easy to get subtly wrong: a first pass sized these to the
+   * body instead of around it, so the helmet and the shoulder pads — the two
+   * widest parts, and the ones that most need to read — covered their own
+   * outline exactly and had no edge at all. Read back off the canvas rather
+   * than looked at, because at this size the difference is one pixel and it
+   * disappears on a screenshot. */
+  ctx.fillStyle = PX.panel;
+  ctx.fillRect(x - 1, y, 10, 5); // around the helmet, which is 8 wide
+  ctx.fillRect(x - 2, y + 5, 12, 2); // around the pads, which are 10
+  ctx.fillRect(x, y + 7, 8, 8); // around the jersey and legs, which are 6
+
+  /* THE HELMET IS THE WHOLE READ, and it was too small. Four rows of fifteen is
+   * a head on a person; Tecmo's is closer to a third of the sprite, which is
+   * what makes those players look like footballers in gear rather than men in
+   * coloured shirts. Five rows here, full 8 wide, so it overhangs the waist. */
   ctx.fillStyle = body;
   ctx.fillRect(x + 1, y, 6, 4);
+  ctx.fillRect(x, y + 1, 8, 3); // the ear holes, widening the helmet
   // The crown stripe, front to back. One pixel, and it is the first thing that
   // reads as a football helmet rather than a bean.
   ctx.fillStyle = trim;
@@ -139,7 +161,7 @@ export function drawPlayer(
   // Facemask, poking out the front, which is what makes it a helmet rather
   // than a hat — and the only thing that says which way he is running.
   ctx.fillStyle = PX.chalk;
-  ctx.fillRect(facing === 1 ? x + 6 : x, y + 2, 2, 1);
+  ctx.fillRect(facing === 1 ? x + 6 : x, y + 2, 2, 2);
 
   // A DARK LINE FOR THE NECK. Without it the helmet and the jersey are the
   // same colour touching, so the whole top half reads as one lump. One pixel
@@ -147,10 +169,14 @@ export function drawPlayer(
   ctx.fillStyle = PX.panel;
   ctx.fillRect(x + 1, y + 4, 6, 1);
 
-  // Shoulders, the widest part, then the jersey a pixel narrower each side.
+  /* SHOULDER PADS THAT ACTUALLY FLARE. They used to be 8 wide over a 6 wide
+   * jersey — one pixel of shoulder, which is a person standing up straight. The
+   * pads now break the sprite box by a pixel each side and the jersey tucks two
+   * in, so the torso is a wedge. That taper is the Tecmo silhouette; everything
+   * else is decoration on top of it. */
   ctx.fillStyle = body;
-  ctx.fillRect(x, y + 5, 8, 2);
-  ctx.fillRect(x + 1, y + 7, 6, 2);
+  ctx.fillRect(x - 1, y + 5, 10, 2); // pads, proud of the hips
+  ctx.fillRect(x + 1, y + 7, 6, 2); // jersey, tapering in
   // The belt in the club's second colour.
   ctx.fillStyle = trim;
   ctx.fillRect(x + 1, y + 9, 6, 1);

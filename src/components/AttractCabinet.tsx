@@ -253,13 +253,46 @@ export default function AttractCabinet({
         // Still walking? Then keep the legs going. Arrived? Stand still.
         player(hero, f < 16 && f % 2 === 0, false);
 
+        /* THE MONEY ARRIVES ABOVE HIM, NOT ON HIM.
+         *
+         * This used to be a 36x12 gold slab that rose to y=62 and stopped. The
+         * winner stands at y=65 and is 15 tall, and the slab was painted after
+         * him, so the last thing the loop showed — the payoff the whole twelve
+         * seconds builds to — was a yellow rectangle with the winner's legs
+         * sticking out from under it. The comment above said "the money lands
+         * on it" and that is exactly what it did.
+         *
+         * It also did not read as money at any size. 36 of 256 pixels is a
+         * seventh of the field, and a gold bar with a dark stripe through it is
+         * a loading indicator.
+         *
+         * So: a stack of notes, half the width, settling in the air above his
+         * helmet the way an arcade pickup does, with a short overshoot so it
+         * lands rather than glides. Three offset bills read as a stack where
+         * one rectangle reads as a block. */
         if (f > 18) {
-          const rise = Math.min(1, (f - 18) / 8);
-          const by = Math.round(H - rise * (H / 2 + 10));
-          ctx.fillStyle = PX.gold;
-          ctx.fillRect(W / 2 - 18, by, 36, 12);
-          ctx.fillStyle = PX.panel;
-          ctx.fillRect(W / 2 - 15, by + 4, 30, 4);
+          const t = Math.min(1, (f - 18) / 10);
+          // Overshoot and settle: fast up, small bounce back down.
+          const ease = t < 1 ? 1 - Math.pow(1 - t, 3) : 1;
+          const bounce = t > 0.72 ? Math.sin((t - 0.72) * 11) * 2 * (1 - t) : 0;
+          const restY = Math.round(hero.y) - 13;
+          const by = Math.round(H - ease * (H - restY) + bounce);
+          const bx = Math.round(W / 2 - 9);
+
+          for (let i = 2; i >= 0; i--) {
+            // Each note a pixel up and to the side of the one behind it.
+            const nx = bx + i;
+            const ny = by - i * 2;
+            ctx.fillStyle = PX.panel; // the edge, so the stack has depth
+            ctx.fillRect(nx - 1, ny - 1, 20, 7);
+            ctx.fillStyle = PX.gold;
+            ctx.fillRect(nx, ny, 18, 5);
+            // The band across the middle, which is what says banknote.
+            ctx.fillStyle = PX.panel;
+            ctx.fillRect(nx + 7, ny, 4, 5);
+            ctx.fillStyle = PX.gold;
+            ctx.fillRect(nx + 8, ny + 1, 2, 3);
+          }
         }
         showAlive(1);
         showPot(2400);
