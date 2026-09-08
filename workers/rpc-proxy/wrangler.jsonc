@@ -120,12 +120,54 @@
     "PROGRAM_ID": "Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa"
   },
 
-  /* RATE LIMITING — AND IT DOES NOT CURRENTLY WORK. READ THIS BEFORE TRUSTING
-     THIS ENDPOINT.
+  /* RATE LIMITING LIVES IN THE DASHBOARD NOW, NOT IN THESE BINDINGS.
 
-     The bindings below attach correctly: `wrangler deploy --dry-run` lists
-     them, a deployed worker sees RPC_LIMIT as an object, and env.RPC_LIMIT
-     .limit() is callable and returns a result. It simply never denies.
+     THE ENDPOINT IS PROTECTED. A WAF Rate Limiting Rule on the commish.fun
+     zone does the work, and it was verified by measurement rather than by
+     being switched on — 300 requests in 10 seconds from one IP:
+
+       100 x 403   reached the worker (its own origin refusal)
+       200 x 429   blocked at the edge
+
+     and, because the method allowlist never applied to socket frames, the same
+     test against websocket upgrades — 200 in 6 seconds:
+
+        98 x 502   reached the worker; Helius refuses that many live sockets
+       102 x 429   blocked at the edge
+
+     Normal traffic recovers as soon as the mitigation window passes.
+
+     THE RULE IS NOT IN THIS REPOSITORY, which is the thing to know before
+     trusting or changing anything here. It is zone configuration:
+     Security > Security rules > Rate limiting rules, matching URI Path eq "/"
+     at 100 requests per 10 seconds, action Block, per IP.
+
+     WHY IT MATCHES A PATH AND NOT A HOSTNAME, which looks like a mistake and
+     is not. Free plan rate limiting can only use Path and Verified Bot in a
+     rule expression; Host requires Pro. There is no hostname condition
+     available to write. It is nonetheless correctly scoped, because
+     rpc.commish.fun is the ONLY hostname in this zone that Cloudflare proxies:
+
+       commish.fun      -> 64.29.17.65      Server: Vercel     (DNS only)
+       www.commish.fun  -> 64.29.17.65      Server: Vercel     (DNS only)
+       rpc.commish.fun  -> 104.21.34.91     Server: cloudflare (proxied)
+
+     The WAF therefore never sees website traffic, and every request it does
+     see is this proxy, arriving at "/" — both the JSON-RPC POSTs and the
+     websocket upgrade.
+
+     THE TRAP THAT CREATES: if commish.fun is ever switched to proxied (orange
+     cloud), that rule instantly begins rate limiting the WEBSITE at 100
+     requests per 10 seconds per IP. One page load pulls seventeen chunks plus
+     fonts, so that is roughly five page loads before a shared office or
+     household IP is blocked from the site itself. Before proxying the website,
+     upgrade to Pro and add a hostname condition to that rule.
+
+     THE BINDINGS BELOW STILL DO NOT WORK, and are kept for the reasons at the
+     end of this comment. They attach correctly: `wrangler deploy --dry-run`
+     lists them, a deployed worker sees RPC_LIMIT as an object, and
+     env.RPC_LIMIT.limit() is callable and returns a result. It simply never
+     denies.
 
      Measured, on a preview version uploaded with the limit dropped to 5 per 10
      seconds so the threshold could not be missed:
@@ -138,22 +180,28 @@
      the documented per-location counter, and not eventual consistency at the
      margin. The binding is inert on this worker.
 
-     The likeliest cause is that this Worker is served from *.workers.dev,
-     which Cloudflare treats as a Free website outside your zones. THE FIX IS
-     THEREFORE NOT IN THIS FILE: put the worker on a custom domain inside the
-     commish.fun zone (rpc.commish.fun) and apply a WAF Rate Limiting Rule,
-     which is a dashboard change. The config below is kept because it is
-     correct and costs nothing, and because it will start working the moment
-     the platform lets it — but until the numbers above come back with 429s in
-     them, this endpoint is NOT rate limited.
+     The cause was that the Worker was served from *.workers.dev, which
+     Cloudflare treats as a Free website outside your zones. That diagnosis
+     held: moving to rpc.commish.fun and adding the WAF rule produced 429s
+     immediately, as recorded at the top of this comment. The bindings
+     themselves are STILL inert even on the custom domain — the 429s come from
+     the zone rule, not from these — so they remain kept rather than trusted:
+     they are correct, they cost nothing, and they would begin working if the
+     platform ever honours them. Nothing should be built on the assumption that
+     they do.
 
      Two budgets, because a POST and a socket are not worth the same upstream:
      a POST is billed once, a subscription is billed for as long as it is held.
+     Note the zone rule cannot express that distinction — Free plan allows ONE
+     rule, so both share the single 100-per-10s budget. That is a real loss
+     against the intent here and an argument for Pro if socket abuse ever shows
+     up in the logs.
 
-     The origin check above is a single header and anyone can
-     send it — this repo forges exactly that header itself, deliberately, in
-     src/lib/leaderboard.ts. So the origin list is a convention and this is the
-     actual control on a public URL that spends the owner's Helius credits.
+     The origin check above is a single header and anyone can send it — this
+     repo forges exactly that header itself, deliberately, in
+     src/lib/leaderboard.ts. So the origin list is a convention, and the zone
+     rate limiting rule is the actual control on a public URL that spends the
+     owner's Helius credits.
 
      Two budgets, because a POST and a socket are not worth the same upstream:
      a POST is billed once, a subscription is billed for as long as it is held.
