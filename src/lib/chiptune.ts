@@ -273,6 +273,10 @@ export function startDrive(): void {
   }
 }
 
+/** True while the synthesised loop is running. For the tests, which had no
+ *  way to ask and therefore no way to catch two players at once. */
+export const isPlaying = (): boolean => bus !== null;
+
 /** Stop immediately, including notes already scheduled ahead of the clock. */
 export function stopMusic(): void {
   if (timer !== null) {

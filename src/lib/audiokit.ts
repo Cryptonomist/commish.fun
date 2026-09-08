@@ -136,10 +136,14 @@ let shot: AudioBufferSourceNode | null = null;
  *  stopOneShots, because a track that was cut short did not finish. */
 let shotDone: (() => void) | null = null;
 
+/** Which track `shot` is, for isLooping's companion probe. */
+let shotName: Track | null = null;
+
 /** Silence whatever one-shot is playing. Called when a new play starts. */
 export function stopOneShots(): void {
   const s = shot;
   shot = null;
+  shotName = null;
   /* Dropped, not called. The caller waiting on this is waiting for the track
    * to END, and being interrupted is the opposite of that — running it here
    * would start the drive loop at the exact moment somebody hit snap. */
@@ -186,12 +190,14 @@ export function playOnce(
     src.onended = () => {
       if (shot !== src) return; // superseded; whoever replaced it owns the slot
       shot = null;
+      shotName = null;
       const done = shotDone;
       shotDone = null;
       if (done) done();
     };
     src.start();
     shot = src;
+    shotName = name;
     shotDone = onEnded ?? null;
     return true;
   } catch {
@@ -258,6 +264,16 @@ export function stopLoop(): void {
     // Already stopped.
   }
 }
+
+/* WHAT IS ACTUALLY SOUNDING. Both of these exist for the tests, and they earn
+ * their place: the stacking bug was invisible for three rounds precisely
+ * because nothing could ask this module what it was doing. */
+
+/** True while the sample loop is running. */
+export const isLooping = (): boolean => loop !== null;
+
+/** The one-shot currently sounding, or null. */
+export const oneShotPlaying = (): Track | null => shotName;
 
 /** True when a file is loaded for this track, so a caller can decide between
  *  the sample and the synth without triggering either. */

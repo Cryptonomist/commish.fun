@@ -66,6 +66,7 @@ import {
 } from "@/lib/bowl";
 import * as kit from "@/lib/audiokit";
 import { fanfare, startDrive, stopMusic } from "@/lib/chiptune";
+import { createGameMusic, type Phase as MusicPhase } from "@/lib/gamemusic";
 import { TEAMS } from "@/lib/nfl";
 import { drawField, drawPlayer, PX } from "@/lib/pixel";
 import { play, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
@@ -147,36 +148,35 @@ export function CommishBowl() {
   const [sfx, setSfx] = useState(false);
   useEffect(() => setSfx(sfxEnabled()), []);
 
-  /* ONE MUSIC SOURCE, EVER — AND IT STACKED BECAUSE THERE WERE TWO.
+  /* WHO IS ALLOWED TO BE PLAYING lives in lib/gamemusic now, and this is the
+   * third attempt at this bug. The first two were reasoned about and shipped,
+   * and both were wrong, because the rules sat in here behind a
+   * requestAnimationFrame loop and an IntersectionObserver — untestable in the
+   * one place they could have been checked, since the preview surface fires no
+   * animation frames at all.
    *
-   * There are two independent players here: the synthesised loop in
-   * chiptune.ts and the sample loop in audiokit.ts, and each guarded only
-   * against starting itself twice. Nothing stopped one when the other began.
-   *
-   * The sequence anybody would hit within a minute of playing: the first snap
-   * asks for the file, which is not decoded yet, so startLoop returns false and
-   * the SYNTH starts. The file finishes downloading in the background. The next
-   * snap finds it cached, starts the FILE loop — and the synth is still going.
-   * Two tracks, out of phase, for the rest of the drive. Scrolling away and
-   * back, or toggling sound mid-play, could add more.
-   *
-   * So both are behind these two functions now, and starting always stops
-   * first. It is not possible to hold two sources from here. */
-  const startMusic = useCallback(() => {
-    stopMusic();
-    kit.stopLoop();
-    if (!kit.startLoop("drive")) startDrive();
-  }, []);
+   * Moving them out is the same move lib/bowl.ts and lib/kick.ts already are.
+   * The rules did not change; what changed is that a fuzz test can now replay
+   * ten thousand random sequences of snaps, whistles, scores, scrolls and mutes
+   * and assert after every one that two things are not playing at once. */
+  const music = useRef(
+    createGameMusic({
+      startLoop: (n) => kit.startLoop(n),
+      stopLoop: () => kit.stopLoop(),
+      startSynth: () => startDrive(),
+      stopSynth: () => stopMusic(),
+      playOnce: (n, onEnded) => kit.playOnce(n, 1, onEnded),
+      stopOneShots: () => kit.stopOneShots(),
+      fanfare: () => fanfare(),
+    }),
+  ).current;
 
-  const stopAllMusic = useCallback(() => {
-    /* Moving the epoch on is what cancels a drive loop that is queued behind a
-     * kickoff track. Without it, being tackled during the return would silence
-     * everything and then the opening would finish and start the music again,
-     * under a stopped play. */
-    musicEpoch.current += 1;
-    stopMusic();
-    kit.stopLoop();
-  }, []);
+  /** The phase, read at the moment a queued callback fires rather than closed
+   *  over when it was scheduled. */
+  const phaseNow = useCallback(
+    (): MusicPhase => (phaseRef.current === "live" ? "live" : "stopped"),
+    [],
+  );
 
   const toggleSfx = useCallback(() => {
     const next = !sfxEnabled();
@@ -193,10 +193,10 @@ export function CommishBowl() {
       play("first");
       // Mid-play, the music should come straight back rather than waiting for
       // the next snap.
-      if (phaseRef.current === "live") startMusic();
+      music.resume(phaseNow);
     }
     // Turning it off is handled inside setSfxEnabled, which stops the loop.
-  }, [startMusic]);
+  }, [music, phaseNow]);
 
   /* YOU PICK YOUR TEAM NOW, rather than being handed a random one. The
    * opponent is still chosen for you, from the clubs whose lead colour is far
@@ -228,10 +228,6 @@ export function CommishBowl() {
 
   const phaseRef = useRef<Phase>("select");
 
-  /* Which play the music belongs to. Bumped by every snap and every stop, so a
-   * callback scheduled by an earlier one can tell that it is stale and do
-   * nothing. See the kickoff opening in `snap`. */
-  const musicEpoch = useRef(0);
   const keysRef = useRef<Record<string, boolean>>({});
   /** Set for exactly one tick when the spin is pressed, then cleared by the
    *  loop. Holding the key must not hold the boost. */
@@ -280,39 +276,13 @@ export function CommishBowl() {
     }
     setGained(0);
     setupPlay(w);
-    /* A touchdown fanfare can still be sounding when somebody presses on. */
-    kit.stopOneShots();
     play("snap");
-
-    /* THE KICKOFF TRACK AND THE DRIVE LOOP TAKE TURNS, and they used not to.
-     *
-     * These two lines ran back to back: play the kickoff opening, start the
-     * drive loop. That is correct when both are synth stings a tenth of a
-     * second long, which is what they were when it was written. The supplied
-     * files are 2.5 and 12.8 seconds of actual music from the same generator,
-     * so every kickoff played the two on top of each other and it sounded
-     * exactly like one track running twice. Reported twice as the music
-     * stacking, and it is not a race — nothing here was ever out of order.
-     *
-     * So the loop waits for the opening to finish. The epoch is what makes
-     * that safe: a whistle or another snap moves it on, and a callback from a
-     * track nobody is listening for any more does nothing. */
-    musicEpoch.current += 1;
-    const epoch = musicEpoch.current;
-    const opening =
-      w.kind === "kickoff" &&
-      kit.playOnce("kickoff", 1, () => {
-        if (musicEpoch.current !== epoch) return; // superseded
-        if (phaseRef.current !== "live") return; // already whistled
-        startMusic();
-      });
-
-    /* The loop runs for the length of the down and stops at the whistle. It is
-     * bounded by the play rather than by the page, which is what keeps music
-     * on a website from being something done TO somebody. */
-    if (!opening) startMusic();
+    /* One call. It stops whatever is sounding, plays the kickoff opening if
+     * this is one, and holds the drive loop back until that opening finishes.
+     * See lib/gamemusic.ts. */
+    music.snap(w.kind === "kickoff", phaseNow);
     goPhase("live");
-  }, [goPhase, startMusic]);
+  }, [goPhase, music, phaseNow]);
 
   /* ------------------------------------------------------------- the loop */
 
@@ -473,7 +443,7 @@ export function CommishBowl() {
       if (!last) {
         last = t;
         // Coming back to a down that is still live: pick the music up again.
-        if (phaseRef.current === "live") startMusic();
+        music.resume(phaseNow);
       }
       carry += t - last;
       last = t;
@@ -499,12 +469,12 @@ export function CommishBowl() {
          * a drive is not one continuous thing to a person holding the
          * controls. It ends when the player goes down, which is what it
          * sounds like it should do. */
-        stopAllMusic();
         if (result === "touchdown") {
-          if (!kit.playOnce("touchdown")) fanfare();
+          music.touchdown();
           goPhase("touchdown");
           break;
         }
+        music.whistle();
         const outcome = nextDown(w);
         setBall(yardLine(w));
         setNeed(toGo(w));
@@ -549,7 +519,7 @@ export function CommishBowl() {
         keysRef.current = {};
         /* Scrolled out of view pauses the play, so it has to silence the loop
          * as well — music continuing over a paused game is worse than either. */
-        stopAllMusic();
+        music.silence();
       },
       { threshold: 0.25 },
     );
@@ -560,9 +530,9 @@ export function CommishBowl() {
       io.disconnect();
       /* Leaving the page mid-down must not leave a marching band playing under
        * whatever the visitor opened next. */
-      stopAllMusic();
+      music.silence();
     };
-  }, [kits, goPhase, startMusic, stopAllMusic]);
+  }, [kits, goPhase, music, phaseNow]);
 
   /* -------------------------------------------------------------- controls */
 
