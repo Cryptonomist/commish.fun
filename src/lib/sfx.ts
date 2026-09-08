@@ -71,14 +71,9 @@ export function setSfxEnabled(next: boolean): void {
     stoppers.clear();
     return;
   }
-  try {
-    ctx ??= new AudioContext();
-    // Safari starts contexts suspended even inside a gesture.
-    if (ctx.state === "suspended") void ctx.resume();
-  } catch {
-    ctx = null;
-    on = false;
-  }
+  // Build it here too, so switching sound on has an immediate effect rather
+  // than waiting for the first sound to ask for it.
+  context();
 }
 
 /** Things that need to be silenced the moment sound is switched off. The music
@@ -90,15 +85,49 @@ export function registerStopper(fn: () => void): () => void {
   return () => stoppers.delete(fn);
 }
 
+/* THE CONTEXT, BUILT ON DEMAND FOR SOMEBODY WHO HAS SOUND ON.
+ *
+ * The rule this file opens with — no AudioContext until a person turns sound
+ * on — is about a visitor who never opted in, and it still holds exactly: this
+ * returns null for them and constructs nothing.
+ *
+ * WHAT IT FIXES IS THE RETURNING VISITOR, and it made the whole audio surface
+ * look broken. `on` is restored from localStorage on every page load, but `ctx`
+ * was only ever constructed inside setSfxEnabled — so somebody who had already
+ * switched sound on came back to a page that believed sound was on, lit the
+ * speaker button to say so, and then produced silence, because every path here
+ * bailed on `!ctx`. The only way out was toggling the button off and on again,
+ * which calls setSfxEnabled and builds the thing. That is precisely how it was
+ * reported: "you have to click the audio button off and back on again".
+ *
+ * Constructing it here is safe for the same reason it was safe there: every
+ * caller is inside a click or a key press. A browser will not start a context
+ * outside a gesture, and will not honour resume() outside one either, so this
+ * is the moment it can actually wake up. */
+function context(): AudioContext | null {
+  load();
+  if (!on) return null;
+  if (!ctx) {
+    try {
+      ctx = new AudioContext();
+    } catch {
+      // No WebAudio here at all. Give up quietly rather than retry forever.
+      ctx = null;
+      on = false;
+      return null;
+    }
+  }
+  // Safari starts a context suspended even inside a gesture.
+  if (ctx.state === "suspended") void ctx.resume();
+  return ctx;
+}
+
 /** The live context, or null when sound is off or unavailable. This is the one
  *  door to the audio graph: nothing else may construct an AudioContext, or a
  *  visitor who never touched the toggle would end up with one anyway, which is
  *  the whole thing this module exists to prevent. */
 export function audio(): AudioContext | null {
-  load();
-  if (!on || !ctx) return null;
-  if (ctx.state === "suspended") void ctx.resume();
-  return ctx;
+  return context();
 }
 
 /** The ceiling every voice in the app is mixed under. Exported so the music
@@ -201,10 +230,11 @@ export type Sound =
 /** Fire and forget. Silent when disabled, silent when unsupported, never
  *  throws into a click handler. */
 export function play(sound: Sound): void {
-  load();
-  if (!on || !ctx) return;
+  /* Through `context()` rather than a bare `!ctx` check, which is the same
+   * fault: an effect on the first click of a returning visitor was silent
+   * because nothing had built the graph yet. */
+  if (!context()) return;
   try {
-    if (ctx.state === "suspended") void ctx.resume();
     switch (sound) {
       case "move":
         note(220, 30);

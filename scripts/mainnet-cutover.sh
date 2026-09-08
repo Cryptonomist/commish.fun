@@ -127,6 +127,39 @@ if [ "$GO" = "--go" ]; then
   grep -q '"HELIUS_CLUSTER": "mainnet"' workers/rpc-proxy/wrangler.jsonc \
     && ok "worker points at mainnet" \
     || bad "HELIUS_CLUSTER is still not mainnet"
+
+  # ASK THE PROXY WHICH CHAIN IT REACHES, rather than trusting the config we
+  # just wrote. Two things can be true at once: the variable says mainnet and
+  # the key does not work there. The worker uses ONE HELIUS_API_KEY for both
+  # clusters and only swaps the hostname, so a devnet-only key produces a worker
+  # that looks correctly configured and answers nothing useful — and it would
+  # surface two steps later, at Vercel, looking like a Vercel problem.
+  #
+  # The mainnet USDC mint is the discriminator, and it needs no extra RPC
+  # method. That address exists on BOTH chains, which is why "is it there" is
+  # not the test: on mainnet it is a real SPL Mint, 82 bytes owned by the token
+  # program; on devnet it is an empty account, 0 bytes owned by the system
+  # program, because somebody once sent lamports to it.
+  say "   asking the proxy which chain it reaches"
+  PROXY_URL="${PROXY_URL:-https://commish-rpc.therealcryptonomist.workers.dev}"
+  PROBE=$(curl -s --max-time 25 -X POST "$PROXY_URL"     -H "content-type: application/json"     -H "Origin: https://commish.fun"     -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccountInfo\",\"params\":[\"$MAINNET_USDC\",{\"encoding\":\"base64\",\"dataSlice\":{\"offset\":0,\"length\":0}}]}"     2>/dev/null || true)
+
+  case "$PROBE" in
+    *TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA*)
+      ok "the proxy is serving mainnet" ;;
+    *'"space":0'*)
+      bad "the proxy answered from DEVNET. HELIUS_CLUSTER says mainnet, so the Helius key is almost certainly devnet-only. Fix the key before touching Vercel." ;;
+    *'"error"'*)
+      printf "  %s
+" "$PROBE" | cut -c1-200
+      bad "the proxy refused the probe. If it names a method, add it to ALLOWED_METHODS; if it names CORS, the Origin allowlist is wrong." ;;
+    "")
+      bad "the proxy returned nothing. Check the worker deployed and that HELIUS_API_KEY is set on it." ;;
+    *)
+      printf "  %s
+" "$PROBE" | cut -c1-200
+      bad "could not tell which chain the proxy is on. Do not continue to Vercel until this reads mainnet." ;;
+  esac
 fi
 
 say "7. Check it still builds"
