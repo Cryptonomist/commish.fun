@@ -96,16 +96,44 @@ export default function NewPool() {
   const poolType =
     mode === "league" ? POOL_LEAGUE : mode === "loser" ? POOL_LOSER : POOL_SURVIVOR;
 
-  /* Joining closes here and `lock_dues` opens. A week is the usual gap between
-   * agreeing a league and everybody having actually paid. */
-  const [duesDeadline, setDuesDeadline] = useState(() => {
-    const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    d.setMinutes(0, 0, 0);
-    // datetime-local wants local time with no zone, which is what toISOString
-    // is not, hence the offset.
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 16);
-  });
+  /* HYDRATION: NOTHING HERE MAY DEPEND ON THE CLOCK OR THE TIME ZONE.
+   *
+   * This page threw React error #418 — a hydration mismatch — on every
+   * production load, and the cause was two lines that look completely
+   * ordinary. A `useState` initialiser runs on the SERVER as well as the
+   * client, so `Date.now()` and `getTimezoneOffset()` here produced a Vercel
+   * value in UTC and a browser value in the reader's zone, and the two never
+   * agreed. Production made it worse than local: the HTML is edge-cached, so
+   * the server's "now" can be minutes or hours stale by the time anybody
+   * hydrates against it.
+   *
+   * A mismatch is not cosmetic. React discards the server tree for that
+   * subtree and re-renders it, which is a remount in the middle of a form
+   * somebody is filling in.
+   *
+   * So the default is empty on the server and filled once, after mount, where
+   * a browser's clock and zone actually exist. */
+  const [duesDeadline, setDuesDeadline] = useState("");
+
+  /* Also the gate for anything else that would render a local time. Set in an
+   * effect, so it is false during SSR and the first client render — the two
+   * that have to match — and true from the second. */
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setDuesDeadline((current) => {
+      if (current) return current; // never clobber something already typed
+      /* Joining closes here and `lock_dues` opens. A week is the usual gap
+       * between agreeing a league and everybody having actually paid. */
+      const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      d.setMinutes(0, 0, 0);
+      // datetime-local wants local time with no zone, which is what
+      // toISOString is not, hence the offset.
+      const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
+      return local.toISOString().slice(0, 16);
+    });
+  }, []);
 
   /* The split, as percentages a person can read. The program stores basis
    * points and requires them to add to exactly 10000, so the conversion and
@@ -603,18 +631,26 @@ export default function NewPool() {
                   ? "Joining closes when dues close"
                   : `Week ${startWeek} picks lock at its first kickoff`}
               </span>
-              <p className="mt-1.5 text-cream-dim">
-                {(isLeagueMode
-                  ? new Date(duesDeadlineTs * 1000)
-                  : startLock
-                ).toLocaleString("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                  timeZoneName: "short",
-                })}
+              {/* `timeZoneName: "short"` is the other half of the hydration
+                * mismatch: the server has no reader's zone, so it renders
+                * "UTC" where the browser renders "EDT". Nothing can make those
+                * agree, so this waits for the client rather than pretending.
+                * The empty paragraph holds its own height, so the layout does
+                * not jump when the text arrives. */}
+              <p className="mt-1.5 min-h-5 text-cream-dim">
+                {mounted
+                  ? (isLeagueMode
+                      ? new Date(duesDeadlineTs * 1000)
+                      : startLock
+                    ).toLocaleString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                      timeZoneName: "short",
+                    })
+                  : null}
               </p>
               {isLeagueMode ? (
                 <p className="mt-1.5 text-xs text-cream-dim">

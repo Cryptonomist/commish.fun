@@ -42,6 +42,30 @@ export function WalletButton() {
   const [error, setError] = useState<string | null>(null);
   const wantsConnect = useRef(false);
 
+  /* THE SERVER HAS NO WALLET, AND SAYING SO IS THE ONLY WAY TO MATCH IT.
+   *
+   * Reported as: the button will not connect, but refreshing the page comes
+   * back already connected. That shape is the tell. Refreshing works because
+   * `autoConnect` restores the last wallet from localStorage and connects
+   * without the button being involved at all; it is only the CLICK path that
+   * fails.
+   *
+   * The cause is this component disagreeing with its own server render. The
+   * label below is derived from `connected` and `connecting`, and by the time
+   * React hydrates, autoConnect has often already restored a wallet — so the
+   * server's "CONNECT" meets a client that wants to render an address. React
+   * resolves a mismatch by throwing the subtree away and rebuilding it, and
+   * `wantsConnect` is a ref: a rebuild resets it to false. The click sets the
+   * intent, the subtree is regenerated, the effect below reads false and
+   * returns, and nothing happens — silently, with no error to show, which is
+   * why the error panel stays empty.
+   *
+   * So the first client render is forced to say what the server said, and the
+   * real state appears on the render after. One frame of "CONNECT" on a
+   * connected wallet is worth a button that works. */
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+
   /* Only wallets actually present in this browser. `Installed` is a real
    * extension; `Loadable` is one that can be loaded on demand. Everything else
    * is a wallet we would be advertising to someone who does not have it. */
@@ -113,18 +137,24 @@ export function WalletButton() {
    * Three full stops rather than U+2026 because the ellipsis is not something
    * to gamble on in a subsetted bitmap face — an address, which is base58 and
    * genuinely mixed case, is left exactly as it is. */
-  const label = connected
-    ? shortAddress(publicKey?.toBase58() ?? "", 4)
-    : connecting
-      ? "CONNECTING..."
-      : "CONNECT";
+  const label = !hydrated
+    ? "CONNECT" // whatever the server said, so hydration has nothing to fix
+    : connected
+      ? shortAddress(publicKey?.toBase58() ?? "", 4)
+      : connecting
+        ? "CONNECTING..."
+        : "CONNECT";
 
   return (
     <div className="relative">
       <button
         type="button"
         onClick={onClick}
-        disabled={connecting}
+        /* Same reason as the label: the server cannot be mid-connect, so
+         * neither can the first client render, or the attribute is one more
+         * thing hydration has to reconcile — and a disabled button is one that
+         * eats the click outright. */
+        disabled={hydrated && connecting}
         className="btn btn-nav !bg-action !text-panel !border-action shadow-[3px_3px_0_#3a1405] disabled:cursor-wait disabled:opacity-70"
       >
         {label}
