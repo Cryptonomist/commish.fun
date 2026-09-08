@@ -16,6 +16,7 @@
  */
 
 import type { Team } from "@/lib/nfl";
+import { Helmet } from "@/components/Helmet";
 
 /* A bye is not a spent team and must not look like one. Spent means you used it
  * and it is gone for the season; bye means it is not playing this week and will
@@ -105,6 +106,30 @@ export function TeamButton({
           aria-hidden="true"
           className="absolute inset-x-0 bottom-0 h-[4px]"
           style={{ background: team.trim }}
+        />
+      ) : null}
+
+      {/* THE HELMET, BEHIND THE WORDS. It is the one silhouette that means
+          this sport and nothing else, and the tile had no shape at all.
+
+          IT WEARS THE TRIM, NOT THE LEAD, and that is forced rather than
+          chosen: on an available tile the background IS the lead colour, so a
+          helmet painted in it would be invisible. The shell takes the trim,
+          the letter takes the lead, and the pair reads on every one of the
+          thirty-two.
+
+          Low and behind, because the abbreviation is what somebody is actually
+          scanning for. This is texture that tells you which club without being
+          read. Hidden once the tile is picked, spent or on a bye, where the
+          background is no longer the club's colour and the state is the
+          message. */}
+      {!picked && !spent && !bye ? (
+        <Helmet
+          nickname={team.name}
+          shell={team.trim}
+          trim={team.lead}
+          opacity={0.28}
+          className="pointer-events-none absolute -bottom-1 -right-1 h-12 w-auto"
         />
       ) : null}
 

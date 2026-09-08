@@ -18,6 +18,8 @@
  * never come near the contrast of the type above it.
  */
 
+import { Laces } from "@/components/Laces";
+
 /** One end zone as a share of the whole box: ten yards of a hundred and
  *  twenty. */
 const EZ = 100 / 12;
@@ -177,6 +179,31 @@ export function FieldMarkings() {
           }}
         />
       ))}
+
+      {/* THE MARK AT THE FIFTY, which is where a field carries the badge of
+          whoever owns it. This is ours.
+
+          NOT THE LEAGUE'S SHIELD, and that was a decision rather than an
+          oversight. A shield at midfield is the single strongest visual claim
+          that a field is an official one, and this product holds people's
+          money and says plainly on three pages that it is affiliated with
+          nobody. Our own mark says something true instead, and midfield is
+          exactly where a brand belongs.
+
+          The laces are drawn by the Laces component rather than copied here,
+          because the one rule the mark has is that it is never redrawn.
+
+          Faint on purpose: the headline sits over this part of the field, and
+          this is a watermark rather than a thing to look at. Below the yard
+          numbers' own 0.16, since it is a far larger shape and equal opacity
+          would not read as equal weight. */}
+      <span
+        aria-hidden="true"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-cream/[0.12]"
+        style={{ width: "28%", maxWidth: "22rem" }}
+      >
+        <Laces className="block h-auto w-full" />
+      </span>
 
       <Uprights side="left" />
       <Uprights side="right" />
