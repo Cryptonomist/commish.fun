@@ -159,6 +159,44 @@ path, atomic, no optional account.
   is *not* the same as the fee bug above: dust is bounded by `winners_count`
   micro-USDC — millionths of a dollar — while the fee scaled with the pot
 
+## Larger transactions, and why they cost us nothing
+
+Solana's larger-transaction-sizes upgrade — [SIMD-0296 and SIMD-0385][simd],
+feature gate `txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL` — takes the
+transaction limit from 1232 to 4096 bytes and adds a v1 transaction format. It
+is live on devnet and testnet and reaches mainnet with Agave v4.2.
+
+It needs no work from us, and the reasons are worth writing down because each
+one is a thing we could accidentally stop being true:
+
+- **We never read transactions.** The upgrade's one breaking change is that
+  `getTransaction` and `getBlock` must pass `maxSupportedTransactionVersion: 1`
+  or fail with `-32015`. We call neither. `getBlockHeight` returns a number and
+  is unaffected.
+- **We build legacy transactions.** `new Transaction(...)`, which the upgrade
+  leaves unchanged. v1 is opt-in and buys us nothing: our transactions are far
+  under even the old limit.
+- **The program does no instruction introspection.** No `sysvar::instructions`,
+  no compute-budget reads, no priority-fee gating. The warning that programs
+  must stop gating on those values does not reach us.
+- **No address lookup tables**, which v1 senders have to remove.
+
+The empirical version of all that: devnet has had this active for some time and
+our devnet deployment works.
+
+**What would change it.** A transaction-history feature — "the pools this wallet
+has played" — needs `getTransaction`, and that takes two changes, not one: the
+method has to be added to the RPC proxy's allowlist in
+`workers/rpc-proxy/src/index.ts`, AND every call has to pass
+`maxSupportedTransactionVersion: 1`. Miss the second and it works until it meets
+a v1 transaction in a block, which is the worst kind of bug to ship.
+
+If we ever do want to send v1 transactions, `@solana/web3.js` has to go from the
+1.x we are on to 3.0.0-rc.3 or later, which is a large breaking API change for
+no benefit we currently have.
+
+[simd]: https://solana.com/upgrades/larger-transaction-sizes
+
 ## Before mainnet
 
 1. `anchor build` + `anchor test` against a validator — none of the

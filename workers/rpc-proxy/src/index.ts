@@ -64,7 +64,25 @@ interface RateLimiter {
  * Derived by grepping the client for `connection.*`, plus the two subscription
  * methods `confirmTransaction` uses under the hood. If a screen starts calling
  * something new, this list is where it fails, and the error names the method
- * so the fix takes a minute rather than an afternoon. */
+ * so the fix takes a minute rather than an afternoon.
+ *
+ * NOT HERE, AND IT WILL TAKE TWO CHANGES RATHER THAN ONE: `getTransaction` and
+ * `getBlock`. The obvious feature that needs them is a history screen — "the
+ * pools this wallet has played" — and adding the method to this list is only
+ * half of it.
+ *
+ * Solana's larger-transaction-sizes upgrade (SIMD-0296 and SIMD-0385, feature
+ * gate txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL) raises the transaction
+ * limit from 1232 to 4096 bytes and introduces a v1 transaction format. Both
+ * of those RPC methods now REQUIRE `maxSupportedTransactionVersion: 1` in the
+ * params, and a call without it fails with error -32015 the moment it meets a
+ * v1 transaction in a block. It is already active on devnet and testnet and
+ * lands on mainnet with Agave v4.2.
+ *
+ * Nothing in this product reads transactions today, which is the only reason
+ * the upgrade needs no work from us: we build legacy transactions, which are
+ * explicitly unchanged, and the program does no instruction introspection, so
+ * the compute-budget and priority-fee caveats do not apply either. */
 const DEFAULT_METHODS = [
   // Called directly by this app's own code.
   "getAccountInfo",
