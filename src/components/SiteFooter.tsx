@@ -46,7 +46,40 @@ export function SiteFooter() {
           <span className="font-matrix text-[10px] leading-4 text-chalk">
             COMMISH.FUN
           </span>
-          <span className="whitespace-nowrap text-xs">Built on Solana</span>
+
+          {/* POWERED BY SOLANA — OUR TYPE, THEIR MARK, AND THAT SPLIT IS
+              DELIBERATE.
+              A pixel-art version of the wordmark would sit better with
+              everything else on this site, and it is the one treatment Solana's
+              brand page rules out by name: "Don't apply logo in low resolution"
+              and "Don't stretch the logo". So the blocky half is OUR words, set
+              in the face the rest of the site uses, and the mark is their own
+              SVG served untouched — not recreated, not recoloured, not
+              rasterised. Same look, nothing borrowed that was not offered.
+
+              The file is their published asset from solana.com/src/img/branding.
+              It carries its own gradient and white wordmark, which is why it
+              needs no colour handling here and must not be given any.
+
+              `<img>` rather than inlining the SVG: inlined, its <defs> ids
+              would collide with anything else on the page defining the same
+              names, and a stray global fill rule could reach inside it. An img
+              is an opaque box, which for somebody else's trademark is the
+              correct relationship. Height is set and width follows, so it can
+              never be stretched. */}
+          <span className="flex items-center gap-2 whitespace-nowrap pl-1">
+            <span className="font-matrix text-[9px] leading-4 text-cream-dim">
+              POWERED BY
+            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/solana-wordmark.svg"
+              alt="Solana"
+              width={81}
+              height={12}
+              className="h-3 w-auto"
+            />
+          </span>
         </span>
 
         {/* A single row that wraps as whole links rather than mid-phrase.
