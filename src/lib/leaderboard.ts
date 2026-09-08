@@ -93,10 +93,39 @@ type Tally = { poolsJoined: number; poolsWon: number; claimedBase: string };
  *
  * So the headers name the site explicitly. It is our own server identifying
  * itself to our own proxy, which is exactly the case both were written for. */
+/* Said once per process, not once per request: a warning printed on every
+ * render is a warning nobody reads. */
+let fallbackAnnounced = false;
+
 function connection(): Connection {
   const direct = process.env.RPC_URL;
   const url = direct ?? process.env.NEXT_PUBLIC_RPC_URL;
   if (!url) throw new Error("No RPC URL is configured");
+
+  /* SAY WHEN THE FALLBACK IS TAKEN, because otherwise it is invisible.
+   *
+   * Everything above explains why the fallback works. That is the problem: it
+   * works. An unset RPC_URL in production does not fail, it quietly sends the
+   * server's reads back out through the public proxy — spending the same
+   * Helius credits the proxy exists to ration, from an IP the rate limiting is
+   * not meant to be counting, and leaving the one variable that is supposed to
+   * hold the direct key doing nothing at all.
+   *
+   * There is no way to observe that from outside. This route's only chain read
+   * is skipped entirely while no identity is listed, so the leaderboard answers
+   * 200 with an empty board whether RPC_URL is set or not, and a pre-launch
+   * check of it proves nothing. The first request that would have exercised it
+   * is the first real one.
+   *
+   * So it says so in the log, where a deploy can be checked against it. */
+  if (!direct && !fallbackAnnounced) {
+    fallbackAnnounced = true;
+    console.warn(
+      "[leaderboard] RPC_URL is not set; falling back to NEXT_PUBLIC_RPC_URL. " +
+        "On a deployed environment that routes this server's chain reads " +
+        "through the public browser proxy. Set RPC_URL to a direct RPC.",
+    );
+  }
 
   const site = (
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://commish.fun"
