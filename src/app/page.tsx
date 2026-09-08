@@ -27,39 +27,14 @@ import { fetchScoreboard } from "@/lib/scores";
  * who does not yet feel what a Survivor pick costs. So the page opens with a
  * playable week and earns the right to explain itself afterwards.
  *
- * The one numbered sequence on the page is THE DRIVE, and it is numbered
- * because it is genuinely ordered: each stage is gated on the one before it by
- * the program, in that order, with a clock between them. The three setup steps
- * are not numbered, because a reader can do those in any order they like.
+ * THE WEEK-BY-WEEK EXPLAINER IS GONE, and the page is better without it. Five
+ * cards walking through lock, post, dispute, finalize and advance sat halfway
+ * down a sales pitch, said less than /how says, and asked somebody weighing up
+ * whether to trust the escrow to first absorb a process diagram. The hero's
+ * second button points at /how instead, where the rules can be read properly
+ * and, more usefully, be sent to somebody.
  */
 
-const DRIVE = [
-  {
-    yard: "LOCK",
-    h: "Picks lock at kickoff",
-    p: "To the second, at the week's first game. A missed pick is an elimination, in every mode, with no grace.",
-  },
-  {
-    yard: "+3H",
-    h: "Results go up",
-    p: "The commissioner cannot post until three hours after that lock. Not a claim that every game is final, but a floor that stops a week being called before it is played.",
-  },
-  {
-    yard: "OPEN",
-    h: "The dispute window",
-    p: "Everyone still alive sees exactly what was claimed and can strike it down. A strict majority clears the posting and the commissioner has to post again.",
-  },
-  {
-    yard: "FINAL",
-    h: "The week commits",
-    p: "The window closes and anyone can fire the crank, not just the commissioner. Somebody who loses interest in March cannot freeze the pot.",
-  },
-  {
-    yard: "NEXT",
-    h: "Settle and advance",
-    p: "The result is applied to every member, and the week either opens the next one or decides the pool and pays out.",
-  },
-];
 
 /* What the product actually offers, and honestly which of it you can use.
  *
@@ -129,10 +104,6 @@ export default async function Home() {
       <ScoreTicker initial={board} />
       <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 sm:px-8">
         {/* ── Nav ─────────────────────────────────────────────────────────── */}
-        {/* The "How a week works" anchor that used to live here is gone: the
-            hero carries a button with the same words and the same target, and
-            two links to one anchor within an inch of each other is not a menu,
-            it is a stutter. */}
         <SiteNav markSize={22} />
 
         {/* ── Hero ────────────────────────────────────────────────────────── */}
@@ -235,8 +206,13 @@ export default async function Home() {
                   <Link href="/pools/new" className="btn btn-compact btn-primary">
                     START A POOL
                   </Link>
-                  <Link href="#drive" className="btn btn-compact btn-secondary">
-                    HOW A WEEK WORKS
+                  {/* Points at /how now. It used to scroll to a five-card
+                      explainer further down this page, which said less than
+                      the page it now links to and said it in the middle of a
+                      sales pitch. The rules belong somewhere a person can read
+                      them properly, and be sent to. */}
+                  <Link href="/how" className="btn btn-compact btn-secondary">
+                    HOW IT WORKS
                   </Link>
                 </div>
               </div>
@@ -279,31 +255,6 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* ── The drive ───────────────────────────────────────────────────── */}
-        <section id="drive" className="scroll-mt-8 border-t border-night-3 py-14">
-          <h2 className="display text-xl uppercase sm:text-2xl">
-            How a week actually works
-          </h2>
-          <p className="mt-3 max-w-2xl leading-relaxed text-cream-dim">
-            Results enter through the commissioner, checked against public scores.
-            There is no oracle pretense. What the program does is put a clock and a
-            vote around that one human step, in this order, every week.
-          </p>
-
-          <ol className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-night-3 bg-night-3 sm:grid-cols-2 lg:grid-cols-5">
-            {DRIVE.map((d) => (
-              <li key={d.yard} className="flex flex-col bg-night-2/60 p-5">
-                <span className="display text-sm tracking-widest text-action">
-                  {d.yard}
-                </span>
-                <h3 className="mt-3 font-bold text-cream">{d.h}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-cream-dim">
-                  {d.p}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </section>
 
         {/* ── The trust model ─────────────────────────────────────────────── */}
         <section className="border-t border-night-3 py-14">
