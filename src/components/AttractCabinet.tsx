@@ -29,7 +29,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TEAMS } from "@/lib/nfl";
-import { drawField, drawPlayer, PX } from "@/lib/pixel";
+import { drawCoin, drawField, drawPlayer, PX } from "@/lib/pixel";
 import { play, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 
 /* Logical resolution. Everything is drawn on integer coordinates at this size
@@ -270,30 +270,43 @@ export default function AttractCabinet({
          * helmet the way an arcade pickup does, with a short overshoot so it
          * lands rather than glides. Three offset bills read as a stack where
          * one rectangle reads as a block. */
-        if (f > 18) {
-          const t = Math.min(1, (f - 18) / 10);
-          // Overshoot and settle: fast up, small bounce back down.
-          const ease = t < 1 ? 1 - Math.pow(1 - t, 3) : 1;
-          const bounce = t > 0.72 ? Math.sin((t - 0.72) * 11) * 2 * (1 - t) : 0;
-          const restY = Math.round(hero.y) - 13;
-          const by = Math.round(H - ease * (H - restY) + bounce);
-          const bx = Math.round(W / 2 - 9);
-
-          for (let i = 2; i >= 0; i--) {
-            // Each note a pixel up and to the side of the one behind it.
-            const nx = bx + i;
-            const ny = by - i * 2;
-            ctx.fillStyle = PX.panel; // the edge, so the stack has depth
-            ctx.fillRect(nx - 1, ny - 1, 20, 7);
-            ctx.fillStyle = PX.gold;
-            ctx.fillRect(nx, ny, 18, 5);
-            // The band across the middle, which is what says banknote.
-            ctx.fillStyle = PX.panel;
-            ctx.fillRect(nx + 7, ny, 4, 5);
-            ctx.fillStyle = PX.gold;
-            ctx.fillRect(nx + 8, ny + 1, 2, 3);
-          }
-        }
+        /* THE POT ARRIVES AS COINS, ONE AT A TIME.
+         *
+         * Two goes at this. The first landed a slab on top of the winner. The
+         * second moved it off him but kept the slab — a gold bar with a dark
+         * band, which at a seventh of the screen read as a loading indicator
+         * rather than as money, and did not survive being looked at.
+         *
+         * Money is round and there is more than one of it. Six USDC coins arc
+         * in from off the bottom of the field, three frames apart, and stack
+         * into a heap beside him: three across, then two, then one. Arriving in
+         * sequence is what makes it read as being PAID rather than as a graphic
+         * appearing — the thing the whole twelve seconds builds to should look
+         * like it is happening to somebody. */
+        const PILE = [
+          { x: 138, y: 72 },
+          { x: 147, y: 72 },
+          { x: 156, y: 72 },
+          { x: 142, y: 65 },
+          { x: 151, y: 65 },
+          { x: 147, y: 58 },
+        ];
+        PILE.forEach((spot, i) => {
+          const start = 18 + i * 3;
+          if (f < start) return; // not thrown yet
+          const t = Math.min(1, (f - start) / 7);
+          /* Out of the bottom of the frame, alternating sides, so they do not
+           * arrive along one line. */
+          const fromX = i % 2 === 0 ? 96 : 176;
+          const fromY = H + 8;
+          const cx = fromX + (spot.x - fromX) * t;
+          /* A parabola over the flight, plus a one-pixel settle at the end so
+           * the coin lands rather than glides into place. */
+          const arc = Math.sin(Math.PI * t) * 26;
+          const settle = t > 0.85 ? Math.sin((t - 0.85) * 21) * 1.5 : 0;
+          const cy = fromY + (spot.y - fromY) * t - arc + settle;
+          drawCoin(ctx, cx, cy);
+        });
         showAlive(1);
         showPot(2400);
       }

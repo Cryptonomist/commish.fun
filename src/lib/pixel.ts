@@ -29,7 +29,79 @@ export const PX = {
   alive: "#7BD88F",
   dim: "#A9B8AC",
   pants: "#E8EDE6",
+  /* THE DOLLAR THE POT IS ACTUALLY DENOMINATED IN. Gold is the money token in
+   * this palette and means money in the abstract; this is the specific coin a
+   * vault holds, and it is blue because USDC is. It is used for coins and for
+   * nothing else. */
+  usdc: "#2775CA",
 } as const;
+
+/* A COIN, 7x7, because a stack of notes did not read as one.
+ *
+ * The payout used to be a gold slab with a dark band through it, which at a
+ * seventh of the screen looked like a loading bar that had wandered onto the
+ * pitch. A round thing with a currency mark on it is money at any size, and it
+ * is the one shape that survives being seven pixels across.
+ *
+ * ROW WIDTHS 3-5-7-7-7-5-3, and the first attempt used 5-7-7-7-7-7-5 on the
+ * theory that clipping the four corners was enough. Rendered at sixteen pixels
+ * per cell next to the alternatives it was plainly a rounded SQUARE with a
+ * letter on it — a badge, not a coin. Taking a second bite out of the top and
+ * bottom is what turns it round.
+ *
+ * Nine across reads rounder still and was rejected: the players are eight wide,
+ * and a coin wider than a person is a different kind of wrong. */
+const COIN = [
+  "..###..",
+  ".#####.",
+  "#######",
+  "#######",
+  "#######",
+  ".#####.",
+  "..###..",
+];
+
+/* An S through the middle. A true $ needs the stroke to run above and below the
+ * bowl, which takes seven rows and leaves no coin around it — so this is the
+ * mark USDC's own logo is built from rather than a literal dollar sign. */
+const COIN_MARK = ["###", "#..", "###", "..#", "###"];
+
+export const COIN_W = 7;
+export const COIN_H = 7;
+
+/** One coin, top-left at (px, py). */
+export function drawCoin(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+): void {
+  const x = Math.round(px);
+  const y = Math.round(py);
+
+  /* Outline first and one pixel proud, the same trick the players use: a blue
+   * coin on green turf has almost no luminance separation, and without a dark
+   * edge the whole pile dissolves into the grass. */
+  ctx.fillStyle = PX.panel;
+  for (let r = 0; r < COIN_H; r++) {
+    for (let c = 0; c < COIN_W; c++) {
+      if (COIN[r][c] === "#") ctx.fillRect(x + c - 1, y + r - 1, 3, 3);
+    }
+  }
+
+  ctx.fillStyle = PX.usdc;
+  for (let r = 0; r < COIN_H; r++) {
+    for (let c = 0; c < COIN_W; c++) {
+      if (COIN[r][c] === "#") ctx.fillRect(x + c, y + r, 1, 1);
+    }
+  }
+
+  ctx.fillStyle = PX.chalk;
+  for (let r = 0; r < COIN_MARK.length; r++) {
+    for (let c = 0; c < 3; c++) {
+      if (COIN_MARK[r][c] === "#") ctx.fillRect(x + 2 + c, y + 1 + r, 1, 1);
+    }
+  }
+}
 
 /** A club's two colours. Matches the shape of an entry in TEAMS. */
 export type Kit = { lead: string; trim: string };
