@@ -267,11 +267,30 @@ export function startDrive(): void {
     }, passMs / 3);
 
     unregister = registerStopper(stopMusic);
-  } catch {
-    // A device that will not play is not an error worth surfacing.
+  } catch (err) {
+    // A device that will not play is not an error worth surfacing to a user,
+    // but it is worth keeping.
+    noteFault("startDrive", err);
     bus = null;
   }
 }
+
+/* Failures kept rather than discarded, for the same reason audiokit keeps
+ * them: a swallowed exception in a stop function is indistinguishable from a
+ * stop that worked, and that is how this bug survived three attempts. Read
+ * through window.__commishAudio(). */
+const faults: { at: string; message: string; when: number }[] = [];
+
+function noteFault(at: string, err: unknown): void {
+  const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  faults.push({ at, message, when: Date.now() });
+  if (faults.length > 40) faults.shift();
+}
+
+/** Anything a catch block in here would otherwise have thrown away. */
+export const synthFaults = (): { at: string; message: string; when: number }[] => [
+  ...faults,
+];
 
 /** True while the synthesised loop is running. For the tests, which had no
  *  way to ask and therefore no way to catch two players at once. */
@@ -290,25 +309,37 @@ export function stopMusic(): void {
   const out = bus;
   bus = null;
   if (!out) return;
+  /* THE RAMP IS A COURTESY. THE DISCONNECT IS NOT.
+   *
+   * These shared one try block, with the disconnect scheduled on the LAST line
+   * after three AudioParam calls. Anything those threw skipped the setTimeout
+   * entirely, so the bus was never disconnected and never faded — it kept
+   * playing at full volume with `bus` already set to null, which let the next
+   * snap build a second one on top. That is the music stacking, and it is the
+   * same structural fault audiokit's stopLoop had: the thing that actually
+   * stops the sound placed downstream of the thing that merely smooths it.
+   *
+   * A four-bar pass is already sitting in the scheduler, so silencing the bus
+   * is the only thing that stops it. Twenty-five milliseconds rather than an
+   * instant cut, because dropping a running oscillator to zero clicks — but if
+   * the fade cannot be arranged, the cut happens anyway. */
   try {
     const ctx = out.context;
-    /* A four-bar pass is already sitting in the scheduler, so silencing the
-     * bus is the only thing that actually stops it. Twenty-five milliseconds
-     * rather than an instant cut, because dropping a running oscillator to
-     * zero clicks. */
     out.gain.cancelScheduledValues(ctx.currentTime);
     out.gain.setValueAtTime(out.gain.value, ctx.currentTime);
     out.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.025);
-    window.setTimeout(() => {
-      try {
-        out.disconnect();
-      } catch {
-        // Already torn down.
-      }
-    }, 120);
-  } catch {
-    // Nothing to stop.
+  } catch (err) {
+    noteFault("stopMusic:ramp", err);
   }
+
+  /* Scheduled unconditionally, outside anything that can throw. */
+  window.setTimeout(() => {
+    try {
+      out.disconnect();
+    } catch {
+      // Already torn down.
+    }
+  }, 120);
 }
 
 /** The touchdown fanfare: a rising figure over the tonic, then the octave.

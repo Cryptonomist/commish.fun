@@ -18,87 +18,13 @@ import { expect } from "chai";
 
 import { createGameMusic, type MusicSink, type Phase } from "../src/lib/gamemusic";
 
-/* ── a fake audio graph ─────────────────────────────────────────────────── */
-
-class FakeParam {
-  value = 1;
-  cancelScheduledValues() { return this; }
-  setValueAtTime(v: number) { this.value = v; return this; }
-  linearRampToValueAtTime(v: number) { this.value = v; return this; }
-  /* The synth uses this one for its drum envelope. Leaving it off the fake is
-   * what made the first run of this suite worthless: startDrive threw inside
-   * its own try/catch, set bus back to null, and the invariant below — "the
-   * loop and the synth are not both playing" — became true for the boring
-   * reason that the synth never played at all. Same shape as a deploy guard
-   * that passes without reading anything. */
-  exponentialRampToValueAtTime(v: number) { this.value = v; return this; }
-  setTargetAtTime(v: number) { this.value = v; return this; }
-}
-class FakeGain {
-  gain = new FakeParam();
-  constructor(public context: FakeCtx) {}
-  connect<T>(n: T): T { return n; }
-  disconnect() {}
-}
-class FakeSource {
-  buffer: unknown = null;
-  loop = false;
-  loopStart = 0;
-  loopEnd = 0;
-  type = "";
-  frequency = new FakeParam();
-  onended: (() => void) | null = null;
-  started = false;
-  stopped = false;
-  connect<T>(n: T): T { return n; }
-  start() { this.started = true; LIVE.add(this); }
-  stop() {
-    if (this.stopped) return;
-    this.stopped = true;
-    LIVE.delete(this);
-    /* A real graph fires onended when a source is stopped. Firing it here is
-     * what makes the one-shot handover testable at all. */
-    if (this.onended) this.onended();
-  }
-}
-class FakeBuffer {
-  constructor(public duration = 12, public sampleRate = 48000,
-              public numberOfChannels = 1, public length = 48000 * 12) {}
-  getChannelData() { return new Float32Array(this.length).fill(0.5); }
-}
-class FakeCtx {
-  state = "running";
-  currentTime = 0;
-  sampleRate = 48000;
-  destination = {};
-  createGain() { return new FakeGain(this); }
-  createBufferSource() { return new FakeSource(); }
-  createOscillator() { return new FakeSource(); }
-  createBiquadFilter() { return { type: "", frequency: new FakeParam(), Q: new FakeParam(), connect: <T>(n: T) => n }; }
-  createBuffer() { return new FakeBuffer(); }
-  async decodeAudioData() { return new FakeBuffer(); }
-  resume() { this.state = "running"; return Promise.resolve(); }
-}
-
-/** Sources that have been started and not stopped. */
-const LIVE = new Set<FakeSource>();
-
-function installEnvironment() {
-  const store = new Map<string, string>();
-  const g = globalThis as unknown as Record<string, unknown>;
-  g.AudioContext = FakeCtx;
-  g.window = {
-    localStorage: {
-      getItem: (k: string) => store.get(k) ?? null,
-      setItem: (k: string, v: string) => void store.set(k, v),
-    },
-    setTimeout: (fn: () => void) => setTimeout(fn, 0),
-    clearTimeout: (id: number) => clearTimeout(id),
-    setInterval: () => 1,
-    clearInterval: () => {},
-  };
-  g.fetch = async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
-}
+import {
+  breakParams,
+  disconnects,
+  FakeParam,
+  installEnvironment,
+  resetGraph,
+} from "./fake-audio";
 
 /* ── the harness ───────────────────────────────────────────────────────── */
 
@@ -106,7 +32,7 @@ type Kit = typeof import("../src/lib/audiokit");
 type Chip = typeof import("../src/lib/chiptune");
 
 async function freshRig(withFiles: boolean) {
-  LIVE.clear();
+  resetGraph();
   installEnvironment();
   /* audiokit and chiptune get a fresh copy per rig, because the state under
    * test — the cached buffers, the running loop, the synth bus — is module
@@ -315,5 +241,64 @@ describe("game music: one source, whatever the player does", () => {
         assertOneSource(rig, `run ${run} seed ${seed} after [${trail.join(" > ")}]`);
       }
     }
+  });
+});
+
+/* THE FAULT THAT ACTUALLY CAUSED IT, pinned so it cannot come back.
+ *
+ * Both stop functions had the same shape: the call that genuinely silences the
+ * audio placed downstream, in the same try block, of calls that merely smooth
+ * it. An AudioParam throwing took the stop or the disconnect with it, the
+ * source played on, and the module variable had already been cleared — so the
+ * next snap built a second one on top. Three fixes missed this because the
+ * catch blocks discarded the evidence.
+ *
+ * These drive the real modules with a graph whose gain scheduling throws, and
+ * assert the sound stops anyway.
+ */
+describe("a stop must survive a failing fade", () => {
+  it("stops the file loop even when the gain ramp throws", async () => {
+    const rig = await freshRig(true);
+    rig.setPhase("live");
+    rig.music.snap(false, rig.phaseNow);
+    expect(rig.playing().loop, "nothing was playing to stop").to.equal(true);
+
+    const restore = breakParams();
+    try {
+      rig.music.whistle();
+      expect(rig.playing().loop, "the loop survived a whistle").to.equal(false);
+    } finally {
+      restore();
+    }
+  });
+
+  it("disconnects the synth bus even when the gain ramp throws", async () => {
+    const rig = await freshRig(true);
+
+    /* Driven straight at chiptune rather than through a snap. The audio cache
+     * is module level and warm by this point in the run, so a snap would take
+     * the file path and never reach the synth — and the synth is the half that
+     * was broken. */
+    rig.chip.startDrive();
+    expect(rig.chip.isPlaying(), "the synth did not start").to.equal(true);
+
+    const before = disconnects();
+    const restore = breakParams();
+    try {
+      rig.chip.stopMusic();
+      // The disconnect is scheduled rather than immediate; let the timer run.
+      await new Promise((r) => setTimeout(r, 5));
+    } finally {
+      restore();
+    }
+
+    expect(
+      disconnects(),
+      "the bus was never disconnected, so the synth is still audible",
+    ).to.be.above(before);
+    expect(
+      rig.chip.synthFaults().some((f) => f.at === "stopMusic:ramp"),
+      "the failure was swallowed instead of recorded",
+    ).to.equal(true);
   });
 });

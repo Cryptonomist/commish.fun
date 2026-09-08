@@ -15,128 +15,23 @@
 
 import { expect } from "chai";
 
-/* ── the fake graph ────────────────────────────────────────────────────────
- * Only the surface audiokit and sfx actually touch. Every node records what
- * was done to it so the test can ask the questions a listener would. */
-
-/** Every source ever created, in order, so leaks can be counted at the end. */
-let SOURCES: FakeSource[] = [];
-
-class FakeParam {
-  value = 1;
-  cancelScheduledValues() {
-    return this;
-  }
-  setValueAtTime(v: number) {
-    this.value = v;
-    return this;
-  }
-  linearRampToValueAtTime(v: number) {
-    this.value = v;
-    return this;
-  }
-}
-
-class FakeGain {
-  gain = new FakeParam();
-  constructor(public context: FakeCtx) {}
-  connect<T>(n: T): T {
-    return n;
-  }
-  disconnect() {}
-}
-
-class FakeSource {
-  buffer: unknown = null;
-  loop = false;
-  loopStart = 0;
-  loopEnd = 0;
-  onended: (() => void) | null = null;
-  started = false;
-  /** The time passed to stop(), or null if stop was never called at all.
-   *  Null after start() is the leak: a source nothing will ever silence. */
-  stoppedAt: number | null = null;
-  connect<T>(n: T): T {
-    return n;
-  }
-  start() {
-    this.started = true;
-  }
-  stop(when = 0) {
-    this.stoppedAt = when;
-  }
-}
-
-class FakeBuffer {
-  constructor(
-    public duration = 12,
-    public sampleRate = 48000,
-    public numberOfChannels = 1,
-    public length = 48000 * 12,
-  ) {}
-  getChannelData() {
-    /* Non-silent throughout, so trimmedEnd keeps the whole buffer and the loop
-     * point is not the thing under test here. */
-    return new Float32Array(this.length).fill(0.5);
-  }
-}
-
-class FakeCtx {
-  state = "running";
-  currentTime = 0;
-  destination = {};
-  createGain() {
-    return new FakeGain(this);
-  }
-  createBufferSource() {
-    const s = new FakeSource();
-    SOURCES.push(s);
-    return s;
-  }
-  async decodeAudioData() {
-    return new FakeBuffer();
-  }
-  resume() {
-    this.state = "running";
-    return Promise.resolve();
-  }
-}
-
-/** Sources that were started and never told to stop. */
-const leaked = () => SOURCES.filter((s) => s.started && s.stoppedAt === null);
-
-/* ── the environment audiokit and sfx expect ──────────────────────────────── */
-
-function installEnvironment() {
-  const store = new Map<string, string>();
-  const g = globalThis as unknown as Record<string, unknown>;
-  g.AudioContext = FakeCtx;
-  g.window = {
-    localStorage: {
-      getItem: (k: string) => store.get(k) ?? null,
-      setItem: (k: string, v: string) => void store.set(k, v),
-    },
-    setTimeout: (fn: () => void) => setTimeout(fn, 0),
-    clearTimeout: (id: number) => clearTimeout(id),
-    setInterval: () => 1,
-    clearInterval: () => {},
-  };
-  g.fetch = async () => ({
-    ok: true,
-    arrayBuffer: async () => new ArrayBuffer(8),
-  });
-}
+import {
+  installEnvironment,
+  leaked,
+  resetGraph,
+  SOURCES,
+} from "./fake-audio";
 
 describe("audiokit: one music source, ever", () => {
   let kit: typeof import("../src/lib/audiokit");
   let sfx: typeof import("../src/lib/sfx");
 
   beforeEach(async () => {
-    SOURCES = [];
+    resetGraph();
     installEnvironment();
     /* Fresh module state per test. The bug being chased lives in module-level
      * variables, so a shared instance between tests would hide it. */
-    const bust = `?t=${SOURCES.length}-${Math.random()}`;
+    const bust = `?t=${Math.random()}`;
     sfx = (await import(`../src/lib/sfx.ts${bust}`)) as typeof sfx;
     kit = (await import(`../src/lib/audiokit.ts${bust}`)) as typeof kit;
     sfx.setSfxEnabled(true);

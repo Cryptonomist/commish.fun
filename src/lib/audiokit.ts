@@ -27,6 +27,7 @@
  * without hand-editing it first.
  */
 
+import { synthFaults } from "@/lib/chiptune";
 import { audio, MAX_GAIN, registerStopper } from "@/lib/sfx";
 
 /** The sounds a file may replace. Names map to filenames: "kickoff" looks for
@@ -113,7 +114,20 @@ async function load(ctx: AudioContext, name: Track): Promise<AudioBuffer | null>
   const attempt = (async () => {
     for (const ext of EXTENSIONS) {
       try {
-        const res = await fetch(`/audio/${name}.${ext}`, { cache: "force-cache" });
+        /* NO force-cache, AND THAT ONE OPTION HID EVERY TRACK ON THE SITE.
+         *
+         * It was here to avoid re-downloading a 2.4MB file, which the browser's
+         * ordinary HTTP cache already handles. What it also does is reuse ANY
+         * cached response without revalidating — including a 404. These paths
+         * 404'd for every visitor before the audio was uploaded, browsers kept
+         * those failures, and force-cache then served them back forever. The
+         * files have been live and returning 200 to a cold client for days
+         * while an existing visitor could never load one, so the game silently
+         * fell back to the synth for exactly the people most likely to notice.
+         *
+         * Diagnosed from a console: ten 404s for files that curl fetches with a
+         * 200, and probe() reporting nothing cached at all. */
+        const res = await fetch(`/audio/${name}.${ext}`);
         if (!res.ok) continue; // not provided in this format; try the next
         const bytes = await res.arrayBuffer();
         const buf = await ctx.decodeAudioData(bytes);
@@ -365,7 +379,9 @@ export function probe(): AudioProbe {
     looping: loop !== null,
     oneShot: shotName,
     cached: [...cache.entries()].filter(([, v]) => v).map(([k]) => k),
-    faults: [...faults],
+    /* Both players, because "the same music twice" can be either one and the
+     * point of this probe is to say which. */
+    faults: [...faults, ...synthFaults()].sort((a, b) => a.when - b.when),
   };
 }
 
