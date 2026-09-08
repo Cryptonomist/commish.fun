@@ -8,8 +8,8 @@
 
 Buy-ins escrowed on-chain. Picks locked at kickoff. Last one standing takes the pot.
 
-**Devnet only.** The program is currently deployed to Solana devnet using test
-tokens, which have no value. Nothing below is holding real money yet.
+**Live on mainnet.** The program is deployed to Solana mainnet and pools
+hold real USDC. It has not been audited.
 
 [commish.fun](https://commish.fun) · Built on Solana · NFL Survivor pools and league dues
 

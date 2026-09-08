@@ -50,7 +50,7 @@ import { ConfigGuard } from "./ConfigGuard";
 
 export function Providers({ children }: { children: ReactNode }) {
   const endpoint = useMemo(
-    () => process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl("devnet"),
+    () => process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl("mainnet-beta"),
     [],
   );
 

@@ -78,7 +78,7 @@
     // devnet or mainnet. Defaulted in code as well, because a proxy that
     // quietly talks to mainnet because a variable was unset is a worse failure
     // than one that talks to the wrong test cluster.
-    "HELIUS_CLUSTER": "devnet",
+    "HELIUS_CLUSTER": "mainnet",
 
     // The origins allowed to use this proxy, compared whole rather than by
     // suffix. www is still here because Vercel still answers on it, as a

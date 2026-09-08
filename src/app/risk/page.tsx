@@ -67,9 +67,9 @@ export default function Page() {
 
       <p>{"We are not promising to change this. There is a decision to make about that key and it belongs after an audit rather than before one, because the audit changes which answer is right. Keeping it means someone can fix a bug and you are trusting us not to misuse it. Discarding it means the program is frozen exactly as written, including any bug an audit did not catch, and nobody can ever repair it. Sharing it across several holders sits between those, and that option has a history worth stating: a two-of-three multisig was our plan of record and it is not any more, and nothing has replaced it. We have not decided, no option is promised, and no date is attached. Treat the single key as the live state of the world unless and until we publish, verifiably, that it has changed."}</p>
 
-      <p>{"You do not have to take our word for any of this. The program is deployed on Solana devnet at Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa, its program data account is 6dMgvhEnxv8QvHWffRTDcB5F5AUe3t9WGMUJLtUUzR4h, and the upgrade authority is HoYb6BCszJUY89WhKt2itTpxtLHMJKuoEwXwQPdbhtVu."}</p>
+      <p>{"You do not have to take our word for any of this. The program is deployed on Solana mainnet at Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa, its program data account is 6dMgvhEnxv8QvHWffRTDcB5F5AUe3t9WGMUJLtUUzR4h, and the upgrade authority is HoYb6BCszJUY89WhKt2itTpxtLHMJKuoEwXwQPdbhtVu."}</p>
 
-      <p>{"Look those up in any Solana explorer set to devnet, or run solana program show --url devnet Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa. The configuration account that records the admin and the fee treasury is a program address anyone can derive and read, and it will show you the same key again. If the authority ever changes, or is removed so that the program can never be altered again, the chain will show that before we do."}</p>
+      <p>{"Look those up in any Solana explorer, or run solana program show --url mainnet-beta Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa. The configuration account that records the admin and the fee treasury is a program address anyone can derive and read, and it will show you the same key again. If the authority ever changes, or is removed so that the program can never be altered again, the chain will show that before we do."}</p>
 
       <h2>{"Smart contract risk more generally"}</h2>
 
@@ -83,9 +83,9 @@ export default function Page() {
         <li>{"Transactions are final. There is no chargeback, no dispute process, no reversal."}</li>
       </ul>
 
-      <h2>{"Today this is devnet, with test tokens"}</h2>
+      <h2>{"This is mainnet, with real money"}</h2>
 
-      <p>{"At the moment the program is deployed to Solana devnet and pools use test tokens. Devnet money is not money. It has no value, you cannot sell it, and nothing you win on devnet is worth anything. Devnet is a test network: it can be reset or wiped, and it is not intended to be reliable or permanent. Treat anything you do today as a rehearsal."}</p>
+      <p>{"The program is deployed to Solana mainnet and pools hold real USDC. The money is real, the transactions are final, and nothing on this page is hypothetical any more. Everything above applies in full, and it applies to money you cannot get back if it goes wrong."}</p>
 
       <p>{"If and when we deploy to Solana mainnet, real USDC will be involved and every risk on this page becomes a risk to real money. We will say clearly on the site when that happens. Do not assume the code will have been audited by then, or that the upgrade key will have moved, unless we say so specifically."}</p>
 

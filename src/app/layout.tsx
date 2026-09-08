@@ -79,7 +79,6 @@ export const metadata: Metadata = {
    * REMOVE BOTH AT MAINNET. A launched product nobody can find is a bug that
    * announces itself with total silence. `scripts/mainnet-cutover.sh` names
    * them so this is not left to memory. */
-  robots: { index: false, follow: false, nocache: true },
   title: {
     default: "Commish · Fantasy dues and pick'em pots, escrowed on-chain",
     template: "%s · Commish",

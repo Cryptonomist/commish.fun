@@ -294,7 +294,7 @@ export default function Page() {
 
       <p>{"We take reasonable care with the small amount of data we hold. We should also be straight with you about the wider picture, because it is part of an honest privacy statement."}</p>
 
-      <p>{"The Solana program that holds pool money has never been audited. It is currently deployed to Solana devnet with test tokens only, so no real money is involved at the moment. The program's upgrade authority is a single private key held by us, which in principle could be used to deploy new program code. We are not promising to change that, and what happens to the key is a decision for after an audit. The Terms cover what this means for your money. We mention it here because you should not form a view about trusting this site without knowing it."}</p>
+      <p>{"The Solana program that holds pool money has never been audited. It is deployed to Solana mainnet and pools hold real USDC. The program's upgrade authority is a single private key held by us, which in principle could be used to deploy new program code. We are not promising to change that, and what happens to the key is a decision for after an audit. The Terms cover what this means for your money. We mention it here because you should not form a view about trusting this site without knowing it."}</p>
 
       <p>{"No method of transmission or storage is completely secure, and we cannot guarantee absolute security."}</p>
 

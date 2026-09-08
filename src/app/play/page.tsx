@@ -36,7 +36,7 @@ export default function Page() {
 
       <h2>{"Right now this is test money"}</h2>
 
-      <p>{"The program is currently deployed to Solana devnet using test tokens, which have no value. Nothing on this page is urgent yet. It is here because it should be written before real money is involved rather than after, and everything below applies from the moment it is."}</p>
+      <p>{"The program is deployed to Solana mainnet and pools hold real USDC. Everything below applies to you now, and applies to money you cannot get back. It was written before there was any real money in the product rather than after, which is the order these things should be written in."}</p>
 
       <h2>{"Only put in what you can afford to lose entirely"}</h2>
 

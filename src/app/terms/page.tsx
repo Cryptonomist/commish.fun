@@ -78,7 +78,7 @@ export default function Page() {
 
       <h2>{"Current status"}</h2>
 
-      <p>{"The program is currently deployed to Solana "}<strong>{"devnet"}</strong>{" using test tokens. No real money is involved at present. Test tokens have no value, and devnet state can be reset or discarded by the network at any time without notice and without recovery."}</p>
+      <p>{"The program is deployed to Solana "}<strong>{"mainnet"}</strong>{" and pools hold real USDC. The money is real, the transactions are permanent, and there is no reset and no recovery. A mistake here costs what it appears to cost."}</p>
 
       <p>{"If and when the program is deployed to mainnet, real value will be at risk. Read the Risks section before you send anything you cannot afford to lose."}</p>
 
