@@ -246,12 +246,29 @@ export default function AttractCabinet({
         hero.y = Math.round(
           hero.target + ((H / 2 - 7 - hero.target) * Math.min(1, f / 16)),
         );
+        /* Centred on the winner, who stands 8 wide at W/2 - 4, so a 17-wide
+         * coin sits at W/2 - 8. It hovers three pixels clear of his helmet: he
+         * walks UNDER it and takes it, rather than standing inside it. */
+        const COIN_X = W / 2 - 8;
+        const REST_Y = 46;
+        const GRAB = 16; // the frame he arrives, which is when the walk ends
+
         // The winner's mark, painted under his feet before he is, so he stands
         // on it rather than in front of it.
         ctx.fillStyle = PX.action;
         ctx.fillRect(Math.round(hero.x) - 1, Math.round(hero.y) + 15, 10, 1);
+        /* THE COIN IS PAINTED BEFORE HIM WHILE IT WAITS, because it rests at
+         * y 52-67 and his helmet starts at 65 — drawn after, it would sit on
+         * top of his head, which is the exact fault the last two versions of
+         * this payout shipped with. He walks in FRONT of it. */
+        if (f < GRAB) {
+          // Waiting to be picked up: a slow bob, one pixel either way.
+          const bob = Math.round(Math.sin(f * 0.45) * 1.5);
+          drawCoin(ctx, COIN_X, REST_Y + bob);
+        }
+
         // Still walking? Then keep the legs going. Arrived? Stand still.
-        player(hero, f < 16 && f % 2 === 0, false);
+        player(hero, f < GRAB && f % 2 === 0, false);
 
         /* THE MONEY ARRIVES ABOVE HIM, NOT ON HIM.
          *
@@ -270,43 +287,32 @@ export default function AttractCabinet({
          * helmet the way an arcade pickup does, with a short overshoot so it
          * lands rather than glides. Three offset bills read as a stack where
          * one rectangle reads as a block. */
-        /* THE POT ARRIVES AS COINS, ONE AT A TIME.
+        /* HE COLLECTS IT, the way a game character collects a coin.
          *
-         * Two goes at this. The first landed a slab on top of the winner. The
-         * second moved it off him but kept the slab — a gold bar with a dark
-         * band, which at a seventh of the screen read as a loading indicator
-         * rather than as money, and did not survive being looked at.
+         * Four goes at this now, and the first three were all the same mistake:
+         * the money ARRIVED. A slab rose and landed on him; then a slab rose and
+         * landed beside him; then six coins arced in and stacked into a heap.
+         * All three are a graphic appearing near a man, and none of them is
+         * something happening TO him.
          *
-         * Money is round and there is more than one of it. Six USDC coins arc
-         * in from off the bottom of the field, three frames apart, and stack
-         * into a heap beside him: three across, then two, then one. Arriving in
-         * sequence is what makes it read as being PAID rather than as a graphic
-         * appearing — the thing the whole twelve seconds builds to should look
-         * like it is happening to somebody. */
-        const PILE = [
-          { x: 138, y: 72 },
-          { x: 147, y: 72 },
-          { x: 156, y: 72 },
-          { x: 142, y: 65 },
-          { x: 151, y: 65 },
-          { x: 147, y: 58 },
-        ];
-        PILE.forEach((spot, i) => {
-          const start = 18 + i * 3;
-          if (f < start) return; // not thrown yet
-          const t = Math.min(1, (f - start) / 7);
-          /* Out of the bottom of the frame, alternating sides, so they do not
-           * arrive along one line. */
-          const fromX = i % 2 === 0 ? 96 : 176;
-          const fromY = H + 8;
-          const cx = fromX + (spot.x - fromX) * t;
-          /* A parabola over the flight, plus a one-pixel settle at the end so
-           * the coin lands rather than glides into place. */
-          const arc = Math.sin(Math.PI * t) * 26;
-          const settle = t > 0.85 ? Math.sin((t - 0.85) * 21) * 1.5 : 0;
-          const cy = fromY + (spot.y - fromY) * t - arc + settle;
-          drawCoin(ctx, cx, cy);
-        });
+         * A coin sits on the spot, bobbing, from the first frame — so it is
+         * clear what he is walking toward before he gets there. He reaches it at
+         * the same frame he stops walking. It flashes, pops upward, and is gone.
+         * That is the oldest verb in this medium and it needs no explaining.
+         *
+         * Drawn BEFORE the player while it waits, so he arrives in front of it,
+         * and AFTER him once collected, so the pop rises over his head rather
+         * than behind it. */
+        if (f >= GRAB && f < GRAB + 9) {
+          const k = f - GRAB;
+          /* Up and away, decelerating, and fading over the last few frames. The
+           * first two frames are white: a collected coin flashes before it
+           * leaves, which is what separates "taken" from "drifted off". */
+          const rise = Math.round(k * 3.2 - k * k * 0.12);
+          ctx.globalAlpha = k > 5 ? Math.max(0, 1 - (k - 5) / 4) : 1;
+          drawCoin(ctx, COIN_X, REST_Y - rise, k < 2);
+          ctx.globalAlpha = 1;
+        }
         showAlive(1);
         showPot(2400);
       }

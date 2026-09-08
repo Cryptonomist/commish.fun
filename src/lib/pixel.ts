@@ -36,69 +36,84 @@ export const PX = {
   usdc: "#2775CA",
 } as const;
 
-/* A COIN, 7x7, because a stack of notes did not read as one.
+/* THE USDC MARK, PIXELATED. A blue disc, a white ring inside it, and a dollar
+ * sign — which is what the token's logo actually is.
  *
- * The payout used to be a gold slab with a dark band through it, which at a
- * seventh of the screen looked like a loading bar that had wandered onto the
- * pitch. A round thing with a currency mark on it is money at any size, and it
- * is the one shape that survives being seven pixels across.
+ * FOUR VERSIONS OF THIS SHIPPED BEFORE THIS ONE and every failure was the same
+ * root cause: judging pixel art by reading the array instead of putting it on a
+ * screen. A gold slab that landed on the winner. The same slab moved beside
+ * him. Six small coins in a heap. Then a disc with a bare S on it, which is a
+ * different symbol from a dollar sign and was rightly called out. This one was
+ * generated, rendered at eleven pixels per cell against the real logo, and
+ * only then written down.
  *
- * ROW WIDTHS 3-5-7-7-7-5-3, and the first attempt used 5-7-7-7-7-7-5 on the
- * theory that clipping the four corners was enough. Rendered at sixteen pixels
- * per cell next to the alternatives it was plainly a rounded SQUARE with a
- * letter on it — a badge, not a coin. Taking a second bite out of the top and
- * bottom is what turns it round.
+ * SEVENTEEN ACROSS, because the mark has three concentric parts and they need
+ * room. Fifteen could not hold a ring and a glyph without one eating the other.
  *
- * Nine across reads rounder still and was rejected: the players are eight wide,
- * and a coin wider than a person is a different kind of wrong. */
+ * THE STROKE STAYS INSIDE THE RING. On the real logo it breaks through, with a
+ * gap of blue either side. That was tried and abandoned: carving a gap at this
+ * size fragments the ring into arcs and leaves the bowl full of stray pixels,
+ * and running the stroke through WITHOUT a gap merges the two into a heavy bar
+ * across the top and bottom. A clean unbroken ring with the dollar sign held
+ * inside it is the closest this resolution gets, and it is the version that
+ * still reads at the size it is actually drawn.
+ *
+ *   B  the disc, USDC blue
+ *   W  the ring and the dollar sign, chalk
+ *   .  outside the coin
+ */
 const COIN = [
-  "..###..",
-  ".#####.",
-  "#######",
-  "#######",
-  "#######",
-  ".#####.",
-  "..###..",
+  "........B........",
+  ".....BBBBBBB.....",
+  "...BBBBWWWBBBB...",
+  "..BBBWWWBWWWBBB..",
+  "..BBWBBBWBBBWBB..",
+  ".BBWBBBWWWBBBWBB.",
+  ".BBWBBWBWBWBBWBB.",
+  ".BWWBBWBWBBBBWWB.",
+  "BBWBBBBWWWBBBBWBB",
+  ".BWWBBBBWBWBBWWB.",
+  ".BBWBBWBWBWBBWBB.",
+  ".BBWBBBWWWBBBWBB.",
+  "..BBWBBBWBBBWBB..",
+  "..BBBWWWBWWWBBB..",
+  "...BBBBWWWBBBB...",
+  ".....BBBBBBB.....",
+  "........B........",
 ];
 
-/* An S through the middle. A true $ needs the stroke to run above and below the
- * bowl, which takes seven rows and leaves no coin around it — so this is the
- * mark USDC's own logo is built from rather than a literal dollar sign. */
-const COIN_MARK = ["###", "#..", "###", "..#", "###"];
+export const COIN_W = 17;
+export const COIN_H = 17;
 
-export const COIN_W = 7;
-export const COIN_H = 7;
-
-/** One coin, top-left at (px, py). */
+/** One coin, top-left at (px, py). `flash` swaps the two inks, which is the
+ *  frame a collected coin pops on. */
 export function drawCoin(
   ctx: CanvasRenderingContext2D,
   px: number,
   py: number,
+  flash = false,
 ): void {
   const x = Math.round(px);
   const y = Math.round(py);
 
-  /* Outline first and one pixel proud, the same trick the players use: a blue
-   * coin on green turf has almost no luminance separation, and without a dark
-   * edge the whole pile dissolves into the grass. */
+  /* Outline first and one pixel proud, the same trick the players use: blue on
+   * green has almost no luminance separation, and without a dark edge the coin
+   * dissolves into the grass. */
   ctx.fillStyle = PX.panel;
   for (let r = 0; r < COIN_H; r++) {
     for (let c = 0; c < COIN_W; c++) {
-      if (COIN[r][c] === "#") ctx.fillRect(x + c - 1, y + r - 1, 3, 3);
+      if (COIN[r][c] !== ".") ctx.fillRect(x + c - 1, y + r - 1, 3, 3);
     }
   }
 
-  ctx.fillStyle = PX.usdc;
+  const disc = flash ? PX.chalk : PX.usdc;
+  const ink = flash ? PX.usdc : PX.chalk;
   for (let r = 0; r < COIN_H; r++) {
     for (let c = 0; c < COIN_W; c++) {
-      if (COIN[r][c] === "#") ctx.fillRect(x + c, y + r, 1, 1);
-    }
-  }
-
-  ctx.fillStyle = PX.chalk;
-  for (let r = 0; r < COIN_MARK.length; r++) {
-    for (let c = 0; c < 3; c++) {
-      if (COIN_MARK[r][c] === "#") ctx.fillRect(x + 2 + c, y + 1 + r, 1, 1);
+      const cell = COIN[r][c];
+      if (cell === ".") continue;
+      ctx.fillStyle = cell === "W" ? ink : disc;
+      ctx.fillRect(x + c, y + r, 1, 1);
     }
   }
 }
