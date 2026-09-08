@@ -105,7 +105,16 @@ export const metadata: Metadata = {
       "Fantasy league dues and weekly pick'em pots, held in escrow. The commissioner runs the pool and never holds the money.",
     images: ["/brand/og.png"],
   },
-  icons: { icon: "/brand/appicon.png", apple: "/brand/favicon-180.png" },
+  /* TWO ICONS ARE DECLARED AND THE BROWSER PICKS, so both have to be right.
+   * Next emits a link for src/app/favicon.ico automatically; this adds a
+   * second. Chrome chooses by display scale, so pointing this at the square
+   * app tile meant a hard-cornered square appeared at some densities and a
+   * rounded icon at others. Both now come from scripts/build-favicon.mjs.
+   *
+   * `apple` stays SQUARE on purpose: iOS applies its own mask, and an icon
+   * that arrives pre-rounded is rounded twice — the corners go transparent and
+   * iOS fills them with black. */
+  icons: { icon: "/brand/icon-round.png", apple: "/brand/favicon-180.png" },
 };
 
 export const viewport: Viewport = {
