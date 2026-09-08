@@ -132,10 +132,18 @@ export function preload(names: Track[]): void {
  *  two pieces of music at once, which sounds like a bug because it is one. */
 let shot: AudioBufferSourceNode | null = null;
 
+/** What to run when the current one-shot finishes ON ITS OWN. Cleared by
+ *  stopOneShots, because a track that was cut short did not finish. */
+let shotDone: (() => void) | null = null;
+
 /** Silence whatever one-shot is playing. Called when a new play starts. */
 export function stopOneShots(): void {
   const s = shot;
   shot = null;
+  /* Dropped, not called. The caller waiting on this is waiting for the track
+   * to END, and being interrupted is the opposite of that — running it here
+   * would start the drive loop at the exact moment somebody hit snap. */
+  shotDone = null;
   if (!s) return;
   try {
     s.stop();
@@ -147,7 +155,17 @@ export function stopOneShots(): void {
 /** Play `name` once. Returns false if there is no file, so the caller can fall
  *  back to its synthesised version — which is why this is fire-and-check
  *  rather than fire-and-forget. */
-export function playOnce(name: Track, level = 1): boolean {
+export function playOnce(
+  name: Track,
+  level = 1,
+  /* Runs when the track reaches its own end, and never when it is cut short.
+   * This exists because a one-shot that is a piece of MUSIC cannot share the
+   * air with the loop: the kickoff track and the drive loop were started back
+   * to back, so 2.5 seconds of one played under 12.8 seconds of the other, on
+   * every kickoff. Both came from the same generator, which is why it sounded
+   * like one track playing twice rather than two tracks clashing. */
+  onEnded?: () => void,
+): boolean {
   const ctx = audio();
   if (!ctx) return false;
   const buf = cache.get(name);
@@ -166,10 +184,15 @@ export function playOnce(name: Track, level = 1): boolean {
     gain.gain.value = MAX_GAIN * level;
     src.connect(gain).connect(ctx.destination);
     src.onended = () => {
-      if (shot === src) shot = null;
+      if (shot !== src) return; // superseded; whoever replaced it owns the slot
+      shot = null;
+      const done = shotDone;
+      shotDone = null;
+      if (done) done();
     };
     src.start();
     shot = src;
+    shotDone = onEnded ?? null;
     return true;
   } catch {
     return false;

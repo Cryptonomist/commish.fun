@@ -169,6 +169,11 @@ export function CommishBowl() {
   }, []);
 
   const stopAllMusic = useCallback(() => {
+    /* Moving the epoch on is what cancels a drive loop that is queued behind a
+     * kickoff track. Without it, being tackled during the return would silence
+     * everything and then the opening would finish and start the music again,
+     * under a stopped play. */
+    musicEpoch.current += 1;
     stopMusic();
     kit.stopLoop();
   }, []);
@@ -222,6 +227,11 @@ export function CommishBowl() {
   }
 
   const phaseRef = useRef<Phase>("select");
+
+  /* Which play the music belongs to. Bumped by every snap and every stop, so a
+   * callback scheduled by an earlier one can tell that it is stale and do
+   * nothing. See the kickoff opening in `snap`. */
+  const musicEpoch = useRef(0);
   const keysRef = useRef<Record<string, boolean>>({});
   /** Set for exactly one tick when the spin is pressed, then cleared by the
    *  loop. Holding the key must not hold the boost. */
@@ -273,14 +283,34 @@ export function CommishBowl() {
     /* A touchdown fanfare can still be sounding when somebody presses on. */
     kit.stopOneShots();
     play("snap");
-    /* A KICKOFF GETS ITS OWN OPENING, if one has been supplied. Everything
-     * here is "use the file if there is one, otherwise the synth" — see
-     * public/audio/README.md. */
-    if (w.kind === "kickoff") kit.playOnce("kickoff");
+
+    /* THE KICKOFF TRACK AND THE DRIVE LOOP TAKE TURNS, and they used not to.
+     *
+     * These two lines ran back to back: play the kickoff opening, start the
+     * drive loop. That is correct when both are synth stings a tenth of a
+     * second long, which is what they were when it was written. The supplied
+     * files are 2.5 and 12.8 seconds of actual music from the same generator,
+     * so every kickoff played the two on top of each other and it sounded
+     * exactly like one track running twice. Reported twice as the music
+     * stacking, and it is not a race — nothing here was ever out of order.
+     *
+     * So the loop waits for the opening to finish. The epoch is what makes
+     * that safe: a whistle or another snap moves it on, and a callback from a
+     * track nobody is listening for any more does nothing. */
+    musicEpoch.current += 1;
+    const epoch = musicEpoch.current;
+    const opening =
+      w.kind === "kickoff" &&
+      kit.playOnce("kickoff", 1, () => {
+        if (musicEpoch.current !== epoch) return; // superseded
+        if (phaseRef.current !== "live") return; // already whistled
+        startMusic();
+      });
+
     /* The loop runs for the length of the down and stops at the whistle. It is
      * bounded by the play rather than by the page, which is what keeps music
      * on a website from being something done TO somebody. */
-    startMusic();
+    if (!opening) startMusic();
     goPhase("live");
   }, [goPhase, startMusic]);
 
