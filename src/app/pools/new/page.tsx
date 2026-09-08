@@ -642,9 +642,24 @@ export default function NewPool() {
             ) : null}
 
             {status.at === "error" ? (
-              <p className="rounded-xl border border-out/40 bg-out/10 p-4 text-sm text-cream">
-                {status.message}
-              </p>
+              <div className="flex flex-col gap-2 rounded-xl border border-out/40 bg-out/10 p-4 text-sm text-cream">
+                <p>{status.message}</p>
+                {/* THE ONE FAILURE WITH A NEXT STEP, so it gets a link rather
+                 * than leaving somebody to guess how much is missing. It is
+                 * also the likeliest failure for a first-time commissioner:
+                 * creating a pool needs SOL for rent, which a wallet holding
+                 * only USDC does not have, and the wording alone does not say
+                 * how much. /wallet reads the connected wallet and names the
+                 * gap in whichever currency it is actually in. */}
+                {/SOL|rent/i.test(status.message) ? (
+                  <p className="text-cream-dim">
+                    <a className="text-action underline" href="/wallet">
+                      See how much this wallet is short, and how to top it up
+                    </a>
+                    .
+                  </p>
+                ) : null}
+              </div>
             ) : null}
 
             <button

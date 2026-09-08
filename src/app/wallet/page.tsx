@@ -59,6 +59,8 @@ import type { Metadata } from "next";
 
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
+import { GetFunded } from "@/components/GetFunded";
+import { solNeeded } from "@/lib/funding";
 
 export const metadata: Metadata = {
   title: "Getting a wallet",
@@ -309,14 +311,15 @@ export default function WalletPage() {
               us. This is the part worth slowing down for.
             </Step>
             <Step n={3} title="Add a little SOL">
-              Solana charges a tiny fee for each transaction, paid in SOL, and
-              joining a pool creates a couple of small accounts. About 0.01 SOL
-              covers it comfortably. Every one of these wallets can buy some
-              for you.
+              Solana charges rent for the small accounts a pool creates, paid
+              in SOL. {solNeeded("join", false)} SOL covers joining and{" "}
+              {solNeeded("create")} covers creating a pool — a few cents either
+              way. Every one of these wallets can buy some for you.
             </Step>
             <Step n={4} title="Add the buy-in">
               Pools are paid in USDC, a dollar-pegged token. You need the
-              buy-in amount and nothing else.
+              buy-in amount, and the SOL from step 3 as well — USDC alone
+              cannot pay the rent, so a wallet holding only dollars is stuck.
             </Step>
             <Step n={5} title="Open the pool link and press Connect">
               The pool page tells you exactly what is missing, if anything is,
@@ -324,6 +327,11 @@ export default function WalletPage() {
             </Step>
           </ol>
         </section>
+
+        {/* Where step 3 and step 4 actually get done. It reads the connected
+            wallet, so it can say which of the two currencies is short rather
+            than leaving somebody to work that out from an error message. */}
+        <GetFunded />
 
         {!IS_MAINNET ? (
           <section className="panel-primary flex flex-col gap-3 border-2 border-out p-5">
