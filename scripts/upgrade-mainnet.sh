@@ -29,8 +29,15 @@
 #
 # Needs: MAINNET_RPC set to an RPC that will accept a 500KB buffer. The public
 # one dropped the first deploy with -32002 halfway through; a Helius URL did
-# not. For --go, the upgrade authority as the CLI's default key. For --buffer,
-# any funded CLI key: the buffer's rent comes back when the upgrade closes it.
+# not. For --go, the upgrade authority as the CLI's default key, or as a file
+# named in UPGRADE_AUTHORITY_KEYPAIR (a cold key on a USB stick) while the CLI
+# key pays. For --buffer, any funded CLI key: the buffer's rent comes back when
+# the upgrade closes it.
+#
+# THIS SCRIPT NEVER PRINTS THE RPC URL. A Helius URL carries the API key, and
+# an earlier version echoed it inside a "next, run this" hint, where a terminal
+# rendered it as a link and it ended up in a chat. Every hint below says
+# "$MAINNET_RPC" literally and lets the shell fill it in.
 #
 set -euo pipefail
 
@@ -165,7 +172,7 @@ fi
 if [ "$SIZE" -gt "$DATALEN" ]; then
   EXTRA=$(( SIZE - DATALEN ))
   bad "the new binary is $EXTRA bytes larger than the ProgramData account. First run:
-       solana program extend $PROGRAM_ID $(( EXTRA + 65536 )) --url $RPC
+       solana program extend $PROGRAM_ID $(( EXTRA + 65536 )) --url \"\$MAINNET_RPC\"
        (the 64KB on top is so the next upgrade does not land here again)"
 fi
 ok "new binary fits: $SIZE <= $DATALEN"
@@ -173,9 +180,17 @@ ok "new binary fits: $SIZE <= $DATALEN"
 PAYER=$(solana address)
 case "$MODE" in
   --go)
-    [ "$PAYER" = "$AUTHORITY" ] \
-      || bad "the CLI key $PAYER is not the upgrade authority $AUTHORITY. Use --buffer and upgrade through the authority."
-    ok "CLI key is the upgrade authority"
+    if [ -n "${UPGRADE_AUTHORITY_KEYPAIR:-}" ]; then
+      [ -f "$UPGRADE_AUTHORITY_KEYPAIR" ] || bad "UPGRADE_AUTHORITY_KEYPAIR=$UPGRADE_AUTHORITY_KEYPAIR is not a file"
+      AUTH_KEY=$(solana address -k "$UPGRADE_AUTHORITY_KEYPAIR")
+      [ "$AUTH_KEY" = "$AUTHORITY" ] \
+        || bad "UPGRADE_AUTHORITY_KEYPAIR holds $AUTH_KEY, not the upgrade authority $AUTHORITY"
+      ok "UPGRADE_AUTHORITY_KEYPAIR is the upgrade authority; the CLI key $PAYER pays"
+    else
+      [ "$PAYER" = "$AUTHORITY" ] \
+        || bad "the CLI key $PAYER is not the upgrade authority $AUTHORITY. Set UPGRADE_AUTHORITY_KEYPAIR to its file, or use --buffer for a multisig."
+      ok "CLI key is the upgrade authority"
+    fi
     ;;
   --buffer)
     if [ "$PAYER" = "$AUTHORITY" ]; then
@@ -222,14 +237,16 @@ fi
 if [ "$MODE" = "--buffer" ]; then
   say "5. Write the buffer and hand it to the authority"
 
-  WROTE=$(solana program write-buffer "$BIN" --url "$RPC" --commitment finalized 2>&1) \
-    || { printf '%s\n' "$WROTE"; bad "write-buffer did not complete. If a buffer was left behind: solana program show --buffers --url $RPC, then close it."; }
+  # The CLI's own output is scrubbed of the URL too: on a failure it quotes
+  # the endpoint it was talking to.
+  WROTE=$(solana program write-buffer "$BIN" --url "$RPC" --commitment finalized 2>&1 | sed "s#$RPC#\$MAINNET_RPC#g") \
+    || { printf '%s\n' "$WROTE"; bad "write-buffer did not complete. If a buffer was left behind: solana program show --buffers --url \"\$MAINNET_RPC\", then close it."; }
   BUFFER=$(printf '%s' "$WROTE" | awk '/Buffer:/{print $2}')
   [ -n "$BUFFER" ] || { printf '%s\n' "$WROTE"; bad "could not read the buffer address from write-buffer's output"; }
   ok "buffer $BUFFER holds the binary"
 
   solana program set-buffer-authority "$BUFFER" --new-buffer-authority "$AUTHORITY" --url "$RPC" >/dev/null \
-    || bad "could not give buffer $BUFFER to $AUTHORITY. Close it (solana program close $BUFFER --url $RPC) and start again."
+    || bad "could not give buffer $BUFFER to $AUTHORITY. Close it (solana program close $BUFFER --url \"\$MAINNET_RPC\") and start again."
   ok "buffer authority is now $AUTHORITY"
 
   cat <<NEXT
@@ -256,11 +273,18 @@ fi
 
 say "5. Upgrade"
 
+AUTH_ARGS=()
+[ -n "${UPGRADE_AUTHORITY_KEYPAIR:-}" ] && AUTH_ARGS=(--upgrade-authority "$UPGRADE_AUTHORITY_KEYPAIR")
+
+# The CLI quotes its endpoint in some failures; scrub it before it is shown.
 solana program deploy "$BIN" \
   --program-id "$KEYPAIR" \
+  "${AUTH_ARGS[@]}" \
   --url "$RPC" \
-  --commitment finalized \
-  || bad "the upgrade did not complete. If a buffer was left behind: solana program show --buffers, then close it or resume with --buffer."
+  --commitment finalized 2>&1 | sed "s#$RPC#\$MAINNET_RPC#g" \
+  || bad "the upgrade did not complete. If a buffer was left behind: solana program show --buffers --url \"\$MAINNET_RPC\", then close it."
+[ "${PIPESTATUS[0]}" = "0" ] \
+  || bad "the upgrade did not complete. If a buffer was left behind: solana program show --buffers --url \"\$MAINNET_RPC\", then close it."
 ok "upgrade transaction finalized"
 
 say "6. Prove the chain holds this binary"
@@ -295,10 +319,10 @@ cat <<NEXT
 
   If this upgrade introduced the admin handover, the CLI key is still the
   admin until it proposes a successor and that successor accepts:
-    RPC_URL='$RPC' npx tsx scripts/admin-transfer.ts status
-    NEW_ADMIN=<multisig vault or cold key> RPC_URL='$RPC' npx tsx scripts/admin-transfer.ts propose
+    RPC_URL="\$MAINNET_RPC" npx tsx scripts/admin-transfer.ts status
+    NEW_ADMIN=<multisig vault or cold key> RPC_URL="\$MAINNET_RPC" npx tsx scripts/admin-transfer.ts propose
   then, from the successor:
-    RPC_URL='$RPC' KEYPAIR=<its keypair> npx tsx scripts/admin-transfer.ts accept
+    RPC_URL="\$MAINNET_RPC" KEYPAIR=<its keypair> npx tsx scripts/admin-transfer.ts accept
   or, for a multisig, propose the printed instruction inside it:
-    RPC_URL='$RPC' npx tsx scripts/admin-transfer.ts accept --print
+    RPC_URL="\$MAINNET_RPC" npx tsx scripts/admin-transfer.ts accept --print
 NEXT
