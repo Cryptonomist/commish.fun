@@ -15,11 +15,13 @@
  */
 
 import {
-  drawTextDown,
+  drawRun,
   drawTextUp,
   GLYPH_H,
+  plain,
   runLength,
   RUN_THICKNESS,
+  type Segment,
 } from "@/lib/fieldfont";
 
 /** The canvas palette. These are the same values as the CSS custom properties
@@ -221,24 +223,25 @@ export function drawField(
    * The name runs down the screen because endzone lettering runs parallel to
    * the goal line, and from this camera that is the short way across.
    */
-  for (const [from, to] of [
-    [0, f.ownGoal],
-    [f.goal, f.world],
-  ]) {
+  for (const [from, to, facing] of [
+    [0, f.ownGoal, 1],
+    [f.goal, f.world, -1],
+  ] as const) {
     if (!near(from, to)) continue;
     ctx.fillStyle = PX.endzone;
     ctx.fillRect(sx(from), TOP, sx(to) - sx(from), BOT - TOP + 1);
 
-    const runH = runLength(ENDZONE_TEXT) * ENDZONE_SCALE;
+    const runH = runLength(WORDMARK, ENDZONE_TRACKING) * ENDZONE_SCALE;
     const runW = RUN_THICKNESS * ENDZONE_SCALE;
-    drawTextDown(
+    drawRun(
       ctx,
-      ENDZONE_TEXT,
+      WORDMARK,
       sx(from) + Math.round((to - from - runW) / 2),
       TOP + Math.round((BOT - TOP - runH) / 2),
       ENDZONE_SCALE,
-      PX.chalk,
+      facing,
       PX.panel,
+      ENDZONE_TRACKING,
     );
   }
 
@@ -308,12 +311,12 @@ export function drawField(
     const x = sx(f.ownGoal + yd * f.yard);
     if (x < -20 || x > w + 20) continue;
     const label = String(yd <= 50 ? yd : 100 - yd);
-    const labelW = runLength(label);
+    const labelW = runLength(plain(label));
     const lx = x - Math.round(labelW / 2);
     for (const y of [NUM_INSET, h - NUM_INSET - GLYPH_H]) {
       drawTextUp(ctx, label, lx, y, 1, NUM_INK);
       if (yd !== 50) {
-        arrow(ctx, yd < 50 ? lx - 5 : lx + labelW + 2, y + 1, yd < 50 ? -1 : 1);
+        arrow(ctx, yd < 50 ? lx - 5 : lx + labelW + 2, y, yd < 50 ? -1 : 1);
       }
     }
   }
@@ -334,8 +337,26 @@ export function drawField(
   }
 }
 
-const ENDZONE_TEXT = "COMMISH.FUN";
-const ENDZONE_SCALE = 2;
+/* THE WORDMARK, in the wordmark's own two colours: COMMISH in cream and .FUN
+ * in the action orange, exactly as the lockup in the header sets it. It used
+ * to be one flat run of chalk, which said the right word in the wrong voice.
+ *
+ * The dark keyline is what lets the orange survive down here. Plain action on
+ * this endzone green is a weak contrast and the .FUN went muddy without it;
+ * the same panel-coloured ring the header uses fixes it the same way. */
+const WORDMARK: Segment[] = [
+  { text: "COMMISH", fill: PX.chalk },
+  { text: ".FUN", fill: PX.action },
+];
+/* Three, and the tracking closes to one unit to pay for it. At Silkscreen's
+ * own two-unit tracking the run is 60 units long, which at this scale is 180
+ * logical pixels against the 171 the field has between its sidelines: it does
+ * not fit, and dropping to scale 2 leaves the lettering ten pixels thick in a
+ * sixty pixel endzone, which reads as a caption rather than as paint. Tighter
+ * tracking at three is the trade, and at three pixels a stroke it is the
+ * letterforms that carry the wordmark, not the air between them. */
+const ENDZONE_SCALE = 3;
+const ENDZONE_TRACKING = 1;
 const NUM_INSET = 7;
 const NUM_INK = "rgba(251,253,248,0.34)";
 

@@ -21,7 +21,13 @@ import { expect } from "chai";
 
 import { FIELD, VIEW_H, VIEW_W } from "@/lib/bowl";
 import { drawField, PX } from "@/lib/pixel";
-import { cellsFor, runLength } from "@/lib/fieldfont";
+import {
+  cellsOf,
+  drawRun,
+  GLYPH_H,
+  plain,
+  runLength,
+} from "@/lib/fieldfont";
 
 type Rect = { x: number; y: number; w: number; h: number; fill: string };
 
@@ -109,7 +115,7 @@ describe("the field's yard lines", () => {
     for (const yd of [10, 20, 30, 40, 50]) {
       const label = String(yd);
       const lineX = FIELD.ownGoal + yd * FIELD.yard - camX;
-      const halfRun = runLength(label) / 2;
+      const halfRun = runLength(plain(label)) / 2;
 
       /* Cells are one logical pixel each and share the numbers' ink, which
        * nothing else on the field uses. */
@@ -157,32 +163,108 @@ describe("the goalposts", () => {
   });
 });
 
+/** The wordmark's own ink, and nothing else on the field wears these two exact
+ *  colours: the lines and the logo are all painted through rgba(). */
+function wordmark(camX: number) {
+  const ink = paint(camX).filter(
+    (r) => r.fill === PX.chalk || r.fill === PX.action,
+  );
+  const minX = Math.min(...ink.map((r) => r.x));
+  const minY = Math.min(...ink.map((r) => r.y));
+  const w = Math.max(...ink.map((r) => r.x)) - minX;
+  const h = Math.max(...ink.map((r) => r.y)) - minY;
+  const at = new Set(
+    ink.map((r) => `${r.x - minX},${r.y - minY},${r.fill}`),
+  );
+  return { ink, w, h, at };
+}
+
 describe("the endzone lettering", () => {
   it("stays inside the endzone it is painted in", () => {
     /* Anybody raising the scale to make the name louder would push it over the
      * goal line and out onto the field of play, which no amount of squinting
      * at a screenshot reliably catches. */
-    const rects = paint(0);
-    const chalk = rects.filter(
-      (r) => r.fill === PX.chalk && r.x < FIELD.ownGoal + 40,
-    );
-    expect(chalk.length, "nothing lettered").to.be.greaterThan(0);
-    for (const r of chalk) {
+    const { ink } = wordmark(0);
+    expect(ink.length, "nothing lettered").to.be.greaterThan(0);
+    for (const r of ink) {
       expect(r.x, "lettering off the back of the endzone").to.be.at.least(0);
-      expect(
-        r.x + r.w,
-        "lettering crossed the goal line",
-      ).to.be.at.most(FIELD.ownGoal);
+      expect(r.x + r.w, "lettering crossed the goal line").to.be.at.most(
+        FIELD.ownGoal,
+      );
+    }
+  });
+
+  it("is the wordmark, in the wordmark's two colours", () => {
+    /* COMMISH in cream and .FUN in the action orange, exactly as the header
+     * sets it. It shipped once as a single flat run of chalk, which says the
+     * right word in the wrong voice. */
+    const { ink } = wordmark(0);
+    const inks = new Set(ink.map((r) => r.fill));
+    expect([...inks].sort()).to.deep.equal(
+      [PX.chalk, PX.action].sort(),
+      "the endzone is not painting both halves of the wordmark",
+    );
+  });
+
+  it("faces the middle of the field from both ends", () => {
+    /* THE ONE THAT MATTERS. Endzone type is read from the field, so the tops
+     * of the letters point at the middle of it: right in your endzone, left in
+     * theirs. Painting both the same way leaves one of them addressing the
+     * back wall, which is what the first version did.
+     *
+     * Facing the other way is the same glyphs turned through half a circle, so
+     * that is exactly what is asserted: every cell of one endzone has a twin
+     * at the opposite corner of the other, in the same colour. */
+    const near = wordmark(0);
+    const far = wordmark(FIELD.world - VIEW_W);
+
+    expect(far.w).to.equal(near.w);
+    expect(far.h).to.equal(near.h);
+    expect(far.at.size).to.equal(near.at.size);
+
+    for (const key of near.at) {
+      const [dx, dy, fill] = key.split(",");
+      const twin = `${near.w - Number(dx)},${near.h - Number(dy)},${fill}`;
+      expect(far.at.has(twin), `no twin for ${key}`).to.equal(true);
     }
   });
 
   it("knows every character of the name it has to paint", () => {
-    expect(() => cellsFor("COMMISH.FUN")).to.not.throw();
+    expect(() => cellsOf(plain("COMMISH.FUN"))).to.not.throw();
   });
 
   it("refuses a character it has no glyph for, rather than drawing a gap", () => {
     /* A font table that silently renders nothing is how the 49ers once wore
      * somebody else's letter on their helmet, and that took a test to find. */
-    expect(() => cellsFor("COMMISH.FUN!")).to.throw(/no glyph/);
+    expect(() => cellsOf(plain("COMMISH.FUN!"))).to.throw(/no glyph/);
+  });
+});
+
+describe("which way a rotated letter faces", () => {
+  /* The rule underneath the endzone test above, stated on its own so a change
+   * to it fails somewhere that explains itself.
+   *
+   * A full stop is one cell on the BASELINE, so where it lands across the run
+   * says which side the feet of the letters are on, and therefore which way
+   * their tops point. */
+  const foot = (facing: 1 | -1) => {
+    const { ctx, rects } = recorder();
+    drawRun(
+      ctx as unknown as CanvasRenderingContext2D,
+      plain(".", "#FFFFFF"),
+      0,
+      0,
+      1,
+      facing,
+    );
+    return rects.filter((r) => r.fill === "#FFFFFF")[0].x;
+  };
+
+  it("puts the feet at low x when the tops point right", () => {
+    expect(foot(1)).to.equal(0);
+  });
+
+  it("puts the feet at high x when the tops point left", () => {
+    expect(foot(-1)).to.equal(GLYPH_H - 1);
   });
 });
