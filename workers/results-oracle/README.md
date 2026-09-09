@@ -30,6 +30,14 @@ oracle never marks a push; a voided game is a human decision.
 `MIN_AGREEING_FEEDS` is 2 and should stay 2. Setting it to 1 lets ESPN alone
 decide money, which `src/lib/scores.ts` warns against in its first paragraph.
 
+The oracle never argues with the members. If a majority vetoes what it
+posted, it does not post that week again: the feeds have not changed, so it
+would only propose the same result every ten minutes. From a veto onward the
+week belongs to the commissioner, and the Worker says so once an hour until
+somebody acts. It knows a veto happened without keeping any state of its own:
+a veto clears `pending_week` but leaves `pending_posted_ts`, so "nothing is
+pending, yet something was posted after this week's lock" has one meaning.
+
 ## The key
 
 `ORACLE_KEYPAIR` is a keypair generated for this Worker and nothing else.
