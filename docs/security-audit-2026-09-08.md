@@ -258,6 +258,15 @@ account constraints and money paths and did not examine cross-instruction
 timing or the economics of the veto; four of these are things it missed, and
 they are ranked honestly.
 
+**Status, later on 2026-09-09:** everything marked "next upgrade" below is
+implemented and tested in the repository (`tests/deadman.ts`; 44 LiteSVM
+tests in all) and waits for the cold-key upgrade —
+`UPGRADE_AUTHORITY_KEYPAIR=<stick> MAINNET_RPC=<helius> ./scripts/upgrade-mainnet.sh --go`.
+The binary is 523,520 bytes and fits the account. The site already sends
+`claim_prize` with the sixth account, which the deployed program ignores as a
+remaining account, so the two can ship in either order. #2 and #3 remain a
+design pass.
+
 | # | Noah's finding | Verdict against mainnet | Plan |
 | --- | --- | --- | --- |
 | 1 | Survivor `reclaim_dues` can fire during the last week's dispute window and split the pot away from the winner | **Valid at the program level.** `create_pool` only requires the refund deadline to be after the last lock. The site sets it to last lock + 14 days (`refundDeadlineFor`), which clears the 7-day maximum window plus the 3-hour floor, so pools created through commish.fun are not exposed; a pool created by hand with a tight deadline is. | Next upgrade: require `refund_deadline_ts >= lock_ts[17] + min_week_gap(window) + 24h` at creation, and make `reclaim_dues` wait `PRIZE_CLAIM_GRACE_SECS` while a week is `RESULTS_POSTED` or `FINALIZED`, mirroring the league guard. Test: tight deadline, week-18 finalized, eliminated member reclaims, winner is robbed. |

@@ -83,9 +83,11 @@ ceiling, rent recovery), upgraded on mainnet and verified byte for byte.
 
 ## Numbers
 
-- 23 program instructions, one Anchor program, ~1,500 lines of Rust
-- 38 LiteSVM tests against the production binary · 200 web tests · 166
+- 24 program instructions, one Anchor program, ~1,700 lines of Rust
+- 44 LiteSVM tests against the production binary · 200 web tests · 166
   instruction-encoding checks between the site, the Worker and the suite
+- Two security reviews (one written, one by Noah AI), every finding answered
+  in writing and the fixable ones fixed and tested within the day
 - 2 Cloudflare Workers, 1 D1 database, 0 servers that hold a key that moves
   money
 - Mainnet program verified: on-chain sha256 equals the local build after every

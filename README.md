@@ -73,7 +73,7 @@ The commissioner keeps the job, loses the custody.
 
 ## Architecture
 
-- **On-chain:** a small Anchor program, 23 instructions. A pool PDA owns the USDC vault; member PDAs track picks, used teams, and elimination. The instructions cover join and sponsored join, pick, post-results through either of two doors (the commissioner's, and an oracle key the admin names), veto, settle, advance, claim, the deadman refund, the four a league needs — lock dues, post the payout sheet, finalize it, claim a prize slot — and a two-step handover of the admin key itself.
+- **On-chain:** a small Anchor program, 24 instructions. A pool PDA owns the USDC vault; member PDAs track picks, used teams, and elimination. The instructions cover join and sponsored join, pick, post-results through either of two doors (the commissioner's, and an oracle key the admin names), veto, settle, advance, claim, the deadman refund, the four a league needs — lock dues, post the payout sheet, finalize it, claim a prize slot — a two-step handover of the admin key itself, and a treasury change that touches only pools created after it.
 - **Server:** more than a sync layer, and worth naming in full. It proposes weekly results from public NFL scores for the commissioner to confirm by hand; it runs an OAuth 2 + PKCE flow against X and issues and burns wallet-signature nonces so an address can prove which handle it owns; it reads Sleeper standings on request; and it writes a Cloudflare D1 database holding three tables — the wallet↔handle pairings, those nonces, and a cached copy of standings. None of it is a source of truth. The chain holds the money, the picks and the eliminations.
 - **Two Cloudflare Workers:** an RPC proxy, so the provider key never ships in the browser bundle and only the twenty methods the app uses are forwarded; and the results oracle, a cron that reads two independent NFL scoreboards every ten minutes, posts a week to every pool only when both agree on every final, cranks it through finalize and settlement once the dispute window closes, and sends a Telegram message when it acts or when the feeds disagree.
 - **App:** pool creation, join links, the pick grid, and live pool status; a League Treasurer mode that collects dues and pays a posted sheet instead of running weeks; a public leaderboard of the addresses that opted into being named; X account linking; a Sleeper standings import; a wallet explainer for people who have never had one; and an arcade.
@@ -108,10 +108,13 @@ its evidence:
 - **The oracle has run two full drills on devnet**, each from a freshly created
   pool through post → finalize → settle → close with nothing but the cron
   acting, against a fastclock build so a four-day week took minutes.
-- **38 LiteSVM tests pass against the production binary** — `anchor build` with
+- **44 LiteSVM tests pass against the production binary** — `anchor build` with
   no features, the one that actually ships. `tests/00-build-guard.ts`
   refuses to run the suite against anything else, because a `fastclock` build
-  shortens the very floors those tests exist to check.
+  shortens the very floors those tests exist to check. Six of them exist
+  because an outside review found the deadman could fire while the last week
+  was still being decided; the review, the answer, and the fix are all in
+  [`docs/security-audit-2026-09-08.md`](docs/security-audit-2026-09-08.md).
 - **200 web tests** on top of those, run by `npm run test:web`: the oracle's
   decision rules against every shape of feed disagreement, the X-linking and
   listing guards, the arcade, its sound, share-name handling and the field.
