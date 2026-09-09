@@ -43,6 +43,7 @@ import { gamesFor, SEASON_YEAR } from "@/lib/season";
 import { alert } from "./alert";
 import {
   allPools,
+  chainNow,
   membersOf,
   poolAt,
   posterFromSecret,
@@ -75,6 +76,8 @@ export interface Env {
 export type Action = { pool: string; did: string; sig?: string };
 export type Summary = {
   cluster: string;
+  /** The chain's unix time this tick judged everything against. */
+  now: number;
   poster: string;
   pools: number;
   actions: Action[];
@@ -93,10 +96,14 @@ export async function runCycle(env: Env): Promise<Summary> {
   const season = Number(env.SEASON) || SEASON_YEAR;
   const minAgreeing = Number(env.MIN_AGREEING_FEEDS) || 2;
   const postDelay = Number(env.MIN_POST_DELAY_SECS) || DEFAULT_POST_DELAY;
-  const now = Math.floor(Date.now() / 1000);
+  /* The validator's clock, because that is the clock every "not before" in
+   * the program is judged by. The wall clock is the fallback, not the rule;
+   * see chainNow. */
+  const now = await chainNow(connection).catch(() => Math.floor(Date.now() / 1000));
 
   const summary: Summary = {
     cluster,
+    now,
     poster: poster.publicKey.toBase58(),
     pools: 0,
     actions: [],

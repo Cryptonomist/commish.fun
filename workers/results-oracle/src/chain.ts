@@ -19,6 +19,7 @@ import {
   Connection,
   Keypair,
   PublicKey,
+  SYSVAR_CLOCK_PUBKEY,
   Transaction,
   type TransactionInstruction,
 } from "@solana/web3.js";
@@ -35,6 +36,24 @@ import {
 
 export function rpcUrl(cluster: "devnet" | "mainnet", apiKey: string): string {
   return `https://${cluster}.helius-rpc.com/?api-key=${apiKey}`;
+}
+
+/* THE CHAIN'S CLOCK, NOT THIS MACHINE'S.
+ *
+ * Every "not before" rule the program enforces is judged against the Clock
+ * sysvar, so a worker that decides "is it time yet" from its own wall clock is
+ * comparing against the wrong clock. That is not theoretical: the devnet drill
+ * slept past the posting floor on a monotonic timer and then read a wall clock
+ * that had been stepped backwards under it, and refused to post a week the
+ * program would have accepted. Reading the sysvar makes the precondition here
+ * the same test the program applies, to the second, on every cluster.
+ *
+ * The Clock sysvar is forty bytes: slot, epoch start, epoch, leader schedule
+ * epoch, then unix_timestamp as an i64 at offset 32. */
+export async function chainNow(connection: Connection): Promise<number> {
+  const info = await connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY, "processed");
+  if (!info || info.data.length < 40) throw new Error("could not read the Clock sysvar");
+  return Number(Buffer.from(info.data).readBigInt64LE(32));
 }
 
 /** The poster, from the JSON byte array the Solana CLI writes. */

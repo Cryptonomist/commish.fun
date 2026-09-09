@@ -43,6 +43,7 @@ import {
   Connection,
   Keypair,
   LAMPORTS_PER_SOL,
+  PublicKey,
   SystemProgram,
   Transaction,
   sendAndConfirmTransaction,
@@ -141,58 +142,75 @@ async function main() {
   const board = fixtureBoard(week, winnerTeam.abbr, loserTeam.abbr);
 
   // ---- a pool on the fastclock floors -----------------------------------
-  const gap = minWeekGapSecs(DISPUTE_SECS) + 60;
-  const first = now() + LOCK_IN_SECS;
-  const locks = Array.from({ length: 18 }, (_, i) => first + i * gap);
-  const plan = P.buildCreatePool({
-    commissioner: admin.publicKey,
-    nonce: P.randomNonce(),
-    name: `Oracle drill ${new Date().toISOString().slice(11, 16)}`,
-    poolType: P.POOL_SURVIVOR,
-    buyIn: BigInt(0),
-    maxMembers: 4,
-    startWeek: week,
-    lockTs: locks,
-    refundDeadlineTs: locks[17] + 300,
-    disputeWindowSecs: DISPUTE_SECS,
-  });
-  console.log(`\ncreating ${plan.pool.toBase58()} (lock in ${LOCK_IN_SECS}s, dispute ${DISPUTE_SECS}s)`);
-  console.log(`  ${await send([plan.instruction], [admin])}`);
+  /* DRILL_POOL resumes against a pool an earlier run left behind, skipping
+   * creation and joining. It exists because the first thing this drill found
+   * was a refusal to post that needed a second look at the same pool, and a
+   * pool that already has its picks in is the only way to take that look
+   * without another five minutes of clock. */
+  let poolAddress: PublicKey;
+  let locks: number[];
+  if (process.env.DRILL_POOL) {
+    poolAddress = new PublicKey(process.env.DRILL_POOL);
+    const info = await connection.getAccountInfo(poolAddress);
+    if (!info) throw new Error(`no pool at ${poolAddress.toBase58()}`);
+    locks = P.decodePool(info.data).lockTs;
+    console.log(`\nresuming ${poolAddress.toBase58()} (lock ${locks[0]}, now ${now()})`);
+  } else {
+    const gap = minWeekGapSecs(DISPUTE_SECS) + 60;
+    const first = now() + LOCK_IN_SECS;
+    locks = Array.from({ length: 18 }, (_, i) => first + i * gap);
+    const plan = P.buildCreatePool({
+      commissioner: admin.publicKey,
+      nonce: P.randomNonce(),
+      name: `Oracle drill ${new Date().toISOString().slice(11, 16)}`,
+      poolType: P.POOL_SURVIVOR,
+      buyIn: BigInt(0),
+      maxMembers: 4,
+      startWeek: week,
+      lockTs: locks,
+      refundDeadlineTs: locks[17] + 300,
+      disputeWindowSecs: DISPUTE_SECS,
+    });
+    poolAddress = plan.pool;
+    console.log(`\ncreating ${plan.pool.toBase58()} (lock in ${LOCK_IN_SECS}s, dispute ${DISPUTE_SECS}s)`);
+    console.log(`  ${await send([plan.instruction], [admin])}`);
 
-  /* Deterministic per pool and per bot, through a hash rather than a padded
-   * string: a pool address is 44 characters, so "pool:i" cut to 32 bytes lost
-   * the ":i" and both bots came out as the same wallet. Found by the second
-   * one failing to join. */
-  const bots = [0, 1].map((i) =>
-    Keypair.fromSeed(
-      Uint8Array.from(
-        createHash("sha256").update(`${plan.pool.toBase58()}:${i}`).digest(),
+    /* Deterministic per pool and per bot, through a hash rather than a padded
+     * string: a pool address is 44 characters, so "pool:i" cut to 32 bytes
+     * lost the ":i" and both bots came out as the same wallet. Found by the
+     * second one failing to join. */
+    const bots = [0, 1].map((i) =>
+      Keypair.fromSeed(
+        Uint8Array.from(
+          createHash("sha256").update(`${plan.pool.toBase58()}:${i}`).digest(),
+        ),
       ),
-    ),
-  );
-  for (const [i, bot] of bots.entries()) {
-    const team = i === 0 ? winnerTeam : loserTeam;
-    await send(
-      [
-        SystemProgram.transfer({
-          fromPubkey: admin.publicKey,
-          toPubkey: bot.publicKey,
-          lamports: 0.02 * LAMPORTS_PER_SOL,
-        }),
-      ],
-      [admin],
     );
-    await send(
-      [
-        P.createAtaIdempotentIx(bot.publicKey, bot.publicKey, P.USDC_MINT),
-        P.buildJoinPool({ pool: plan.pool, wallet: bot.publicKey, displayName: `Bot ${i + 1}` })
-          .instruction,
-        P.buildSubmitPick({ pool: plan.pool, wallet: bot.publicKey, team: team.i }),
-      ],
-      [bot],
-    );
-    console.log(`  bot ${i + 1} ${bot.publicKey.toBase58().slice(0, 8)}… joined and picked ${team.abbr}`);
+    for (const [i, bot] of bots.entries()) {
+      const team = i === 0 ? winnerTeam : loserTeam;
+      await send(
+        [
+          SystemProgram.transfer({
+            fromPubkey: admin.publicKey,
+            toPubkey: bot.publicKey,
+            lamports: 0.02 * LAMPORTS_PER_SOL,
+          }),
+        ],
+        [admin],
+      );
+      await send(
+        [
+          P.createAtaIdempotentIx(bot.publicKey, bot.publicKey, P.USDC_MINT),
+          P.buildJoinPool({ pool: plan.pool, wallet: bot.publicKey, displayName: `Bot ${i + 1}` })
+            .instruction,
+          P.buildSubmitPick({ pool: plan.pool, wallet: bot.publicKey, team: team.i }),
+        ],
+        [bot],
+      );
+      console.log(`  bot ${i + 1} ${bot.publicKey.toBase58().slice(0, 8)}… joined and picked ${team.abbr}`);
+    }
   }
+  const plan = { pool: poolAddress };
 
   // ---- the worker, exactly as deployed, with a stand-in for the feeds ----
   const env: Env = {
@@ -204,13 +222,17 @@ async function main() {
     ORACLE_FIXTURE: JSON.stringify(board),
   };
   const mine = (s: Awaited<ReturnType<typeof runCycle>>) => ({
+    chainNow: s.now,
     actions: s.actions.filter((a) => a.pool === plan.pool.toBase58()),
     errors: s.errors.filter((e) => e.pool === plan.pool.toBase58() || e.pool === "-"),
     skipped: s.skipped.filter((k) => k.pool === plan.pool.toBase58()),
   });
 
-  await waitUntil(locks[0] + 61, "the lock and the posting floor");
-  console.log("\ntick 1: should post week 1");
+  /* Three seconds past the floor rather than one: the program's floor is
+   * judged by the validator's clock and the worker's by this machine's, and
+   * devnet's clock is not this machine's. */
+  await waitUntil(locks[0] + 63, "the lock and the posting floor");
+  console.log(`\ntick 1: should post week 1 (wall clock ${now()}, floor ${locks[0] + 60})`);
   const t1 = mine(await runCycle(env));
   report(t1);
   if (!t1.actions.some((a) => a.did.startsWith("posted week 1"))) {
@@ -218,8 +240,8 @@ async function main() {
   }
 
   const posted = P.decodePool((await connection.getAccountInfo(plan.pool))!.data);
-  await waitUntil(posted.pendingPostedTs + DISPUTE_SECS + 2, "the dispute window");
-  console.log("\ntick 2: should finalize, settle both, and settle the pool");
+  await waitUntil(posted.pendingPostedTs + DISPUTE_SECS + 3, "the dispute window");
+  console.log(`\ntick 2: should finalize, settle both, and settle the pool (wall clock ${now()})`);
   const t2 = mine(await runCycle(env));
   report(t2);
 
@@ -238,7 +260,8 @@ async function main() {
   console.log("\nDRILL PASSED: the worker posted, finalized, settled and closed the week on devnet.");
 }
 
-function report(t: { actions: { did: string; sig?: string }[]; errors: { error: string }[]; skipped: { why: string }[] }) {
+function report(t: { chainNow: number; actions: { did: string; sig?: string }[]; errors: { error: string }[]; skipped: { why: string }[] }) {
+  console.log(`  chain clock ${t.chainNow}  (this machine ${now()})`);
   for (const a of t.actions) console.log(`  did   ${a.did}\n        ${a.sig}`);
   for (const k of t.skipped) console.log(`  skip  ${k.why}`);
   for (const e of t.errors) console.log(`  ERR   ${e.error}`);
