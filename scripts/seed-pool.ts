@@ -209,6 +209,7 @@ async function main() {
     seasonLockSchedule,
     firstKickoffFor,
     refundDeadlineFor,
+    earliestRefundDeadline,
   } = await import("@/lib/schedule");
   const { isOnBye, weekOf } = await import("@/lib/season");
 
@@ -386,10 +387,16 @@ async function main() {
          * a season. */
         const first = now() + 600 - (startWeek - 1) * gap;
         locks = Array.from({ length: 18 }, (_, i) => first + i * gap);
-        refundDeadlineTs = locks[17] + (startWeek === 18 ? 300 : 14 * 24 * 60 * 60);
+        /* The program keeps the deadline out of the last week's settle room
+         * (posting floor + window + margin); the compressed schedule sits
+         * just past that floor so the refund is still reachable in minutes. */
+        refundDeadlineTs = Math.max(
+          earliestRefundDeadline(locks, disputeWindowSecs) + 60,
+          locks[17] + (startWeek === 18 ? 300 : 14 * 24 * 60 * 60),
+        );
       } else {
         locks = seasonLockSchedule(firstKickoffFor(startWeek));
-        refundDeadlineTs = refundDeadlineFor(locks);
+        refundDeadlineTs = refundDeadlineFor(locks, disputeWindowSecs);
         if (locks[startWeek - 1] <= now()) {
           throw new Error(
             `Week ${startWeek} locked at ` +

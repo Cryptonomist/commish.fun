@@ -114,4 +114,12 @@ pub enum CommishError {
     StillOwed,
     #[msg("That is not a usable admin key")]
     BadAdmin,
+    #[msg("This pool was abandoned and refunded; nothing else can happen to it")]
+    PoolAbandoned,
+    #[msg("The vault holds less than this claim, which should not happen, so it was refused")]
+    VaultShort,
+    #[msg("A fee needs a cap above zero")]
+    FeeCapZero,
+    #[msg("That is not a usable treasury")]
+    BadTreasury,
 }

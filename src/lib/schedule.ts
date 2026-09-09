@@ -98,11 +98,28 @@ export function seasonLockSchedule(firstKickoff: Date): number[] {
   return Array.from({ length: WEEKS }, (_, i) => start + i * WEEK_SPACING_SECS);
 }
 
-/** After the last lock, with room for the season to finish. The program only
- *  requires it to be later than week 18; a fortnight is the deadman's grace,
- *  or a minute on a fast clock, where the point is to reach it. */
-export function refundDeadlineFor(locks: number[]): number {
-  return locks[WEEKS - 1] + (FAST_CLOCK ? 60 : 14 * 24 * 60 * 60);
+/** The deadman's margin past the last week's settle room. The program
+ *  refuses a refund deadline inside that room (posting floor plus dispute
+ *  window) plus this, because a deadline in there let whoever called
+ *  `reclaim_dues` first split the pot while the winner was still being
+ *  decided. Mirrors REFUND_MARGIN_SECS in the program. */
+export const REFUND_MARGIN_SECS = FAST_CLOCK ? 60 : 24 * 60 * 60;
+
+/** The earliest refund deadline `create_pool` accepts for this schedule. */
+export function earliestRefundDeadline(
+  locks: number[],
+  disputeWindowSecs: number,
+): number {
+  return locks[WEEKS - 1] + minWeekGapSecs(disputeWindowSecs) + REFUND_MARGIN_SECS;
+}
+
+/** After the last lock, with room for the season to finish: a fortnight on a
+ *  real clock, which clears the longest window the program allows, or the
+ *  floor plus a minute on a fast clock, where the point is to reach it. */
+export function refundDeadlineFor(locks: number[], disputeWindowSecs: number): number {
+  const floor = earliestRefundDeadline(locks, disputeWindowSecs);
+  if (FAST_CLOCK) return floor + 60;
+  return Math.max(floor, locks[WEEKS - 1] + 14 * 24 * 60 * 60);
 }
 
 export type ScheduleProblem = {

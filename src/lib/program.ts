@@ -869,7 +869,11 @@ export function buildPostPayoutSheet(args: {
 /* THE ASSIGNEE TAKES THEIR SLOT, and this one does NOT take a Member account.
  * `claim_pot` needs one because a survivor's eligibility lives on their member
  * record; a prize slot records its own assignee, so the slot is the proof and
- * the signer is checked against it. Five accounts, not six. */
+ * the signer is checked against it. That was five accounts; the sixth, the
+ * Member, was added last so the program can mark the assignee as paid and
+ * `reclaim_dues` cannot pay them again. Last so that this list works
+ * against the program version before it too: a trailing account the old
+ * version does not name is a remaining account it ignores. */
 export function buildClaimPrize(args: {
   pool: PublicKey;
   wallet: PublicKey;
@@ -888,6 +892,7 @@ export function buildClaimPrize(args: {
         { pubkey: args.vault, isSigner: false, isWritable: true },
         { pubkey: walletAta, isSigner: false, isWritable: true },
         { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: memberPda(args.pool, args.wallet), isSigner: false, isWritable: true },
       ],
       data: coder.instruction.encode("claim_prize", { slot_idx: args.slotIdx }),
     }),
@@ -1289,5 +1294,22 @@ export function buildCancelAdminTransfer(args: {
       { pubkey: args.admin, isSigner: true, isWritable: true },
     ],
     data: coder.instruction.encode("cancel_admin_transfer", {}),
+  });
+}
+
+/** Point the fee of every future pool at a new treasury. The signer must be
+ *  the admin; pools already created keep the treasury they recorded. */
+export function buildSetFeeTreasury(args: {
+  admin: PublicKey;
+  treasury: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: configPda(), isSigner: false, isWritable: true },
+      { pubkey: args.admin, isSigner: true, isWritable: false },
+      { pubkey: args.treasury, isSigner: false, isWritable: false },
+    ],
+    data: coder.instruction.encode("set_fee_treasury", {}),
   });
 }

@@ -280,7 +280,10 @@
         },
         {
           "name": "wallet",
-          "signer": true
+          "signer": true,
+          "relations": [
+            "member"
+          ]
         },
         {
           "name": "vault",
@@ -293,6 +296,33 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "member",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -1142,6 +1172,60 @@
       "args": []
     },
     {
+      "name": "set_fee_treasury",
+      "docs": [
+        "Point the fee of every FUTURE pool at a new treasury. Admin only.",
+        "",
+        "Pools copy the treasury at creation and pay the copy, so nothing",
+        "already running is touched; that is the same rule that stops the fee",
+        "itself changing under a member. The new treasury needs a USDC token",
+        "account before a pool created after this settles, because",
+        "`advance_week` deserializes it on every call."
+      ],
+      "discriminator": [
+        110,
+        187,
+        17,
+        203,
+        131,
+        183,
+        240,
+        39
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "fee_treasury"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "set_oracle",
       "docs": [
         "Name, or replace, the key the automated poster signs with. Admin only.",
@@ -1697,6 +1781,19 @@
       ]
     },
     {
+      "name": "FeeTreasurySet",
+      "discriminator": [
+        136,
+        174,
+        55,
+        105,
+        190,
+        232,
+        192,
+        243
+      ]
+    },
+    {
       "name": "MemberJoined",
       "discriminator": [
         156,
@@ -2180,6 +2277,26 @@
       "code": 6054,
       "name": "BadAdmin",
       "msg": "That is not a usable admin key"
+    },
+    {
+      "code": 6055,
+      "name": "PoolAbandoned",
+      "msg": "This pool was abandoned and refunded; nothing else can happen to it"
+    },
+    {
+      "code": 6056,
+      "name": "VaultShort",
+      "msg": "The vault holds less than this claim, which should not happen, so it was refused"
+    },
+    {
+      "code": 6057,
+      "name": "FeeCapZero",
+      "msg": "A fee needs a cap above zero"
+    },
+    {
+      "code": 6058,
+      "name": "BadTreasury",
+      "msg": "That is not a usable treasury"
     }
   ],
   "types": [
@@ -2351,6 +2468,26 @@
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FeeTreasurySet",
+      "docs": [
+        "The admin pointed the fee of every FUTURE pool at a new treasury. Pools",
+        "already created keep the one recorded on them at creation."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
           }
         ]
       }

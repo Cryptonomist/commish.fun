@@ -95,6 +95,25 @@ pub const MIN_POST_DELAY_SECS: i64 = 60;
 /// the block expires: after this, unclaimed prizes rejoin the pro-rata split.
 pub const PRIZE_CLAIM_GRACE_SECS: i64 = 30 * 24 * 60 * 60;
 
+/* THE DEADMAN CANNOT FIRE WHILE THE LAST WEEK IS BEING DECIDED.
+ *
+ * `reclaim_dues` opens at the refund deadline, and `create_pool` only asked
+ * that the deadline fall after the last lock: one second after was legal.
+ * Week 18 cannot be posted for three hours after that lock and cannot be
+ * finalized for a further dispute window, so a deadline inside that room
+ * let any eliminated member call `reclaim_dues` while the winner was still
+ * being decided, flip the pool to ABANDONED, and split the pot pro rata with
+ * themselves in it. The site never set such a deadline; the program allowed
+ * one. Found by an outside review on 2026-09-09.
+ *
+ * So the deadline has to clear the whole settle room, posting floor plus
+ * dispute window, with a day to spare for the crank. On a fast clock the day
+ * is a minute, for the same reason the other floors shrink. */
+#[cfg(not(feature = "fastclock"))]
+pub const REFUND_MARGIN_SECS: i64 = 24 * 60 * 60;
+#[cfg(feature = "fastclock")]
+pub const REFUND_MARGIN_SECS: i64 = 60;
+
 /// How long members get to veto a posting when a pool does not choose. Two days
 /// is long enough for a working week to notice and short enough that a pot is
 /// not held hostage.

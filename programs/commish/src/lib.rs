@@ -76,6 +76,9 @@ pub mod commish {
         creation_fee: u64,
     ) -> Result<()> {
         require!(fee_bps <= MAX_FEE_BPS, CommishError::FeeTooHigh);
+        // A cap of zero is "no fee", not "no cap": platform_fee takes the
+        // minimum. Refuse the pair that silently earns nothing.
+        require!(fee_bps == 0 || fee_cap > 0, CommishError::FeeCapZero);
         let c = &mut ctx.accounts.config;
         c.admin = ctx.accounts.admin.key();
         c.fee_treasury = ctx.accounts.fee_treasury.key();
@@ -97,6 +100,7 @@ pub mod commish {
         // The ceiling is the property: see MAX_FEE_BPS. A fee above it is
         // refused whoever signs, which is the point of putting it in code.
         require!(fee_bps <= MAX_FEE_BPS, CommishError::FeeTooHigh);
+        require!(fee_bps == 0 || fee_cap > 0, CommishError::FeeCapZero);
         let c = &mut ctx.accounts.config;
         c.default_fee_bps = fee_bps;
         c.default_fee_cap = fee_cap;
@@ -226,8 +230,18 @@ pub mod commish {
                 lock_ts[start_week as usize - 1] > now,
                 CommishError::BadSchedule
             );
+            /* The deadline has to clear the last week's settle room, not
+             * merely follow its lock. A deadline inside that room hands the
+             * deadman to whoever calls it first while the winner is still
+             * being decided. See REFUND_MARGIN_SECS. */
+            let settle_room = min_gap
+                .checked_add(REFUND_MARGIN_SECS)
+                .ok_or(CommishError::MathOverflow)?;
             require!(
-                refund_deadline_ts > lock_ts[WEEKS - 1],
+                refund_deadline_ts
+                    >= lock_ts[WEEKS - 1]
+                        .checked_add(settle_room)
+                        .ok_or(CommishError::MathOverflow)?,
                 CommishError::BadRefundDeadline
             );
             pool.lock_ts = lock_ts;
@@ -379,6 +393,7 @@ pub mod commish {
 
         require!(!pool.is_league(), CommishError::WrongPoolKind);
         require!(pool.status != STATUS_SETTLED, CommishError::AlreadySettled);
+        require!(pool.status != STATUS_ABANDONED, CommishError::PoolAbandoned);
         require!(team < TEAM_COUNT, CommishError::InvalidTeam);
         require!(member.is_alive(), CommishError::MemberEliminated);
 
@@ -496,6 +511,23 @@ pub mod commish {
             admin: ctx.accounts.config.admin,
             pending: ctx.accounts.transfer.pending,
         });
+        Ok(())
+    }
+
+    /// Point the fee of every FUTURE pool at a new treasury. Admin only.
+    ///
+    /// Pools copy the treasury at creation and pay the copy, so nothing
+    /// already running is touched; that is the same rule that stops the fee
+    /// itself changing under a member. The new treasury needs a USDC token
+    /// account before a pool created after this settles, because
+    /// `advance_week` deserializes it on every call.
+    pub fn set_fee_treasury(ctx: Context<SetFeeTreasury>) -> Result<()> {
+        let treasury = ctx.accounts.fee_treasury.key();
+        require!(treasury != Pubkey::default(), CommishError::BadTreasury);
+        let c = &mut ctx.accounts.config;
+        let previous = c.fee_treasury;
+        c.fee_treasury = treasury;
+        emit!(FeeTreasurySet { previous, treasury });
         Ok(())
     }
 
@@ -799,6 +831,9 @@ pub mod commish {
         let pool = &ctx.accounts.pool;
         let member = &ctx.accounts.member;
 
+        // A league pays by prize slot. Letting a league member through here
+        // paid nothing and burned their `claimed` flag for no reason.
+        require!(!pool.is_league(), CommishError::WrongPoolKind);
         require_eq!(pool.status, STATUS_SETTLED, CommishError::NotSettled);
         require!(!member.claimed, CommishError::AlreadyClaimed);
         require!(is_pot_winner(pool, member), CommishError::NotAWinner);
@@ -806,6 +841,11 @@ pub mod commish {
         let amount = pool.pot_per_winner;
         let seeds: &[&[u8]] = &[SEED_POOL, commissioner.as_ref(), &nonce, &[bump]];
         let signer: &[&[&[u8]]] = &[seeds];
+
+        /* STATE BEFORE THE TRANSFER, here and on every payout path. The SPL
+         * Token program cannot call back into this one, so the old order was
+         * not exploitable; it was still the wrong habit to keep. */
+        ctx.accounts.member.claimed = true;
 
         if amount > 0 {
             transfer(
@@ -822,7 +862,6 @@ pub mod commish {
             )?;
         }
 
-        ctx.accounts.member.claimed = true;
         emit!(PotClaimed {
             pool: pool_key,
             wallet: ctx.accounts.member.wallet,
@@ -868,7 +907,20 @@ pub mod commish {
             let outstanding = pool.prize_slots[..pool.slot_count as usize]
                 .iter()
                 .any(|s| s.state == SLOT_PENDING || s.state == SLOT_FINALIZED);
-            if outstanding {
+
+            /* AND THE SAME BLOCK FOR A PICK POOL'S LAST WEEK. The league
+             * guard above was written after a slow winner could be refunded
+             * out from under; a Survivor pool had the identical hole and no
+             * guard. Once week 18 is posted or finalized the winner is being
+             * decided, and the deadman waits out the same grace rather than
+             * letting whoever calls first split the pot with themselves in
+             * it. `create_pool` now keeps the deadline out of that room in
+             * the first place; this is the floor under a deadline that was
+             * set before it did. */
+            let deciding = pool.status == STATUS_RESULTS_POSTED
+                || pool.status == STATUS_FINALIZED;
+
+            if outstanding || deciding {
                 let grace_ends = pool
                     .refund_deadline_ts
                     .checked_add(PRIZE_CLAIM_GRACE_SECS)
@@ -878,11 +930,17 @@ pub mod commish {
         }
 
         let pool = &mut ctx.accounts.pool;
-        if pool.refund_per_member == 0 {
+        /* The first refund fixes the number for everyone after it. The marker
+         * is the status, not the amount: a pool with an empty vault computes
+         * a refund of zero, and zero must not read as "not computed yet". */
+        if pool.status != STATUS_ABANDONED {
             pool.refund_per_member = vault_amount / pool.paid_members as u64;
             pool.status = STATUS_ABANDONED;
         }
         let amount = pool.refund_per_member.min(vault_amount);
+
+        // State before the transfer. See claim_pot.
+        ctx.accounts.member.claimed = true;
 
         let seeds: &[&[u8]] = &[SEED_POOL, commissioner.as_ref(), &nonce, &[bump]];
         let signer: &[&[&[u8]]] = &[seeds];
@@ -901,7 +959,6 @@ pub mod commish {
             )?;
         }
 
-        ctx.accounts.member.claimed = true;
         emit!(DuesReclaimed {
             pool: pool_key,
             wallet: ctx.accounts.member.wallet,
@@ -1046,10 +1103,21 @@ pub mod commish {
     pub fn claim_prize(ctx: Context<ClaimPrize>, slot_idx: u8) -> Result<()> {
         let pool_key = ctx.accounts.pool.key();
         let (commissioner, nonce, bump) = ctx.accounts.pool.seed_parts();
+        let vault_amount = ctx.accounts.vault.amount;
 
         let (amount, bps) = {
             let pool = &ctx.accounts.pool;
             require!(pool.is_league(), CommishError::WrongPoolKind);
+            /* ONCE THE DEADMAN HAS FIRED, THE PRIZES ARE FORFEIT. The refund
+             * that abandons a league only opens after the prize grace has
+             * expired, so an assignee who is still unpaid here had thirty
+             * days past the deadline to claim and did not. From then on the
+             * vault belongs to the pro-rata split, and the assignee is a paid
+             * member who takes their share through it like everyone else.
+             * Without this line a late claim raced the refunds for whatever
+             * was left, and paid `min(prize, vault)` while recording a full
+             * claim. */
+            require!(pool.status != STATUS_ABANDONED, CommishError::PoolAbandoned);
             require!(
                 (slot_idx as usize) < pool.slot_count as usize,
                 CommishError::BadPrizeSplit
@@ -1068,10 +1136,46 @@ pub mod commish {
             (amount as u64, slot.bps)
         };
 
+        /* A short vault is a defect, not a rounding. The slots sum to 100% of
+         * `total_dues`, a league takes no fee, and the only thing that drains
+         * a league vault early is the refund path, which the line above has
+         * already excluded. So if the money is not there, something is wrong
+         * that a smaller payment would hide: refuse, rather than pay less
+         * and record a full claim. */
+        require!(vault_amount >= amount, CommishError::VaultShort);
+
+        // State before the transfer. See claim_pot.
+        {
+            let pool = &mut ctx.accounts.pool;
+            pool.prize_slots[slot_idx as usize].state = SLOT_CLAIMED;
+            pool.claimed_bps = pool
+                .claimed_bps
+                .checked_add(bps)
+                .ok_or(CommishError::MathOverflow)?;
+
+            // Every slot paid: the league is done. Otherwise it goes back to
+            // Locked so the commissioner can post a sheet for the slots that
+            // remain.
+            if pool.claimed_bps >= BPS_DENOM {
+                pool.status = STATUS_SETTLED;
+            } else if pool.prize_slots[..pool.slot_count as usize]
+                .iter()
+                .all(|s| s.state != SLOT_FINALIZED)
+            {
+                pool.status = STATUS_LOCKED;
+            }
+        }
+        /* And the Member, which `claim_prize` never touched before: a paid
+         * assignee kept `claimed == false`, so once the grace refund opened
+         * they could take a pro-rata share on top of their prize. Marking it
+         * here closes that, and lets `close_member` know they are done. A
+         * member holding two slots keeps their account until both are taken;
+         * closing it in between would strand the second. */
+        ctx.accounts.member.claimed = true;
+
         let seeds: &[&[u8]] = &[SEED_POOL, commissioner.as_ref(), &nonce, &[bump]];
         let signer: &[&[&[u8]]] = &[seeds];
-        let payable = amount.min(ctx.accounts.vault.amount);
-        if payable > 0 {
+        if amount > 0 {
             transfer(
                 CpiContext::new_with_signer(
                     ctx.accounts.token_program.key(),
@@ -1082,33 +1186,15 @@ pub mod commish {
                     },
                     signer,
                 ),
-                payable,
+                amount,
             )?;
-        }
-
-        let pool = &mut ctx.accounts.pool;
-        pool.prize_slots[slot_idx as usize].state = SLOT_CLAIMED;
-        pool.claimed_bps = pool
-            .claimed_bps
-            .checked_add(bps)
-            .ok_or(CommishError::MathOverflow)?;
-
-        // Every slot paid: the league is done. Otherwise it goes back to Locked
-        // so the commissioner can post a sheet for the slots that remain.
-        if pool.claimed_bps >= BPS_DENOM {
-            pool.status = STATUS_SETTLED;
-        } else if pool.prize_slots[..pool.slot_count as usize]
-            .iter()
-            .all(|s| s.state != SLOT_FINALIZED)
-        {
-            pool.status = STATUS_LOCKED;
         }
 
         emit!(PrizeClaimed {
             pool: pool_key,
             wallet: ctx.accounts.wallet.key(),
             slot_idx,
-            amount: payable,
+            amount,
         });
         Ok(())
     }
@@ -1134,12 +1220,17 @@ pub mod commish {
          * Member, so after its last slot is claimed nobody is. ABANDONED is
          * deliberately not in this branch: a refund is still claimable there,
          * and closing the account would forfeit it. */
-        let owed_nothing = pool.status == STATUS_SETTLED
-            && (pool.is_league() || !is_pot_winner(pool, member));
-        require!(
-            member.claimed || !member.paid || owed_nothing,
-            CommishError::StillOwed
-        );
+        let done = match pool.status {
+            // The refund is the only thing owed, and `claimed` says it was taken.
+            STATUS_ABANDONED => member.claimed,
+            // A league pays by slot, and SETTLED means every slot was; a pick
+            // pool owes only its winners, until they have claimed.
+            STATUS_SETTLED => {
+                pool.is_league() || member.claimed || !is_pot_winner(pool, member)
+            }
+            _ => false,
+        };
+        require!(done || !member.paid, CommishError::StillOwed);
         Ok(())
     }
 }
@@ -1266,6 +1357,10 @@ fn propose_results(
 ) -> Result<()> {
     require!(!pool.is_league(), CommishError::WrongPoolKind);
     require!(pool.status != STATUS_SETTLED, CommishError::AlreadySettled);
+    /* ABANDONED is terminal. A week posted onto a refunded pool would crank
+     * to SETTLED and close the refund path on whoever had not taken theirs
+     * yet, with a pot that no longer exists. */
+    require!(pool.status != STATUS_ABANDONED, CommishError::PoolAbandoned);
     require_eq!(week, pool.current_week, CommishError::TooEarly);
     require!(pool.pending_week == WEEK_NONE, CommishError::ResultsPending);
     require!(
@@ -1636,6 +1731,29 @@ pub struct ClaimPrize<'info> {
     )]
     pub wallet_ata: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
+    /* LAST, ON PURPOSE. Anchor reads accounts by position, and this one was
+     * added after the program shipped. At the end, a client built for the old
+     * list fails against this version with a missing account rather than a
+     * misread, and a client built for this list sends it to the old version
+     * as a trailing remaining account, which that version ignores. That is
+     * what let the site ship the six-account list before the upgrade that
+     * needs it, instead of in lockstep with it. */
+    #[account(
+        mut,
+        seeds = [SEED_MEMBER, pool.key().as_ref(), wallet.key().as_ref()],
+        bump = member.bump,
+        has_one = wallet @ CommishError::NotAMember
+    )]
+    pub member: Account<'info, Member>,
+}
+
+#[derive(Accounts)]
+pub struct SetFeeTreasury<'info> {
+    #[account(mut, seeds = [SEED_CONFIG], bump = config.bump, has_one = admin)]
+    pub config: Account<'info, Config>,
+    pub admin: Signer<'info>,
+    /// CHECK: recorded as the fee destination for future pools; never signed, never read.
+    pub fee_treasury: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]

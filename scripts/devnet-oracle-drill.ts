@@ -184,7 +184,9 @@ async function main() {
       maxMembers: 4,
       startWeek: week,
       lockTs: locks,
-      refundDeadlineTs: locks[17] + 300,
+      // Past the settle room the program now insists on: floor + window +
+      // the fast-clock margin, with a minute of slack for the clock.
+      refundDeadlineTs: locks[17] + minWeekGapSecs(DISPUTE_SECS) + 60 + 60,
       disputeWindowSecs: DISPUTE_SECS,
     });
     poolAddress = plan.pool;

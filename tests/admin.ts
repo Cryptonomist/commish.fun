@@ -112,7 +112,9 @@ describe("commish admin handover - LiteSVM", () => {
   const currentAdmin = () => toAddressString(fetchAccount<any>("Config", configPDA).admin);
 
   // --------------------------------------------------------- instructions
-  const initConfigIx = (feeBps: number) => ({
+  const CAP = 50_000_000; // 50 USDC, the mainnet value
+
+  const initConfigIx = (feeBps: number, feeCap = CAP) => ({
     programAddress,
     accounts: [
       { address: configPDA, role: AccountRole.WRITABLE },
@@ -122,12 +124,12 @@ describe("commish admin handover - LiteSVM", () => {
     ],
     data: coder.instruction.encode("init_config", {
       fee_bps: feeBps,
-      fee_cap: new BN(0),
+      fee_cap: new BN(feeCap),
       creation_fee: new BN(0),
     }),
   });
 
-  const updateConfigIx = (signer: Signer, feeBps: number) => ({
+  const updateConfigIx = (signer: Signer, feeBps: number, feeCap = CAP) => ({
     programAddress,
     accounts: [
       { address: configPDA, role: AccountRole.WRITABLE },
@@ -135,10 +137,20 @@ describe("commish admin handover - LiteSVM", () => {
     ],
     data: coder.instruction.encode("update_config", {
       fee_bps: feeBps,
-      fee_cap: new BN(0),
+      fee_cap: new BN(feeCap),
       creation_fee: new BN(0),
       paused: false,
     }),
+  });
+
+  const setFeeTreasuryIx = (signer: Signer, treasuryAddr: Address) => ({
+    programAddress,
+    accounts: [
+      { address: configPDA, role: AccountRole.WRITABLE },
+      { address: signer.address, role: AccountRole.READONLY_SIGNER, signer },
+      { address: treasuryAddr, role: AccountRole.READONLY },
+    ],
+    data: coder.instruction.encode("set_fee_treasury", {}),
   });
 
   const proposeIx = (signer: Signer, newAdmin: PublicKey) => ({
@@ -190,12 +202,18 @@ describe("commish admin handover - LiteSVM", () => {
   // ------------------------------------------------------------ the fee cap
   it("refuses a fee above the ceiling at init, and takes one at it", async () => {
     await expectFailure(initConfigIx(MAX_FEE_BPS + 1), admin, "FeeTooHigh");
+    /* A cap of zero with a fee above zero is "no fee", not "no cap", and it
+     * used to be accepted silently. */
+    await expectFailure(initConfigIx(300, 0), admin, "FeeCapZero");
     await sendIx(initConfigIx(MAX_FEE_BPS), admin);
     expect(fetchAccount<any>("Config", configPDA).default_fee_bps).to.equal(MAX_FEE_BPS);
   });
 
   it("refuses a fee above the ceiling on update, whoever the admin is", async () => {
     await expectFailure(updateConfigIx(admin, MAX_FEE_BPS + 1), admin, "FeeTooHigh");
+    await expectFailure(updateConfigIx(admin, 300, 0), admin, "FeeCapZero");
+    // No fee at all is fine with no cap: there is nothing for the cap to hide.
+    await sendIx(updateConfigIx(admin, 0, 0), admin);
     await sendIx(updateConfigIx(admin, 300), admin);
     expect(fetchAccount<any>("Config", configPDA).default_fee_bps).to.equal(300);
   });
@@ -287,5 +305,23 @@ describe("commish admin handover - LiteSVM", () => {
     await expectFailure(setOracleIx(admin), admin, HAS_ONE);
     await sendIx(setOracleIx(successor), successor);
     expect(toAddressString(fetchAccount<any>("Oracle", oraclePDA).poster)).to.equal(poster.address);
+  });
+
+  it("the treasury follows the admin too, and cannot be pointed at nobody", async () => {
+    const newTreasury = await fundedSigner();
+    await expectFailure(setFeeTreasuryIx(admin, newTreasury.address), admin, HAS_ONE);
+    await expectFailure(
+      setFeeTreasuryIx(successor, address("11111111111111111111111111111111")),
+      successor,
+      "BadTreasury",
+    );
+    expect(toAddressString(fetchAccount<any>("Config", configPDA).fee_treasury)).to.equal(
+      treasury.address,
+    );
+
+    await sendIx(setFeeTreasuryIx(successor, newTreasury.address), successor);
+    expect(toAddressString(fetchAccount<any>("Config", configPDA).fee_treasury)).to.equal(
+      newTreasury.address,
+    );
   });
 });

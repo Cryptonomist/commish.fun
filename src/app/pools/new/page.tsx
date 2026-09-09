@@ -295,7 +295,7 @@ export default function NewPool() {
          * for a season. */
         refundDeadlineTs: isLeagueMode
           ? duesDeadlineTs + 30 * 24 * 60 * 60
-          : refundDeadlineFor(locks),
+          : refundDeadlineFor(locks, disputeWindowSecs),
         disputeWindowSecs,
         ...(isLeagueMode
           ? {

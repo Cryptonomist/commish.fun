@@ -267,7 +267,7 @@ describe("commish results oracle - LiteSVM", () => {
         start_week: 1,
         lock_ts: locks,
         dues_deadline_ts: new BN(0),
-        refund_deadline_ts: locks[WEEKS - 1].addn(86_400),
+        refund_deadline_ts: locks[WEEKS - 1].addn(30 * 86_400),
         prize_slots: [],
         weekly_pot_bps: 0,
         dispute_window_secs: DISPUTE_WINDOW,

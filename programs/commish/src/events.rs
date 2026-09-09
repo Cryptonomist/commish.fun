@@ -172,3 +172,11 @@ pub struct AdminTransferCancelled {
     pub admin: Pubkey,
     pub pending: Pubkey,
 }
+
+/// The admin pointed the fee of every FUTURE pool at a new treasury. Pools
+/// already created keep the one recorded on them at creation.
+#[event]
+pub struct FeeTreasurySet {
+    pub previous: Pubkey,
+    pub treasury: Pubkey,
+}

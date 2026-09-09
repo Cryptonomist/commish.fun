@@ -240,7 +240,7 @@ describe("commish - LiteSVM", () => {
       start_week: 1,
       lock_ts: locks,
       dues_deadline_ts: new BN(0),
-      refund_deadline_ts: locks[WEEKS - 1].addn(86_400),
+      refund_deadline_ts: locks[WEEKS - 1].addn(30 * 86_400),
       prize_slots: [],
       weekly_pot_bps: 0,
       dispute_window_secs: 48 * 60 * 60,
@@ -433,6 +433,7 @@ describe("commish - LiteSVM", () => {
     wallet: any;
     vault: Address;
     walletAta: Address;
+    member: Address;
     slotIdx: number;
   }) {
     return {
@@ -447,6 +448,7 @@ describe("commish - LiteSVM", () => {
         { address: opts.vault, role: AccountRole.WRITABLE },
         { address: opts.walletAta, role: AccountRole.WRITABLE },
         { address: tokenProgram, role: AccountRole.READONLY },
+        { address: opts.member, role: AccountRole.WRITABLE },
       ],
       data: coder.instruction.encode("claim_prize", { slot_idx: opts.slotIdx }),
     };
@@ -926,7 +928,14 @@ describe("commish - LiteSVM", () => {
 
       // The assignee is paid in full.
       await sendIx(
-        claimPrizeIx({ pool, wallet: alice, vault, walletAta: a.walletAta, slotIdx: 0 }),
+        claimPrizeIx({
+          pool,
+          wallet: alice,
+          vault,
+          walletAta: a.walletAta,
+          member: a.member,
+          slotIdx: 0,
+        }),
         alice
       );
 
