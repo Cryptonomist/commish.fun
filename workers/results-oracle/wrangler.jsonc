@@ -49,7 +49,13 @@
     // devnet or mainnet. Defaulted to devnet in code as well: a poster that
     // quietly signs against mainnet because a variable was unset is a worse
     // failure than one that talks to the wrong test cluster.
-    "HELIUS_CLUSTER": "devnet",
+    //
+    // WRITTEN HERE, NOT PASSED AS --var. A deploy flag is forgotten by the
+    // next deploy, and the rpc-proxy's cutover learned that a value that has
+    // to be remembered at the command line is a value that will one day not
+    // be. The oracle was named on mainnet on 2026-09-09; this is the deploy
+    // that follows it.
+    "HELIUS_CLUSTER": "mainnet",
 
     "PROGRAM_ID": "Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa",
 

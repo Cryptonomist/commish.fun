@@ -164,13 +164,13 @@ export default function Page() {
         <li>{"Because there are no accounts, we cannot verify who you are, so we could not restore access even if we wanted to."}</li>
       </ul>
 
-      <h2>{"The commissioner posts results, and can post them wrong"}</h2>
+      <h2>{"Results are posted by software or by the commissioner, and either can be wrong"}</h2>
 
-      <p>{"Commish does not automatically determine outcomes. Your commissioner posts results and, in a league dues pool, posts the payout sheet that decides who can claim which prize slot."}</p>
+      <p>{"Commish posts a week's results automatically when two independent public scoreboards agree on every game, and otherwise leaves the week for the commissioner to post. Two scoreboards can be wrong in the same direction, and a commissioner can be wrong on their own. In a league dues pool the commissioner posts the payout sheet that decides who can claim which prize slot, and no software decides that for them."}</p>
 
       <p>{"Commissioners are ordinary people. They can make an honest mistake, read a scoreboard wrong, apply a house rule inconsistently, go quiet halfway through the season, or act dishonestly. We do not vet commissioners, we do not supervise them, and we cannot correct what one of them posts."}</p>
 
-      <p>{"If your commissioner posts a wrong result, the veto is the only remedy the software gives you. There is no appeal to us. We cannot overturn a result, we cannot pay you what you think you were owed, and we cannot move funds out of a vault to an address of our choosing. No instruction in the program does that."}</p>
+      <p>{"If a wrong result is posted, by the software or by your commissioner, the veto is the only remedy the software gives you. There is no appeal to us. We cannot overturn a result, we cannot pay you what you think you were owed, and we cannot move funds out of a vault to an address of our choosing. No instruction in the program does that."}</p>
 
       <p>{"Only join pools run by people you already know and are willing to trust with money."}</p>
 

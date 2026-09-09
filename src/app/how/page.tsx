@@ -76,9 +76,9 @@ export default function Page() {
 
       <h2>{"How a week runs"}</h2>
 
-      <p>{"Picks lock at the first kickoff of the week. Games are played. The commissioner posts the results, and members get a window to vote down a result they believe is wrong. The commissioner sets the length of that window, which must be at least an hour and is usually longer. When the window passes the week is finalized, everyone who lost is knocked out, and the next week opens."}</p>
+      <p>{"Picks lock at the first kickoff of the week. Games are played. The results are posted, usually automatically once two independent scoreboards agree on every game, and otherwise by the commissioner. Members then get a window to vote down a result they believe is wrong. The commissioner sets the length of that window, which must be at least an hour and is usually longer. When the window passes the week is finalized, everyone who lost is knocked out, and the next week opens."}</p>
 
-      <p>{"The dispute window exists because a commissioner posts the results by hand. It is the members' check on that, and it is enforced by the program rather than by anybody's good manners."}</p>
+      <p>{"The dispute window exists because results are posted by scoreboards and by people, and both can be wrong. It is the members' check on whatever was posted, and it is enforced by the program rather than by anybody's good manners."}</p>
 
       <h2>{"Who gets the money"}</h2>
 
