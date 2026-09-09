@@ -304,8 +304,13 @@ three lockfiles are committed.
 2. ~~Move the upgrade authority off the hot key~~ — **done 2026-09-09**: a
    cold key generated onto a freshly zero-formatted USB stick,
    `EvSoQU4Te9ZTECANZ4RPmcJELaEePxDGhgLFGyzX5g51`, co-signed the transfer.
-   The 12-word recovery phrase is on paper; the file exists only on the
-   stick. Future upgrades: `UPGRADE_AUTHORITY_KEYPAIR=<stick path> ./scripts/upgrade-mainnet.sh --go`.
+   The 12-word recovery phrase is on paper and was verified against the
+   pubkey; the file exists only on the stick. Future upgrades:
+   `UPGRADE_AUTHORITY_KEYPAIR=<stick path> ./scripts/upgrade-mainnet.sh --go`.
+   **Restoring from the words uses the legacy derivation**: `solana-keygen
+   recover -o <file>` with no URI, and `solana-keygen verify <pubkey> ASK` to
+   check. `prompt://` derives the BIP44 way and produces a different key —
+   verified with a throwaway phrase on 2026-09-09.
 3. ~~Hand the admin over~~ — **done 2026-09-09**: proposed by the hot key,
    accepted by the cold key with the hot key paying the fee. Every admin
    action from here on (`set-oracle.ts`, `admin-transfer.ts`, a future
