@@ -50,7 +50,7 @@ const FORMATS = [
     h: "Survivor",
     p: "One team a week to win, each team once a season. Your team loses or ties and you are out. Last member standing takes the pot.",
     detail:
-      "Picks lock at the week's first kickoff and are recorded on chain, so nobody can claim on Monday that they definitely picked the Bills.",
+      "Picks lock at the week's first kickoff and are recorded on the Solana blockchain, so nobody can claim on Monday that they definitely picked the Bills.",
   },
   {
     status: "AVAILABLE NOW",
