@@ -107,7 +107,15 @@ export async function runCycle(env: Env): Promise<Summary> {
         : "set RPC_URL, or HELIUS_API_KEY with HELIUS_CLUSTER",
     );
   }
-  const connection = new Connection(rpc, "confirmed");
+  /* Named. It was added hoping to satisfy Solana's public RPC, which answers
+   * workerd's fetch with a 403; it did not, because that endpoint is
+   * classifying the client rather than the header, and a provider endpoint
+   * is required regardless. It stays because a request that says who it is
+   * costs nothing and reads better in anybody's logs. */
+  const connection = new Connection(rpc, {
+    commitment: "confirmed",
+    httpHeaders: { "user-agent": "commish-results-oracle/1 (+https://commish.fun)" },
+  });
   const poster = posterFromSecret(env.ORACLE_KEYPAIR);
   const season = Number(env.SEASON) || SEASON_YEAR;
   const minAgreeing = Number(env.MIN_AGREEING_FEEDS) || 2;

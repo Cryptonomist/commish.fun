@@ -64,6 +64,17 @@ to `devnet` in the file and in the code; deploy to mainnet with
 `npx wrangler deploy --var HELIUS_CLUSTER:mainnet` so a copied config cannot
 sign against real money by default.
 
+On mainnet the RPC endpoint is derived from `HELIUS_API_KEY` and nothing else:
+`RPC_URL` is honoured on devnet only, so a devnet URL left in a variable
+cannot redirect a worker that believes it is on mainnet. A provider key is
+not optional in any case: Solana's public endpoints answer workerd's fetch
+with a 403 ("your IP or provider is blocked"), with or without a User-Agent,
+while the Node drill from the same machine and address is fine. They are
+classifying the client, not the caller. The local runtime test
+(`wrangler dev --test-scheduled`) therefore proves the bundle, the runtime
+and the cron entry point down to the first RPC call, and needs a Helius key
+in `.dev.vars` to go further.
+
 `ORACLE_FIXTURE` is a devnet-only stand-in for the feeds. The code refuses
 it on mainnet regardless of what the variable says.
 
