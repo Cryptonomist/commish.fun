@@ -58,8 +58,10 @@ pub mod commish {
     use super::*;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Admin. Season 1 runs with every fee at zero; these exist so that fact is
-    // visible on chain rather than assumed.
+    // Admin. The fee is whatever Config says and nothing here assumes a
+    // value: these exist so the number is visible on chain rather than
+    // inferred from a comment. Mainnet currently runs 300 bps capped at 50
+    // USDC, set at init and changeable only through update_config.
     // ─────────────────────────────────────────────────────────────────────────
 
     pub fn init_config(
@@ -668,7 +670,11 @@ pub mod commish {
         if settled {
             require!(winners_count > 0, CommishError::NotSettled);
             // The fee is computed once, here, off the vault as it stands, and
-            // capped. Season 1 has fee_bps == 0, so this is zero.
+            // capped. This is live: mainnet Config carries 300 bps with a 50
+            // USDC cap, so a settling Survivor pool pays it. It is zero only
+            // for a league, which never reaches this instruction, and for a
+            // pool created with no buy-in, where create_pool pins fee_bps to
+            // zero because a percentage of nothing is nothing.
             let fee = rules::platform_fee(vault_amount, pool.fee_bps, pool.fee_cap)?;
             let payable = vault_amount
                 .checked_sub(fee)
@@ -704,8 +710,11 @@ pub mod commish {
 
         /* The fee moves here, and this is the fix to a real defect: every
          * earlier version deducted it from the winners' pot and transferred it
-         * nowhere, leaving it as permanently unclaimable vault residue. It was
-         * invisible because season 1 runs at fee_bps == 0.
+         * nowhere, leaving it as permanently unclaimable vault residue. It
+         * stayed invisible for as long as it did because every pool that had
+         * settled to that point ran at fee_bps == 0, so the broken branch was
+         * never taken. The chain charges 300 bps now and this path is load
+         * bearing.
          *
          * `Pool::fee_paid` was declared from the first commit and never written
          * by anything. A field that only ever holds its default is usually the
