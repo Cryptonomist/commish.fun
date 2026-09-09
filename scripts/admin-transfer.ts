@@ -9,7 +9,9 @@
  * RPC_URL selects the cluster and defaults to devnet, so mainnet is always a
  * deliberate `RPC_URL=<mainnet rpc>`. KEYPAIR is the signer and defaults to the
  * Solana CLI's key; `propose` and `cancel` need the current admin, `accept`
- * needs the proposed key.
+ * needs the proposed key. The CLI's key pays the fee whenever it is not the
+ * signer (FEE_PAYER overrides), so a cold key on a stick never has to hold
+ * SOL to do its job.
  *
  * WHY TWO STEPS. `propose` writes the successor into a small account and
  * changes nothing else. `accept` is signed by the successor and is the moment
@@ -54,11 +56,34 @@ import {
 
 const RPC = process.env.RPC_URL ?? "https://api.devnet.solana.com";
 
-function loadKeypair(): Keypair {
-  const file =
-    process.env.KEYPAIR ?? path.join(os.homedir(), ".config/solana/id.json");
+const CLI_KEY = path.join(os.homedir(), ".config/solana/id.json");
+
+function loadKeypairFrom(file: string): Keypair {
   const secret = JSON.parse(fs.readFileSync(file, "utf8")) as number[];
   return Keypair.fromSecretKey(Uint8Array.from(secret));
+}
+
+function loadKeypair(): Keypair {
+  return loadKeypairFrom(process.env.KEYPAIR ?? CLI_KEY);
+}
+
+/* WHO PAYS THE FEE, which is not the same question as who signs.
+ *
+ * The first `accept` on mainnet failed before the program ran, with empty
+ * logs: the cold key was the fee payer and it held no SOL, because it had
+ * been generated onto a USB stick an hour earlier and had never been given
+ * any. It should never need any. A key whose only job is to sign for the
+ * program is better off holding nothing, so there is nothing on it to
+ * manage and nothing on it worth taking.
+ *
+ * So the CLI's everyday key pays, whenever it is not already the signer, and
+ * FEE_PAYER overrides that with another keypair file. The signer still has
+ * to sign; the payer just covers the lamports. */
+function loadPayer(signer: Keypair): Keypair {
+  const file = process.env.FEE_PAYER ?? CLI_KEY;
+  if (!fs.existsSync(file)) return signer;
+  const payer = loadKeypairFrom(file);
+  return payer.publicKey.equals(signer.publicKey) ? signer : payer;
 }
 
 type State = {
@@ -90,11 +115,26 @@ function banner(state: State) {
 }
 
 async function send(connection: Connection, signer: Keypair, ix: ReturnType<typeof buildAcceptAdmin>) {
-  const tx = new Transaction().add(ix);
-  const sig = await sendAndConfirmTransaction(connection, tx, [signer], {
+  const payer = loadPayer(signer);
+
+  /* Say so before sending. A payer with nothing in it fails at simulation
+   * with no logs at all, which is the least informative failure the RPC
+   * has, and it is the one a freshly generated key produces. */
+  const balance = await connection.getBalance(payer.publicKey, "confirmed");
+  if (balance < 50_000) {
+    throw new Error(
+      `${payer.publicKey.toBase58()} would pay the fee and holds ${balance} lamports. ` +
+        "Fund it, or set FEE_PAYER to a keypair file that has SOL.",
+    );
+  }
+
+  const tx = new Transaction({ feePayer: payer.publicKey }).add(ix);
+  const signers = payer === signer ? [signer] : [payer, signer];
+  const sig = await sendAndConfirmTransaction(connection, tx, signers, {
     commitment: "confirmed",
   });
   console.log(`sent      ${sig}`);
+  if (payer !== signer) console.log(`fee paid  ${payer.publicKey.toBase58()}`);
 }
 
 async function main() {

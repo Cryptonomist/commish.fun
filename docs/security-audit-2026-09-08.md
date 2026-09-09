@@ -42,7 +42,13 @@ Done and verified since the review:
   buffer ("5 write transactions failed", every byte in fact landed) and was
   finished from that buffer; the script now resumes from a leftover buffer
   by itself and sends writes through the RPC rather than to validator TPUs.
-  `Config.admin` is still the hot key until the handover below runs.
+- **Both HIGH findings are closed as of 2026-09-09.** The upgrade authority
+  and `Config.admin` are `EvSoQU4Te9ZTECANZ4RPmcJELaEePxDGhgLFGyzX5g51`, a
+  cold key that exists only on a zero-formatted USB stick (12 words on
+  paper). The hot key on the laptop is now a fee payer and nothing else: it
+  cannot change the program's bytes, its fee, its pause switch or the oracle.
+  The cold key holds no SOL and never needs to; the scripts have the CLI key
+  pay fees whenever it is not the signer.
 - `scripts/admin-transfer.ts` runs the handover (`status`, `propose`,
   `cancel`, `accept`, `accept --print` for a multisig), and
   `scripts/upgrade-mainnet.sh` gained `--buffer` and `--verify` so an upgrade
@@ -295,9 +301,15 @@ three lockfiles are committed.
 
 1. ~~Ship the upgrade that carries the handover, the fee cap and the
    `close_member` fix~~ — **done 2026-09-09**, slot 445612492.
-2. Create the multisig and move the upgrade authority to it (finding 1).
-3. Hand the admin over: `admin-transfer.ts propose` from the CLI key, then
-   `accept` from the successor — `accept --print` for a multisig (finding 4a).
+2. ~~Move the upgrade authority off the hot key~~ — **done 2026-09-09**: a
+   cold key generated onto a freshly zero-formatted USB stick,
+   `EvSoQU4Te9ZTECANZ4RPmcJELaEePxDGhgLFGyzX5g51`, co-signed the transfer.
+   The 12-word recovery phrase is on paper; the file exists only on the
+   stick. Future upgrades: `UPGRADE_AUTHORITY_KEYPAIR=<stick path> ./scripts/upgrade-mainnet.sh --go`.
+3. ~~Hand the admin over~~ — **done 2026-09-09**: proposed by the hot key,
+   accepted by the cold key with the hot key paying the fee. Every admin
+   action from here on (`set-oracle.ts`, `admin-transfer.ts`, a future
+   `update_config`) is `KEYPAIR=<stick path> …` with the stick plugged in.
 4. Hardware 2FA on GitHub, Vercel, Cloudflare, Helius, X developer (finding 2).
 5. Vercel: preview Deployment Protection, sensitive env vars, spend cap;
    confirm the D1 token scope (finding 2).

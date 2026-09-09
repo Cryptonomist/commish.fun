@@ -1,12 +1,14 @@
 /* Name, or rotate, the results oracle: the key the automated poster signs with.
  *
- *   ORACLE_POSTER=<pubkey> RPC_URL=<rpc> npx tsx scripts/set-oracle.ts
+ *   ORACLE_POSTER=<pubkey> RPC_URL=<rpc> KEYPAIR=<admin keypair> npx tsx scripts/set-oracle.ts
  *
- * The signer is your Solana CLI keypair and it has to be the Config admin: the
- * program checks `has_one = admin` on Config before it will touch the Oracle
- * account. Run it once after the upgrade that introduced the oracle, and again
- * whenever the poster's key is rotated. The same instruction does both; the
- * first call creates the account.
+ * The signer has to be the Config admin: the program checks `has_one = admin`
+ * on Config before it will touch the Oracle account. Since 2026-09-09 that is
+ * the cold key on the USB stick, so KEYPAIR points at the stick; the CLI's
+ * everyday key pays the fee whenever it is not the signer (FEE_PAYER
+ * overrides), so the cold key never has to hold SOL. Run this whenever the
+ * poster's key is rotated. The same instruction creates the account on its
+ * first call.
  *
  * THE POSTER IS NOT THE ADMIN AND MUST NEVER BE. The admin key can change the
  * fee and the treasury and pause the program. The poster can propose results
@@ -37,11 +39,26 @@ import {
 
 const RPC = process.env.RPC_URL ?? "https://api.devnet.solana.com";
 
-function loadKeypair(): Keypair {
-  const file =
-    process.env.KEYPAIR ?? path.join(os.homedir(), ".config/solana/id.json");
+const CLI_KEY = path.join(os.homedir(), ".config/solana/id.json");
+
+function loadKeypairFrom(file: string): Keypair {
   const secret = JSON.parse(fs.readFileSync(file, "utf8")) as number[];
   return Keypair.fromSecretKey(Uint8Array.from(secret));
+}
+
+function loadKeypair(): Keypair {
+  return loadKeypairFrom(process.env.KEYPAIR ?? CLI_KEY);
+}
+
+/** Who pays. The CLI's key when it is not the signer, so a cold admin key
+ *  can stay empty. Same rule as scripts/admin-transfer.ts, for the same
+ *  reason: the first cold-key transaction on mainnet failed with empty logs
+ *  because the signer was also the payer and held nothing. */
+function loadPayer(signer: Keypair): Keypair {
+  const file = process.env.FEE_PAYER ?? CLI_KEY;
+  if (!fs.existsSync(file)) return signer;
+  const payer = loadKeypairFrom(file);
+  return payer.publicKey.equals(signer.publicKey) ? signer : payer;
 }
 
 async function main() {
@@ -76,13 +93,24 @@ async function main() {
     console.log("currently (no oracle account yet; this call creates it)");
   }
 
-  const tx = new Transaction().add(
+  const payer = loadPayer(admin);
+  const balance = await connection.getBalance(payer.publicKey, "confirmed");
+  if (balance < 50_000) {
+    throw new Error(
+      `${payer.publicKey.toBase58()} would pay the fee and holds ${balance} lamports. ` +
+        "Fund it, or set FEE_PAYER to a keypair file that has SOL.",
+    );
+  }
+
+  const tx = new Transaction({ feePayer: payer.publicKey }).add(
     buildSetOracle({ admin: admin.publicKey, poster }),
   );
-  const sig = await sendAndConfirmTransaction(connection, tx, [admin], {
+  const signers = payer === admin ? [admin] : [payer, admin];
+  const sig = await sendAndConfirmTransaction(connection, tx, signers, {
     commitment: "confirmed",
   });
   console.log(`sent      ${sig}`);
+  if (payer !== admin) console.log(`fee paid  ${payer.publicKey.toBase58()}`);
 
   const after = await connection.getAccountInfo(oracle, "confirmed");
   if (!after) throw new Error("The oracle account is still missing after the transaction.");
