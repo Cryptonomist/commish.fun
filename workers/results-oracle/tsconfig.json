@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    /* node for Buffer, which the shared instruction encoder uses and which
+       nodejs_compat supplies at runtime. Only files this worker actually
+       imports are type-checked: the app's audio and canvas modules live in
+       the same folder, need DOM types, and are never reached from here. */
+    "types": ["@cloudflare/workers-types", "node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    /* The worker reuses the app's own modules — the instruction builders, the
+       account decoders, the ESPN parser, the fixtures — through the same alias
+       the app uses, so there is one copy of each and nothing here can drift
+       from what the site and the LiteSVM suite exercise. */
+    "paths": { "@/*": ["../../src/*"] }
+  },
+  "include": ["src/**/*.ts"]
+}

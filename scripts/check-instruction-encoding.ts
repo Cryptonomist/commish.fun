@@ -37,6 +37,7 @@ import {
   buildAdvanceWeek,
   buildClaimPot,
   buildFinalizeWeek,
+  buildOraclePostResults,
   buildPostResults,
   buildReclaimDues,
   buildSettleMember,
@@ -45,6 +46,7 @@ import {
   estimatedRefund,
   memberAccountFilters,
   memberPda,
+  oraclePda,
   poolPda,
   maskWith,
   PROGRAM_ID,
@@ -156,6 +158,35 @@ function refPostResults(opts: {
       { address: opts.commissioner, role: AccountRole.WRITABLE_SIGNER },
     ],
     data: coder.instruction.encode("post_results", {
+      week: opts.week,
+      winners: opts.winners,
+      pushes: opts.pushes,
+      root: Array(32).fill(0),
+    }),
+  };
+}
+
+/* oracle.ts: oraclePostIx(pool, signer, winners). The oracle's door into the
+ * same proposal: the pool, the Oracle PDA, and a signer that is checked
+ * against the poster the admin named. The WORKER sends this one, not the
+ * browser, which is exactly why it belongs here: a wrong byte in it would
+ * surface as a refused posting at two in the morning with nobody watching. */
+function refOraclePostResults(opts: {
+  pool: Address;
+  oracle: Address;
+  poster: Address;
+  week: number;
+  winners: number;
+  pushes: number;
+}): RefIx {
+  return {
+    programAddress,
+    accounts: [
+      { address: opts.pool, role: AccountRole.WRITABLE },
+      { address: opts.oracle, role: AccountRole.READONLY },
+      { address: opts.poster, role: AccountRole.READONLY_SIGNER },
+    ],
+    data: coder.instruction.encode("oracle_post_results", {
       week: opts.week,
       winners: opts.winners,
       pushes: opts.pushes,
@@ -819,6 +850,26 @@ async function main() {
       accountNames.includes(n),
       `IDL has ${accountNames.join(", ")}`,
     );
+  }
+
+  // ── The oracle's door, which the worker builds and the browser never does ──
+  {
+    const oracle = oraclePda();
+    const poster = commissioner; // any address: this is about bytes, not rights
+    for (const winners of [1 << 4, (1 << 31) >>> 0, 0]) {
+      compare(
+        `oracle_post_results (winners ${winners.toString(2)})`,
+        buildOraclePostResults({ pool, poster, week: 1, winners, pushes: 0 }),
+        refOraclePostResults({
+          pool: address(pool.toBase58()),
+          oracle: address(oracle.toBase58()),
+          poster: address(poster.toBase58()),
+          week: 1,
+          winners,
+          pushes: 0,
+        }),
+      );
+    }
   }
 
   // ── The illegal state the form is built to make unreachable ────────────────

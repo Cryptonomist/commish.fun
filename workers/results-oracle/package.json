@@ -1,0 +1,18 @@
+{
+  "name": "commish-results-oracle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scheduled Cloudflare Worker that posts a week's results when two independent feeds agree, then cranks the week to settlement. It holds a key that can propose results and do nothing else.",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy",
+    "check": "wrangler deploy --dry-run",
+    "tail": "wrangler tail",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260907.1",
+    "typescript": "^7.0.2",
+    "wrangler": "4.129.0"
+  }
+}

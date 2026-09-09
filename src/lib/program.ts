@@ -651,6 +651,77 @@ export function buildVetoResults(args: {
   });
 }
 
+/* ───────────────────────────── the results oracle ──────────────────────────
+ *
+ * A second key allowed to propose a week's results, named by the admin and
+ * held by the automated poster. It shares the commissioner's proposal body on
+ * chain, so nothing about the window or the veto is different for it; what is
+ * different is only who signs. See `Oracle` in state.rs for why it is its own
+ * account rather than a field on Config. */
+
+export function oraclePda(): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [utils.bytes.utf8.encode("oracle")],
+    PROGRAM_ID,
+  )[0];
+}
+
+export type OracleView = { poster: PublicKey; bump: number };
+
+export function decodeOracle(data: Uint8Array): OracleView {
+  const raw = coder.accounts.decode("Oracle", Buffer.from(data)) as {
+    poster: PublicKey;
+    bump: number;
+  };
+  return { poster: new PublicKey(raw.poster), bump: raw.bump };
+}
+
+/** Name or rotate the poster. The signer must be Config's admin. */
+export function buildSetOracle(args: {
+  admin: PublicKey;
+  poster: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: configPda(), isSigner: false, isWritable: false },
+      { pubkey: oraclePda(), isSigner: false, isWritable: true },
+      { pubkey: args.admin, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: coder.instruction.encode("set_oracle", { poster: args.poster }),
+  });
+}
+
+/** The oracle's door into the same proposal `buildPostResults` makes. */
+export function buildOraclePostResults(args: {
+  pool: PublicKey;
+  poster: PublicKey;
+  week: number;
+  winners: number;
+  pushes: number;
+}): TransactionInstruction {
+  const winners = args.winners >>> 0;
+  const pushes = args.pushes >>> 0;
+  if ((winners & pushes) !== 0) {
+    throw new Error("A team cannot be both a winner and a push");
+  }
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: args.pool, isSigner: false, isWritable: true },
+      { pubkey: oraclePda(), isSigner: false, isWritable: false },
+      { pubkey: args.poster, isSigner: true, isWritable: false },
+    ],
+    data: coder.instruction.encode("oracle_post_results", {
+      week: args.week,
+      winners,
+      pushes,
+      root: Array(32).fill(0),
+    }),
+  });
+}
+
 /* DOES THIS POSTING CARRY THIS PICK? A mirror of `rules::survives`.
  *
  * The same liability as `lib/schedule.ts`: this duplicates a rule that lives in
@@ -901,7 +972,9 @@ export function memberAccountFilters(pool: PublicKey) {
  * Reading it out of the IDL by name rather than hardcoding eight bytes matters
  * more here than it looks: a discriminator is derived from the account NAME,
  * so a pasted one keeps matching after a rename and quietly returns nothing. */
-export function discriminatorFilter(account: "Pool" | "Member" | "Config") {
+export function discriminatorFilter(
+  account: "Pool" | "Member" | "Config" | "Oracle",
+) {
   const disc = (
     idlJson as { accounts?: { name: string; discriminator: number[] }[] }
   ).accounts?.find((a) => a.name === account)?.discriminator;

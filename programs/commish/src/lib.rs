@@ -408,48 +408,43 @@ pub mod commish {
         root: [u8; 32],
     ) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
-        let pool = &mut ctx.accounts.pool;
+        let key = ctx.accounts.pool.key();
+        propose_results(&mut ctx.accounts.pool, key, week, winners, pushes, root, now)
+    }
 
-        require!(!pool.is_league(), CommishError::WrongPoolKind);
-        require!(pool.status != STATUS_SETTLED, CommishError::AlreadySettled);
-        require_eq!(week, pool.current_week, CommishError::TooEarly);
-        require!(pool.pending_week == WEEK_NONE, CommishError::ResultsPending);
-        require!(
-            !pool.results_posted[week as usize - 1],
-            CommishError::ResultsAlreadyPosted
-        );
-        // A team cannot both win and be voided. Allowing it would make the
-        // survive test depend on which branch happened to run first.
-        require!(winners & pushes == 0, CommishError::OverlappingMasks);
-        // Not before the games could be over.
-        require!(
-            now >= pool
-                .lock_for(week)?
-                .checked_add(MIN_POST_DELAY_SECS)
-                .ok_or(CommishError::MathOverflow)?,
-            CommishError::TooEarly
-        );
-
-        pool.pending_winners = winners;
-        pool.pending_pushes = pushes;
-        pool.pending_root = root;
-        pool.pending_week = week;
-        pool.pending_posted_ts = now;
-        pool.veto_count = 0;
-        // A re-post is a new vote. See Pool::veto_epoch.
-        pool.veto_epoch = pool
-            .veto_epoch
-            .checked_add(1)
-            .ok_or(CommishError::MathOverflow)?;
-        pool.status = STATUS_RESULTS_POSTED;
-
-        emit!(ResultsPosted {
-            pool: pool.key(),
+    /// The same proposal, signed by the results oracle instead of the
+    /// commissioner. Everything after this point is identical: the window,
+    /// the veto, the finalize. The commissioner's own door still opens.
+    pub fn oracle_post_results(
+        ctx: Context<OraclePostResults>,
+        week: u8,
+        winners: u32,
+        pushes: u32,
+        root: [u8; 32],
+    ) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        let key = ctx.accounts.pool.key();
+        propose_results(&mut ctx.accounts.pool, key, week, winners, pushes, root, now)?;
+        emit!(ResultsPostedByOracle {
+            pool: key,
             week,
-            winners,
-            pushes,
-            posted_ts: now,
+            poster: ctx.accounts.poster.key(),
         });
+        Ok(())
+    }
+
+    /// Name, or replace, the key the automated poster signs with. Admin only.
+    ///
+    /// One instruction for both jobs, through `init_if_needed`: the first call
+    /// creates the account and every later one rotates the key. The usual
+    /// warning about init_if_needed is re-initialisation by a stranger, and it
+    /// does not apply here because the admin gate is on Config, not on the
+    /// account being initialised.
+    pub fn set_oracle(ctx: Context<SetOracle>, poster: Pubkey) -> Result<()> {
+        let o = &mut ctx.accounts.oracle;
+        o.poster = poster;
+        o.bump = ctx.bumps.oracle;
+        emit!(OracleSet { poster });
         Ok(())
     }
 
@@ -1181,6 +1176,66 @@ fn credit_join(pool: &mut Account<Pool>, buy_in: u64) -> Result<()> {
 // Accounts
 // ═════════════════════════════════════════════════════════════════════════════
 
+/* THE PROPOSAL ITSELF, shared by the two doors that lead to it.
+ *
+ * `post_results` (the commissioner) and `oracle_post_results` (the automated
+ * poster) differ only in who may sign. Everything a posting means is here,
+ * once, so the two cannot drift: the same floor before the games could be
+ * over, the same refusal of overlapping masks, the same fresh veto epoch. A
+ * check added to one door and forgotten on the other would be a way to post
+ * results that skip it. */
+fn propose_results(
+    pool: &mut Pool,
+    pool_key: Pubkey,
+    week: u8,
+    winners: u32,
+    pushes: u32,
+    root: [u8; 32],
+    now: i64,
+) -> Result<()> {
+    require!(!pool.is_league(), CommishError::WrongPoolKind);
+    require!(pool.status != STATUS_SETTLED, CommishError::AlreadySettled);
+    require_eq!(week, pool.current_week, CommishError::TooEarly);
+    require!(pool.pending_week == WEEK_NONE, CommishError::ResultsPending);
+    require!(
+        !pool.results_posted[week as usize - 1],
+        CommishError::ResultsAlreadyPosted
+    );
+    // A team cannot both win and be voided. Allowing it would make the
+    // survive test depend on which branch happened to run first.
+    require!(winners & pushes == 0, CommishError::OverlappingMasks);
+    // Not before the games could be over.
+    require!(
+        now >= pool
+            .lock_for(week)?
+            .checked_add(MIN_POST_DELAY_SECS)
+            .ok_or(CommishError::MathOverflow)?,
+        CommishError::TooEarly
+    );
+
+    pool.pending_winners = winners;
+    pool.pending_pushes = pushes;
+    pool.pending_root = root;
+    pool.pending_week = week;
+    pool.pending_posted_ts = now;
+    pool.veto_count = 0;
+    // A re-post is a new vote. See Pool::veto_epoch.
+    pool.veto_epoch = pool
+        .veto_epoch
+        .checked_add(1)
+        .ok_or(CommishError::MathOverflow)?;
+    pool.status = STATUS_RESULTS_POSTED;
+
+    emit!(ResultsPosted {
+        pool: pool_key,
+        week,
+        winners,
+        pushes,
+        posted_ts: now,
+    });
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct InitConfig<'info> {
     #[account(
@@ -1299,6 +1354,35 @@ pub struct PostResults<'info> {
     #[account(mut, has_one = commissioner)]
     pub pool: Box<Account<'info, Pool>>,
     pub commissioner: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct OraclePostResults<'info> {
+    #[account(mut)]
+    pub pool: Box<Account<'info, Pool>>,
+    /* `has_one = poster` is the whole permission check: the signer must be the
+     * key written into the oracle account by the admin. Nothing about the pool
+     * is consulted, because the oracle posts for every pool alike. */
+    #[account(seeds = [SEED_ORACLE], bump = oracle.bump, has_one = poster)]
+    pub oracle: Account<'info, Oracle>,
+    pub poster: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetOracle<'info> {
+    #[account(seeds = [SEED_CONFIG], bump = config.bump, has_one = admin)]
+    pub config: Account<'info, Config>,
+    #[account(
+        init_if_needed,
+        payer = admin,
+        space = 8 + Oracle::INIT_SPACE,
+        seeds = [SEED_ORACLE],
+        bump
+    )]
+    pub oracle: Account<'info, Oracle>,
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]

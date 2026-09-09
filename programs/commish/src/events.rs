@@ -135,3 +135,19 @@ pub struct FeePaid {
     pub treasury: Pubkey,
     pub amount: u64,
 }
+
+/// The admin named, or replaced, the automated poster.
+#[event]
+pub struct OracleSet {
+    pub poster: Pubkey,
+}
+
+/// Emitted alongside ResultsPosted when the oracle, not the commissioner, made
+/// the proposal. A separate event rather than a field on ResultsPosted, so the
+/// shape an indexer already reads does not change under it.
+#[event]
+pub struct ResultsPostedByOracle {
+    pub pool: Pubkey,
+    pub week: u8,
+    pub poster: Pubkey,
+}

@@ -250,3 +250,30 @@ mod tests {
         assert!(pool < 10_240, "Pool can no longer be created by CPI");
     }
 }
+
+/* THE RESULTS ORACLE: a second party allowed to propose a week's results.
+ *
+ * WHY IT EXISTS. `post_results` trusted one person per pool, and the failure
+ * that actually threatens a pool is not a dishonest commissioner but an absent
+ * or mistaken one: a week posted late, a bit set on the wrong team, somebody
+ * who stops caring in November. This is the key an automated poster signs
+ * with, so in the ordinary week nobody has to remember anything.
+ *
+ * WHAT IT CAN AND CANNOT DO. It can propose results, and that is all. What it
+ * proposes goes through the same dispute window and the same member veto as a
+ * commissioner's posting; it cannot move USDC and it cannot touch Config. The
+ * commissioner's own path is untouched, so an oracle that is down or wrong
+ * costs nothing but a manual posting. It is a second door, not a replacement
+ * lock.
+ *
+ * WHY ITS OWN ACCOUNT rather than a field on Config: Config cannot grow. The
+ * deployed one would misparse, `init` refuses an existing account and nothing
+ * can close it. See the note on `creation_fee`. A fresh PDA has none of that.
+ */
+#[account]
+#[derive(InitSpace)]
+pub struct Oracle {
+    /// The key that may call `oracle_post_results`. Rotated by the admin.
+    pub poster: Pubkey,
+    pub bump: u8,
+}

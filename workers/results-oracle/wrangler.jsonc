@@ -1,0 +1,74 @@
+{
+  // Everything in this file is public: it is committed. The two things that
+  // must not be are secrets, encrypted at rest and never shown again:
+  //
+  //     npx wrangler secret put HELIUS_API_KEY
+  //     npx wrangler secret put ORACLE_KEYPAIR      (the JSON byte array)
+  //     npx wrangler secret put APISPORTS_KEY
+  //     npx wrangler secret put ALERT_WEBHOOK        (optional)
+  //
+  // ORACLE_KEYPAIR IS THE ONLY KEY THIS WORKER HOLDS, AND IT CAN DO ONE THING.
+  // The program lets it call oracle_post_results and nothing else: no USDC
+  // moves on its signature, no Config changes, and what it posts still waits
+  // out the dispute window and can be vetoed by the members. If it leaks, the
+  // admin rotates it with scripts/set-oracle.ts and the worst that happened
+  // in between is a wrong proposal that the members could refuse. It is
+  // deliberately NOT the admin key and NOT the upgrade authority, and
+  // set-oracle.ts refuses to name the admin as the poster.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "commish-results-oracle",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-07",
+
+  // Buffer, process and friends: the instruction encoder and the Solana client
+  // the app already uses need them, and this worker reuses that code rather
+  // than re-encoding instructions by hand and drifting from the tested path.
+  "compatibility_flags": ["nodejs_compat"],
+
+  // No HTTP surface on purpose. This worker runs on a schedule and answers
+  // nothing, so there is no URL to rate limit, no origin to check and no
+  // endpoint through which anything could be asked to post. `fetch` in
+  // index.ts returns a one-line status and never acts.
+  "workers_dev": false,
+  "preview_urls": false,
+
+  /* EVERY TEN MINUTES, ALL WEEK. A week can only be posted once its last game
+     is final, and the program will not accept a posting until three hours
+     after the week's lock in any case, so nearly every run does nothing and
+     says so. That is fine: the cost of a run that finds nothing to do is a
+     handful of RPC reads, and the alternative, a clever schedule that knows
+     when Monday night ends, is a schedule that is wrong the first time a game
+     goes to overtime. The same tick cranks finalize, settle and advance for
+     any pool whose window has closed, so a settled week does not wait on a
+     person either. */
+  "triggers": { "crons": ["*/10 * * * *"] },
+
+  "observability": { "enabled": true },
+
+  "vars": {
+    // devnet or mainnet. Defaulted to devnet in code as well: a poster that
+    // quietly signs against mainnet because a variable was unset is a worse
+    // failure than one that talks to the wrong test cluster.
+    "HELIUS_CLUSTER": "devnet",
+
+    "PROGRAM_ID": "Adb5CFrY4vYiGQnTQ5qsaPPMUAWKyxwVAQtFHWcshjPa",
+
+    // Which season's fixtures and which season the feeds are asked for.
+    "SEASON": "2026",
+
+    /* HOW MANY FEEDS HAVE TO AGREE BEFORE ANYTHING IS POSTED. Two is the
+       design and the reason this worker is trustworthy at all: an
+       undocumented endpoint on its own is not an oracle. Setting it to 1 makes
+       ESPN alone decide money, which scores.ts warns against in its first
+       paragraph. The knob exists so that is a decision someone makes on
+       purpose, written here where the next person will see it, rather than
+       something that happens because the second feed's key expired. */
+    "MIN_AGREEING_FEEDS": "2",
+
+    /* DEVNET ONLY. A JSON Board (see decide.ts) that stands in for every feed,
+       so a posting can be exercised end to end before the games are played.
+       run.ts refuses to use it when HELIUS_CLUSTER is mainnet, whatever this
+       says. Leave it empty in every committed config. */
+    "ORACLE_FIXTURE": ""
+  }
+}

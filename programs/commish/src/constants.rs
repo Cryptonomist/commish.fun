@@ -19,6 +19,7 @@ pub const CANONICAL_USDC: Pubkey = pubkey!("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJ
 pub const SEED_CONFIG: &[u8] = b"config";
 pub const SEED_POOL: &[u8] = b"pool";
 pub const SEED_MEMBER: &[u8] = b"member";
+pub const SEED_ORACLE: &[u8] = b"oracle";
 
 pub const WEEKS: usize = 18;
 pub const MAX_PRIZE_SLOTS: usize = 8;

@@ -669,6 +669,78 @@
       "args": []
     },
     {
+      "name": "oracle_post_results",
+      "docs": [
+        "The same proposal, signed by the results oracle instead of the",
+        "commissioner. Everything after this point is identical: the window,",
+        "the veto, the finalize. The commissioner's own door still opens."
+      ],
+      "discriminator": [
+        250,
+        24,
+        225,
+        61,
+        60,
+        174,
+        153,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "oracle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "poster",
+          "signer": true,
+          "relations": [
+            "oracle"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "week",
+          "type": "u8"
+        },
+        {
+          "name": "winners",
+          "type": "u32"
+        },
+        {
+          "name": "pushes",
+          "type": "u32"
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "post_payout_sheet",
       "docs": [
         "The commissioner declares who gets paid what.",
@@ -838,6 +910,85 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "set_oracle",
+      "docs": [
+        "Name, or replace, the key the automated poster signs with. Admin only.",
+        "",
+        "One instruction for both jobs, through `init_if_needed`: the first call",
+        "creates the account and every later one rotates the key. The usual",
+        "warning about init_if_needed is re-initialisation by a stranger, and it",
+        "does not apply here because the admin gate is on Config, not on the",
+        "account being initialised."
+      ],
+      "discriminator": [
+        186,
+        128,
+        81,
+        104,
+        74,
+        79,
+        18,
+        224
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "poster",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "settle_member",
@@ -1197,6 +1348,19 @@
       ]
     },
     {
+      "name": "Oracle",
+      "discriminator": [
+        139,
+        194,
+        131,
+        179,
+        140,
+        179,
+        229,
+        244
+      ]
+    },
+    {
       "name": "Pool",
       "discriminator": [
         241,
@@ -1274,6 +1438,19 @@
         123,
         209,
         78
+      ]
+    },
+    {
+      "name": "OracleSet",
+      "discriminator": [
+        115,
+        135,
+        7,
+        243,
+        213,
+        60,
+        174,
+        119
       ]
     },
     {
@@ -1365,6 +1542,19 @@
         230,
         205,
         144
+      ]
+    },
+    {
+      "name": "ResultsPostedByOracle",
+      "discriminator": [
+        235,
+        26,
+        73,
+        167,
+        100,
+        148,
+        184,
+        141
       ]
     },
     {
@@ -1962,6 +2152,40 @@
       }
     },
     {
+      "name": "Oracle",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "poster",
+            "docs": [
+              "The key that may call `oracle_post_results`. Rotated by the admin."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OracleSet",
+      "docs": [
+        "The admin named, or replaced, the automated poster."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "poster",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "PayoutSheetPosted",
       "type": {
         "kind": "struct",
@@ -2428,6 +2652,31 @@
           {
             "name": "posted_ts",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResultsPostedByOracle",
+      "docs": [
+        "Emitted alongside ResultsPosted when the oracle, not the commissioner, made",
+        "the proposal. A separate event rather than a field on ResultsPosted, so the",
+        "shape an indexer already reads does not change under it."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "week",
+            "type": "u8"
+          },
+          {
+            "name": "poster",
+            "type": "pubkey"
           }
         ]
       }
