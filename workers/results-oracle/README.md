@@ -65,7 +65,33 @@ Secrets, set with `npx wrangler secret put <NAME>` and never committed:
 | `HELIUS_API_KEY` | RPC. The hostname follows `HELIUS_CLUSTER`. |
 | `ORACLE_KEYPAIR` | The 64-byte JSON array from the keypair file. |
 | `APISPORTS_KEY` | api-sports.io, the second feed. |
-| `ALERT_WEBHOOK` | Optional. A Discord or Slack incoming webhook. |
+| `TELEGRAM_BOT_TOKEN` | Alerts. A bot's token from @BotFather. |
+| `TELEGRAM_CHAT_ID` | Alerts. The chat the bot posts into. |
+| `ALERT_WEBHOOK` | Optional. A Discord or Slack incoming webhook, alongside or instead. |
+
+## Alerts
+
+The Worker speaks only when there is something to say: a week it posted, a
+pool it settled, a disagreement between the feeds, a week the members struck
+down, or an error. A tick that skipped every pool, which is most ticks, says
+nothing.
+
+Telegram, in three steps:
+
+1. Message **@BotFather** on Telegram, send `/newbot`, follow the prompts. It
+   answers with a token that looks like `123456789:AAF...`. That is
+   `TELEGRAM_BOT_TOKEN`.
+2. Open a chat with your new bot and send it any message. Then fetch
+   `https://api.telegram.org/bot<TOKEN>/getUpdates` in a browser: the reply
+   contains `"chat":{"id":...}`. That number is `TELEGRAM_CHAT_ID`. (For a
+   group, add the bot to the group first; group ids are negative.)
+3. Prove the pair works before trusting it:
+   ```
+   curl -s -X POST "https://api.telegram.org/bot<TOKEN>/sendMessage" \
+     -d chat_id=<CHAT_ID> -d text="commish results oracle: test"
+   ```
+   Then `npx wrangler secret put TELEGRAM_BOT_TOKEN` and
+   `npx wrangler secret put TELEGRAM_CHAT_ID`.
 
 Variables live in `wrangler.jsonc` and are public. `HELIUS_CLUSTER` defaults
 to `devnet` in the file and in the code; deploy to mainnet with

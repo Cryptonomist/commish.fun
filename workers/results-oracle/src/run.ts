@@ -62,6 +62,9 @@ export interface Env {
   RPC_URL?: string;
   ORACLE_KEYPAIR: string;
   APISPORTS_KEY?: string;
+  /** Where alerts go. Telegram is a bot token and a chat id; see alert.ts. */
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_CHAT_ID?: string;
   ALERT_WEBHOOK?: string;
   HELIUS_CLUSTER?: string;
   PROGRAM_ID?: string;
@@ -211,11 +214,23 @@ export async function runCycle(env: Env): Promise<Summary> {
     }
   }
 
+  /* The things a person wants to hear about, and only those. A tick that did
+   * something says what; a tick that hit an error says which; a tick that
+   * skipped every pool, which is most of them, says nothing at all. */
+  if (summary.actions.length) {
+    await alert(
+      env,
+      `results oracle on ${cluster}:\n` +
+        summary.actions
+          .map((a) => `${a.pool.slice(0, 8)}…  ${a.did}`)
+          .join("\n"),
+    );
+  }
   if (summary.errors.length) {
     await alert(
       env,
       `results oracle on ${cluster}: ${summary.errors.length} error(s)\n` +
-        summary.errors.map((e) => `${e.pool}: ${e.error}`).join("\n"),
+        summary.errors.map((e) => `${e.pool.slice(0, 8)}…  ${e.error}`).join("\n"),
     );
   }
   return summary;

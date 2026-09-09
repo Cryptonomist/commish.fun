@@ -403,8 +403,11 @@ function uprights(
   ctx.fillRect(x + 7, mid - 26, 2, 22); // upright, far side
 }
 
-/** Radius of the painted circle at midfield. */
-const LOGO_R = 25;
+/** Radius of the painted circle at midfield. Exported, with the function
+ *  below, so the landing page can carry the SAME drawing rather than a
+ *  vector lookalike: scripts/build-midfield-logo.mjs renders it once into a
+ *  pixel image the hero displays. */
+export const LOGO_R = 25;
 
 /* THE MARK AT THE FIFTY, which is where a field carries the badge of whoever
  * owns it. This is ours: the laces on an orange disc, painted on the grass.
@@ -414,7 +417,7 @@ const LOGO_R = 25;
  * official one, and this product holds people's money and says plainly on
  * three pages that it is affiliated with nobody.
  */
-function drawMidfieldLogo(
+export function drawMidfieldLogo(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
