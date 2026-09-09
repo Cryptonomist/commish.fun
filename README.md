@@ -62,6 +62,13 @@ slot is still pending or finalized when the refund deadline passes, the refund
 is blocked for a further 30 days before unclaimed prizes fall back into the
 pro-rata split — otherwise a slow winner gets refunded out from under.
 
+And one limit the veto row does not remove: a pool is only as honest as its
+majority. A commissioner who fills a pool with wallets they control can
+outvote the people in it, and the program cannot tell a friend from a sock
+puppet. That is why pools are for people who know each other, why the roster
+is public before anyone's picks lock, and why the results oracle exists — its
+posting is the one a commissioner has to contradict in the open.
+
 The commissioner keeps the job, loses the custody.
 
 ## Architecture

@@ -248,6 +248,32 @@ SPF to `-all` and DMARC to `p=reject`. Nobody should be able to send mail as
 - Solana CLI default URL is `localhost:8899` — good: mainnet needs an explicit
   `-u m`, so a mistyped command cannot land there.
 
+## External review (Noah AI), 2026-09-09
+
+The owner had Noah AI read the program. It read a snapshot from before the
+handover upgrade (`programs/workspace/…`, 19 tests, no oracle door), so two of
+its findings were already fixed on mainnet by the time it wrote them. The
+rest are checked here against the deployed code. My own review verified
+account constraints and money paths and did not examine cross-instruction
+timing or the economics of the veto; four of these are things it missed, and
+they are ranked honestly.
+
+| # | Noah's finding | Verdict against mainnet | Plan |
+| --- | --- | --- | --- |
+| 1 | Survivor `reclaim_dues` can fire during the last week's dispute window and split the pot away from the winner | **Valid at the program level.** `create_pool` only requires the refund deadline to be after the last lock. The site sets it to last lock + 14 days (`refundDeadlineFor`), which clears the 7-day maximum window plus the 3-hour floor, so pools created through commish.fun are not exposed; a pool created by hand with a tight deadline is. | Next upgrade: require `refund_deadline_ts >= lock_ts[17] + min_week_gap(window) + 24h` at creation, and make `reclaim_dues` wait `PRIZE_CLAIM_GRACE_SECS` while a week is `RESULTS_POSTED` or `FINALIZED`, mirroring the league guard. Test: tight deadline, week-18 finalized, eliminated member reclaims, winner is robbed. |
+| 2 | A commissioner can pack the pool with wallets they control and make a majority veto impossible | **Valid as a limit of the trust model, not a bug**, and `sponsor_join` is not the enabler: plain `join_pool` from puppet wallets does the same. Today's defence is social — the roster is public before picks lock — plus the oracle, whose posting a commissioner has to contradict in the open. The README now says so. | Design pass, not a patch: let the oracle strike a pending commissioner posting that disagrees with two agreeing feeds; after two vetoes in a week, only the oracle door opens. |
+| 3 | After a veto the commissioner can re-post at once, and members must win every round | **Valid.** Same design pass as #2: a per-week re-post counter; after the second veto the commissioner's door closes for that week. | With #2. |
+| 4 | `claim_prize` never marks the Member, so a paid assignee can also take a pro-rata refund once the grace expires | **Valid, bounded** to dilution in an abandoned league. | Next upgrade: `ClaimPrize` takes the Member PDA and sets `claimed`. |
+| 5 | `claim_prize` pays `min(amount, vault)` and records a full claim | **Valid as a critique.** A short vault only happens after refunds already ran; reverting with a distinct error and sending the assignee down the pro-rata path is more honest than a silent short payment. | Next upgrade: revert on a short vault. |
+| 6 | `fee_cap = 0` means "no fee", not "no cap" | **Valid operational trap.** Mainnet runs cap 50 USDC. | Next upgrade: refuse `fee_cap == 0` when `fee_bps > 0`. |
+| 7 | No admin or treasury rotation | Admin: **done 2026-09-09** (two-step handover). Treasury: still write-once. | Next upgrade: `set_fee_treasury`, future pools only, since pools snapshot it. |
+| 8 | State written after the CPI | **Valid hygiene**; SPL Token cannot re-enter, so not exploitable. | Next upgrade: mutate, then transfer. |
+| 9 | Losers cannot close their Member account; no pool close; dust | Rent: **done 2026-09-09**. Dust and a pool close remain low. | Later. |
+| — | Deploy tooling expects `initialize_config` | Noah's own convention; the program was initialised by script. | None. |
+| — | Dead fields on Pool and Member | Reserved for the scored modes, and documented as such in `state.rs`; ~600 bytes of rent per pool is the price of not migrating live pools later. | None. |
+| — | 500 members means 500 settle transactions a week | True; the Worker sends one `settle_member` per transaction today. Batch ten to a transaction when a pool that size exists. | Later. |
+| — | `claim_pot` does not reject a league | Harmless today: a league is only `SETTLED` once every slot is claimed, so no refund path exists to block. Still a one-line guard. | Next upgrade. |
+
 ## What was verified sound
 
 Listed so the review is judged by what it checked, not only by what it found.
