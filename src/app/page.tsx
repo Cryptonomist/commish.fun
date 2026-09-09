@@ -199,7 +199,7 @@ export default async function Home() {
                 <p className="field-type max-w-2xl text-base font-medium leading-relaxed sm:text-lg">
                   Season-long league dues or a week&rsquo;s pick&rsquo;em pot:
                   every buy-in goes into a vault that is the pool&rsquo;s own
-                  account. Picks, results and payouts are recorded on chain.
+                  account. Picks, results and payouts are recorded on the Solana blockchain.
                   The commissioner runs the pool and never holds the money.
                 </p>
                 <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
