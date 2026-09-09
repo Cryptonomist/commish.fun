@@ -20,7 +20,13 @@
 import { expect } from "chai";
 
 import { FIELD, VIEW_H, VIEW_W } from "@/lib/bowl";
-import { drawField, PX } from "@/lib/pixel";
+import {
+  drawField,
+  ENDZONE_SCALE,
+  ENDZONE_TRACKING,
+  PX,
+  WORDMARK,
+} from "@/lib/pixel";
 import {
   cellsOf,
   drawRun,
@@ -206,15 +212,11 @@ describe("the endzone lettering", () => {
     );
   });
 
-  it("faces the middle of the field from both ends", () => {
-    /* THE ONE THAT MATTERS. Endzone type is read from the field, so the tops
-     * of the letters point at the middle of it: right in your endzone, left in
-     * theirs. Painting both the same way leaves one of them addressing the
-     * back wall, which is what the first version did.
-     *
-     * Facing the other way is the same glyphs turned through half a circle, so
-     * that is exactly what is asserted: every cell of one endzone has a twin
-     * at the opposite corner of the other, in the same colour. */
+  it("is turned the opposite way at the two ends", () => {
+    /* Facing the other way is the same glyphs through half a circle, so that
+     * is what is asserted: every cell of one endzone has a twin at the
+     * opposite corner of the other, in the same colour. This catches both ends
+     * being painted the same way, which is what the first version did. */
     const near = wordmark(0);
     const far = wordmark(FIELD.world - VIEW_W);
 
@@ -226,6 +228,47 @@ describe("the endzone lettering", () => {
       const [dx, dy, fill] = key.split(",");
       const twin = `${near.w - Number(dx)},${near.h - Number(dy)},${fill}`;
       expect(far.at.has(twin), `no twin for ${key}`).to.equal(true);
+    }
+  });
+
+  it("reads from the field, not from behind the posts", () => {
+    /* THE ONE THAT MATTERS, and the one the mirror test above cannot make:
+     * two endzones turned opposite ways are still both wrong if the pair is
+     * turned the wrong way round.
+     *
+     * Writing on the ground is read from the side its feet are on, so the
+     * feet point at the middle of the field and the tops at the back wall.
+     * That is `facing -1` in your endzone and `facing 1` in theirs. Rather
+     * than infer it back out of a pile of rectangles, the expected block is
+     * drawn here with the facing this test is asserting, and compared. */
+    for (const [where, camX, facing] of [
+      ["yours", 0, -1],
+      ["theirs", FIELD.world - VIEW_W, 1],
+    ] as const) {
+      const { ctx, rects } = recorder();
+      drawRun(
+        ctx as unknown as CanvasRenderingContext2D,
+        WORDMARK,
+        0,
+        0,
+        ENDZONE_SCALE,
+        facing,
+        undefined,
+        ENDZONE_TRACKING,
+      );
+      const want = new Set(rects.map((r) => `${r.x},${r.y},${r.fill}`));
+
+      const got = wordmark(camX);
+      const minX = Math.min(...got.ink.map((r) => r.x));
+      const minY = Math.min(...got.ink.map((r) => r.y));
+      const have = new Set(
+        got.ink.map((r) => `${r.x - minX},${r.y - minY},${r.fill}`),
+      );
+
+      expect(
+        [...have].sort(),
+        `the ${where} endzone is not painted facing ${facing}`,
+      ).to.deep.equal([...want].sort());
     }
   });
 

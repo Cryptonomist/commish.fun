@@ -24,13 +24,24 @@
      NEVER TOUCHES IT. The field carries chalk, tiles, sprites and panel edges.
      Every word on this site sits on a panel laid over it.
 
-     That rule is not stylistic. Measured on #24492E, the old cream-dim came to
-     4.00:1, action to 3.55:1 and out to 2.93:1, which is a fail, a fail and a
-     total failure respectively. Moving type off the grass makes the whole
-     class of problem stop existing, and the token fixes below are the belt to
-     that braces. */
-  --color-turf: #24492e;       /* the field. Body ground. Decoration only. */
-  --color-turf-2: #1b3724;     /* mow stripe, zebra rows. 1.28:1, a hint. */
+     That rule is not stylistic. Measured on this ground, cream-dim comes to
+     3.76:1, action to 2.72:1 and out to 2.24:1: a fail, a fail and a total
+     failure. Moving type off the grass makes the whole class of problem stop
+     existing, and the token fixes below are the belt to that braces.
+
+     THE GROUND LIFTED FROM #24492E TO #2C5C39, and every ratio below was
+     remeasured for it rather than left to rot. What survives the move is the
+     bright end of the palette, which is the only end allowed out here anyway:
+     chalk 7.60 and cream 6.90, both legal at any size. What did NOT survive is
+     the -lit pair, and that is worth knowing before reaching for one: they
+     were built as the escape hatch for small orange or red type ON the grass,
+     at 4.65 and 4.68, and on this ground they measure 3.56 and 3.59. They are
+     not that escape hatch any more. Neither has a call site, which is why the
+     move was safe; the outline in .field-action is the mechanism that actually
+     carries orange over grass, and it resolves against panel, not turf, so it
+     did not move at all. */
+  --color-turf: #2c5c39;       /* the field. Body ground. Decoration only. */
+  --color-turf-2: #22492d;     /* mow stripe, zebra rows. 1.31:1, a hint. */
   --color-panel: #0b1710;      /* every surface that carries type */
   --color-rule: #2e5b3b;       /* hairlines and dividers inside a panel */
   --color-chalk: #fbfdf8;      /* field paint, panel frames, glyph outlines */
@@ -71,30 +82,37 @@
      is the lightest this can be before half the wordmark stops being type and
      becomes decoration. Anything greener than this needs a different orange,
      not a bolder ground. */
-  --color-cream: #f0f2ec;      /* type. 9.01 on turf, 16.27 on panel */
-  /* Was #98A69B, which measured 4.00:1 on turf and therefore failed AA on the
-     ground it now has to sit near. This one value fixes every placeholder,
-     helper line and micro-label in the codebase at once. */
-  --color-cream-dim: #a9b8ac;  /* 4.91 on turf, 8.86 on panel */
+  --color-cream: #f0f2ec;      /* type. 6.90 on turf, 16.27 on panel */
+  /* Was #98A69B, which failed AA on the ground it has to sit near. This one
+     value fixes every placeholder, helper line and micro-label in the codebase
+     at once. It is a PANEL ink: on the lifted ground it measures 3.76 and is
+     not legal on grass, which costs nothing because it is never put there. */
+  --color-cream-dim: #a9b8ac;  /* 3.76 on turf, 8.86 on panel */
 
   /* THE ORANGE RULE, and it is worth stating so it cannot be misread.
-     --color-action stays the brand, the fill, and large display type. On turf
-     it measures 3.56:1, which clears large text and UI borders and fails
-     ordinary text. So anything orange, small, and on the grass uses
-     action-lit. In practice that is the wordmark's .FUN and almost nothing
-     else. On a panel, plain action is 6.42:1 and legal at any size. */
-  --color-action: #ff6a2b;     /* 3.56 on turf, 6.42 on panel */
-  --color-action-lit: #ff9450; /* 4.65 on turf. Small orange type only. */
+     --color-action stays the brand and the fill. On the lifted ground it
+     measures 2.72:1, which is decoration and nothing else: it no longer clears
+     even the 3:1 that large display text wants. That is not the problem it
+     sounds like, because no orange on this site resolves against grass. The
+     one word that sits out there, the wordmark's .FUN, carries the
+     panel-coloured ring in .field-action, and the pair the eye resolves is
+     action on panel at 6.42:1, legal at any size. Orange without that ring
+     does not go on the field. */
+  --color-action: #ff6a2b;     /* 2.72 on turf: RINGED OR NOT AT ALL. 6.42 on panel */
+  /* Unused. It was the small-orange-on-grass escape hatch at 4.65 and this
+     ground costs it that job. The ring replaced it before the ground moved. */
+  --color-action-lit: #ff9450; /* 3.56 on turf. */
   --color-action-hi: #ff8551;  /* hover fill */
-  --color-gold: #e9c258;       /* MONEY ONLY. 5.96 on turf. */
-  --color-alive: #57e08a;      /* still in. 6.02 on turf. */
+  --color-gold: #e9c258;       /* MONEY ONLY. 4.57 on turf, 10.77 on panel. */
+  --color-alive: #57e08a;      /* still in. 4.61 on turf, 10.87 on panel. */
 
-  /* Out is a FILL on turf and never a letterform there: 2.93:1 is not a number
+  /* Out is a FILL on turf and never a letterform there: 2.24:1 is not a number
      you read "you are out" at. An eliminated tile is a red block with
-     panel-coloured ink on it, which measures 5.29:1. Where out must be type on
-     the grass, out-lit carries it. */
-  --color-out: #ec565b;        /* 2.93 on turf: FILL ONLY. 5.29 with panel ink. */
-  --color-out-lit: #ff9094;    /* 4.68 on turf. Small out type or an out border. */
+     panel-coloured ink on it, which measures 5.29:1. */
+  --color-out: #ec565b;        /* 2.24 on turf: FILL ONLY. 5.29 with panel ink. */
+  /* Unused, and no longer the fallback it was built to be: 4.68 on the old
+     ground, 3.59 on this one. Red type over grass needs the ring. */
+  --color-out-lit: #ff9094;    /* 3.59 on turf. */
 
   /* INK ON ANY BRIGHT FILL IS PANEL, one rule, no exceptions: on action
      6.42:1, on gold 10.77:1, on alive 10.87:1, on out 5.29:1. Cream on an out
@@ -200,14 +218,14 @@ body {
    and the mow stripes are real.
 
    Stripes are 96px and run vertically the way a mown field does from a camera
-   behind the endzone. --color-turf-2 sits 1.28:1 off turf, which is a hint
+   behind the endzone. --color-turf-2 sits 1.31:1 off turf, which is a hint
    rather than a pattern: visible when you look for it, invisible when you are
    reading something laid over it. Anything stronger and every panel on the
    site would be sitting on a barcode. */
 .field-ground {
   background-color: var(--color-turf);
   background-image:
-    /* Eight vertical mow bands across the viewport, at 1.28:1 against turf.
+    /* Eight vertical mow bands across the viewport, at 1.31:1 against turf.
        Wide enough to read as mowing rather than as stripes. */
     repeating-linear-gradient(
       90deg,
@@ -294,8 +312,8 @@ body {
    that cost the hero its field: the copy went onto a black slab and the green
    the whole direction is built on ended up hidden behind it.
 
-   The REAL rule is narrower. What fails on turf is cream-dim (4.91:1), action
-   (3.56:1) and out (2.93:1). Chalk measures 9.92:1 there and cream 9.01:1, and
+   The REAL rule is narrower. What fails on turf is cream-dim (3.76:1), action
+   (2.72:1) and out (2.24:1). Chalk measures 7.60:1 there and cream 6.90:1, and
    both are comfortably legal at any size. So words on the field are allowed,
    they just have to be the bright end of the palette.
 
@@ -320,7 +338,7 @@ body {
 
 /* THE BRAND ORANGE, ON THE FIELD, WITHOUT COMPROMISE.
    The wordmark's .FUN was switched to a lighter #FF9450 because plain action
-   measures 3.56:1 on turf and fails as small type. That was correct and it was
+   measures 2.72:1 on turf and fails as small type. That was correct and it was
    also visibly the wrong orange: the tile beside it is #FF6A2B, and two oranges
    an inch apart read as a mistake rather than as a rule.
 
@@ -342,7 +360,7 @@ body {
 }
 
 /* The headline: the same outline, plus the orange offset print behind it. The
-   orange is decoration at 3.56:1 rather than type, which is what keeps it
+   orange is decoration at 2.72:1 rather than type, which is what keeps it
    legal on the field. */
 .field-display {
   color: var(--color-chalk);

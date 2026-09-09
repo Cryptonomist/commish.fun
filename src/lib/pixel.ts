@@ -31,8 +31,8 @@ import {
 export const PX = {
   chalk: "#FBFDF8",
   panel: "#0B1710",
-  turf: "#24492E",
-  turf2: "#1B3724",
+  turf: "#2C5C39",
+  turf2: "#22492D",
   gold: "#E9C258",
   action: "#FF6A2B",
   out: "#EC565B",
@@ -220,12 +220,15 @@ export function drawField(
    * name in it, and it is the single thing that makes a strip of green look
    * like a stadium rather than a lawn.
    *
-   * The name runs down the screen because endzone lettering runs parallel to
-   * the goal line, and from this camera that is the short way across.
+   * The name runs across the screen's short way because endzone lettering runs
+   * parallel to the goal line. The two ends get opposite facings so that both
+   * read from the field rather than from behind the posts; `drawRun` in
+   * fieldfont.ts carries the reasoning, which is less obvious than it sounds
+   * and was wrong the first time.
    */
   for (const [from, to, facing] of [
-    [0, f.ownGoal, 1],
-    [f.goal, f.world, -1],
+    [0, f.ownGoal, -1],
+    [f.goal, f.world, 1],
   ] as const) {
     if (!near(from, to)) continue;
     ctx.fillStyle = PX.endzone;
@@ -344,7 +347,7 @@ export function drawField(
  * The dark keyline is what lets the orange survive down here. Plain action on
  * this endzone green is a weak contrast and the .FUN went muddy without it;
  * the same panel-coloured ring the header uses fixes it the same way. */
-const WORDMARK: Segment[] = [
+export const WORDMARK: Segment[] = [
   { text: "COMMISH", fill: PX.chalk },
   { text: ".FUN", fill: PX.action },
 ];
@@ -355,8 +358,8 @@ const WORDMARK: Segment[] = [
  * sixty pixel endzone, which reads as a caption rather than as paint. Tighter
  * tracking at three is the trade, and at three pixels a stroke it is the
  * letterforms that carry the wordmark, not the air between them. */
-const ENDZONE_SCALE = 3;
-const ENDZONE_TRACKING = 1;
+export const ENDZONE_SCALE = 3;
+export const ENDZONE_TRACKING = 1;
 const NUM_INSET = 7;
 const NUM_INK = "rgba(251,253,248,0.34)";
 

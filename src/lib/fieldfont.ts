@@ -132,10 +132,19 @@ function cellsCached(run: Segment[], gap: number): Cell[] {
  * `runLength` long, with its top-left corner at (x, y).
  *
  * WHICH WAY IT FACES IS THE WHOLE POINT, and it differs between the two ends
- * of the field. Endzone lettering is painted to be read from the field, so the
- * tops of the letters point at the middle of it: to the RIGHT in your endzone
- * and to the LEFT in theirs. Painting both the same way, which is what the
- * first version did, leaves one of them addressing the back wall.
+ * of the field.
+ *
+ * YOU READ WRITING ON THE GROUND FROM THE SIDE ITS FEET ARE ON. Stand over a
+ * word painted on grass: for it to look upright, its top has to point AWAY
+ * from you, because that is the direction your own sense of up projects onto
+ * the ground in front of you. Stand at the top end instead and the word is
+ * upside down. This is worth spelling out because it is easy to get backwards,
+ * and it was: the first version reasoned that the tops face the reader, put
+ * them toward the middle of the field at both ends, and produced an endzone
+ * legible only to somebody standing behind the goalposts.
+ *
+ * So the FEET point at the middle of the field, which means the tops point at
+ * the back wall: tops to the LEFT in your endzone and to the RIGHT in theirs.
  *
  *   facing  1  tops point right (+x), and the text runs down the screen
  *   facing -1  tops point left  (-x), and the text runs up it

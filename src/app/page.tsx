@@ -114,8 +114,8 @@ export default async function Home() {
           {/* TYPE DOES NOT TOUCH TURF, and this is where that rule earns its
               keep. It shipped for ten minutes with the headline and body copy
               straight on the grass and the yard numbers running through them:
-              cream-dim at 4.91:1 over a moving background, which is legal by a
-              hair and genuinely hard to read. The copy sits on a panel now and
+              cream-dim at 3.76:1 over a moving background, which is not legal at
+              all and was hard to read anyway. The copy sits on a panel now and
               the field is the thing the panel is mounted on. */}
           {/* THE FIELD IS AS TALL AS THE WORDS ON IT, which is what makes this
               padding a proportion decision rather than a spacing one. The turf
@@ -140,8 +140,8 @@ export default async function Home() {
             {/* NO SLAB. The copy sits straight on the field again.
                 The panel version was legible and hid the grass, which is the
                 one thing this whole direction is built on. The fix is not a
-                black rectangle, it is picking the right ink: chalk is 9.92:1
-                on turf and cream is 9.01:1, both legal at any size, and the
+                black rectangle, it is picking the right ink: chalk is 7.60:1
+                on turf and cream is 6.90:1, both legal at any size, and the
                 panel-coloured outline holds them against a mow band or a yard
                 number passing behind a letter. Only cream-dim, action and out
                 are illegal out here, and none of them is used. */}
