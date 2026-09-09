@@ -38,6 +38,14 @@ somebody acts. It knows a veto happened without keeping any state of its own:
 a veto clears `pending_week` but leaves `pending_posted_ts`, so "nothing is
 pending, yet something was posted after this week's lock" has one meaning.
 
+ESPN is the gate. It is unmetered and is polled every tick; api-sports gives
+a hundred calls a day for free, and a week takes four days to play. So the
+second feed is asked only once ESPN reports every game final, and even then
+only every tick for six hours after the week's last kickoff and once an hour
+after that. Normal case: one or two calls a week. Worst case, with the second
+feed lagging all day: under sixty. The agreement rule is exactly as strict
+as before.
+
 ## The key
 
 `ORACLE_KEYPAIR` is a keypair generated for this Worker and nothing else.

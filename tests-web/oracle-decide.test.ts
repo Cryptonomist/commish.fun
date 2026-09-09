@@ -11,6 +11,7 @@ import type { Game as Fixture } from "@/lib/season";
 import {
   decideWeek,
   struckDown,
+  weekComplete,
   type Board,
   type Outcome,
 } from "../workers/results-oracle/src/decide";
@@ -118,6 +119,28 @@ describe("the results oracle's decision", () => {
   it("refuses an empty week rather than posting an empty mask", () => {
     const v = decideWeek([], [board("espn", []), board("apisports", [])]);
     expect(v.post).to.equal(false);
+  });
+});
+
+describe("the gate on the metered feed", () => {
+  it("opens only when the first feed has every fixture final", () => {
+    const v = weekComplete(FIXTURES, board("espn", ALL_HOME));
+    expect(v.complete).to.equal(true);
+  });
+
+  it("stays shut while any game is in progress, and says how many are done", () => {
+    const live = [ALL_HOME[0], ALL_HOME[1], { ...ALL_HOME[2], final: false, winner: null }];
+    const v = weekComplete(FIXTURES, board("espn", live));
+    expect(v.complete).to.equal(false);
+    if (v.complete) return;
+    expect(v.reason).to.equal("2 of 3 games final on espn");
+  });
+
+  it("stays shut when a fixture is missing from the first feed", () => {
+    const v = weekComplete(FIXTURES, board("espn", ALL_HOME.slice(1)));
+    expect(v.complete).to.equal(false);
+    if (v.complete) return;
+    expect(v.reason).to.equal("NE@SEA missing from espn");
   });
 });
 

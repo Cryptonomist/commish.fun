@@ -51,7 +51,7 @@ import {
   sendOne,
   type PoolAt,
 } from "./chain";
-import { decideWeek, struckDown, type Board } from "./decide";
+import { decideWeek, struckDown, weekComplete, type Board } from "./decide";
 import { apiSportsFeed, espnFeed, fixtureFeed, type Feed } from "./feeds";
 
 export interface Env {
@@ -155,12 +155,45 @@ export async function runCycle(env: Env): Promise<Summary> {
   }
 
   const feeds = chooseFeeds(env, cluster);
-  const boards = new Map<number, Board[]>();
-  const boardsFor = async (week: number): Promise<Board[]> => {
+  /* One fetch per week per tick, however many pools share the week. The first
+   * feed gates the rest: see weekComplete for why the metered feed is not
+   * asked until the free one says the games are over. */
+  type Fetched = { boards: Board[]; gated: string | null };
+  const boards = new Map<number, Fetched>();
+  const boardsFor = async (week: number): Promise<Fetched> => {
     let b = boards.get(week);
     if (!b) {
-      const settled = await Promise.allSettled(feeds.map((f) => f.week(week, season)));
-      b = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+      const [gate, ...rest] = feeds;
+      const fixtures = gamesFor(week);
+      const first = await gate.week(week, season);
+      const done = weekComplete(fixtures, first);
+      /* THE METERED FEED IS RATIONED, on top of being gated. api-sports allows
+       * a hundred calls a day. Once the first feed says the week is over, the
+       * normal case is that the second agrees on the first or second ask. The
+       * abnormal case is the second feed lagging by hours, and six asks an
+       * hour would reach the quota before it caught up and then starve every
+       * later week that day. So: every tick for six hours after the last
+       * kickoff, which is the window a week actually finishes in, and once an
+       * hour after that. Worst case is thirty-six calls plus twenty-four, and
+       * a week whose second feed never catches up is the commissioner's to
+       * post, as it would be anyway. */
+      const lastKickoff = Math.max(0, ...fixtures.map((g) => g.kickoff));
+      const eager = now < lastKickoff + 6 * 3600;
+      const hourly = Math.floor(now / 3600) !== Math.floor((now - 600) / 3600);
+      if (!done.complete) {
+        b = { boards: [first], gated: done.reason };
+      } else if (!eager && !hourly) {
+        b = {
+          boards: [first],
+          gated: `${gate.name} says the week is over; the metered feed is rationed to once an hour this long after the last kickoff`,
+        };
+      } else {
+        const settled = await Promise.allSettled(rest.map((f) => f.week(week, season)));
+        b = {
+          boards: [first, ...settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))],
+          gated: null,
+        };
+      }
       boards.set(week, b);
     }
     return b;
@@ -216,7 +249,11 @@ export async function runCycle(env: Env): Promise<Summary> {
           return skip(id, `week ${week} was struck down; leaving it to the commissioner`);
         }
 
-        const verdict = decideWeek(gamesFor(week), await boardsFor(week), minAgreeing);
+        const fetched = await boardsFor(week);
+        if (fetched.gated) {
+          return skip(id, `week ${week}: ${fetched.gated}; the other feeds are not asked until it is over`);
+        }
+        const verdict = decideWeek(gamesFor(week), fetched.boards, minAgreeing);
         if (!verdict.post) {
           if (verdict.reason.startsWith("feeds disagree")) {
             await alert(env, `results oracle: ${id} week ${week}: ${verdict.reason}. A commissioner has to post this one.`);

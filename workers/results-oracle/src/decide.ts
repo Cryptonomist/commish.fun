@@ -59,6 +59,37 @@ export type Verdict =
 const key = (home: string, away: string) => `${away}@${home}`;
 
 /**
+ * Does this one board report every fixture as final?
+ *
+ * THE FIRST FEED IS THE GATE. ESPN is unmetered and is polled every tick; the
+ * second feed is metered (api-sports gives a hundred calls a day for free) and
+ * a week takes four days to play, so asking it every ten minutes from Thursday
+ * night to Monday night would burn the quota by Sunday afternoon and leave the
+ * oracle refusing every week for want of a second opinion. So the second feed
+ * is asked only once the first says the week is over: one or two calls a
+ * week, and the agreement rule is exactly as strict as before.
+ */
+export function weekComplete(
+  fixtures: Fixture[],
+  board: Board,
+): { complete: true } | { complete: false; reason: string } {
+  const m = new Map(board.games.map((g) => [key(g.home, g.away), g]));
+  let final = 0;
+  for (const f of fixtures) {
+    const g = m.get(key(f.home, f.away));
+    if (!g) return { complete: false, reason: `${key(f.home, f.away)} missing from ${board.source}` };
+    if (g.final) final++;
+  }
+  if (final < fixtures.length) {
+    return {
+      complete: false,
+      reason: `${final} of ${fixtures.length} games final on ${board.source}`,
+    };
+  }
+  return { complete: true };
+}
+
+/**
  * Was a posting for the current week already made and struck down?
  *
  * THE ORACLE NEVER ARGUES WITH THE MEMBERS. If it posts a week and a majority
