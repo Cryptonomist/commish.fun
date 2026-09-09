@@ -16,6 +16,7 @@
  * thing that varies between two identical sequences of inputs is nothing.
  */
 
+import type { FieldGeometry } from "@/lib/pixel";
 import { SPRITE_H, SPRITE_W } from "@/lib/pixel";
 
 /* ---------------------------------------------------------------- geometry */
@@ -48,6 +49,18 @@ export const OWN_GOAL = 10 * YARD; // 60 — your goal line
 export const START = OWN_GOAL + 20 * YARD; // 180 — your own 20
 export const GOAL = OWN_GOAL + 100 * YARD; // 660 — theirs
 export const WORLD = GOAL + 10 * YARD; // 720 — the back of their endzone
+
+/* The same numbers again, bundled for the thing that paints them. A yard
+ * line that disagrees with the yard the game is counting is worse than no
+ * yard line at all, so the drawing takes its measurements from the simulation
+ * rather than keeping a set of its own. The old field drew lines every four
+ * yards for exactly this reason: nothing connected the two. */
+export const FIELD: FieldGeometry = {
+  yard: YARD,
+  ownGoal: OWN_GOAL,
+  goal: GOAL,
+  world: WORLD,
+};
 
 /** Where a kickoff is fielded: your own five. Deep enough that a return is a
  *  real play rather than a formality, shallow enough that a bad one does not

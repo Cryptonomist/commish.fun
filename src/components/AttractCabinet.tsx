@@ -28,6 +28,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { FIELD } from "@/lib/bowl";
 import { TEAMS } from "@/lib/nfl";
 import { drawCoin, drawField, drawPlayer, PX, SPRITE_H } from "@/lib/pixel";
 import { play, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
@@ -185,7 +186,11 @@ export default function AttractCabinet({
     /* The field, repainted every frame beneath the sprites. This is
        FieldMarkings' logic moved to where it belongs: it is the field the
        players stand on, not a texture behind some text. */
-    const field = () => drawField(ctx, W, H);
+    /* Parked on the fifty, so the loop plays out over the midfield logo
+       rather than on an anonymous patch of grass. The winner walks to W/2 in
+       the payout scene, which is exactly where the mark is. */
+    const CAM = FIELD.ownGoal + 50 * FIELD.yard - W / 2;
+    const field = () => drawField(ctx, W, H, CAM, FIELD);
 
     /* One sprite, shared with the playable drive at /arcade. It used to live
        here, and the moment a second canvas existed that would have meant a

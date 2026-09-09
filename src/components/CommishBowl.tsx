@@ -46,6 +46,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   camera,
   DOWNS,
+  FIELD,
   GOAL,
   gainOf,
   KICK_CATCH,
@@ -58,7 +59,6 @@ import {
   toGo,
   VIEW_H,
   VIEW_W,
-  WORLD,
   YARD,
   yardLine,
   type Input,
@@ -383,39 +383,7 @@ export function CommishBowl() {
 
     const render = () => {
       const camX = camera(w.runner.x);
-      drawField(ctx, VIEW_W, VIEW_H, camX);
-
-      // THE ENDZONE, painted over the field rather than as part of it: it is
-      // a property of this game, not of a football field in general.
-      if (camX + VIEW_W > GOAL) {
-        const gx = Math.round(GOAL - camX);
-        ctx.fillStyle = "rgba(11,23,16,0.55)";
-        ctx.fillRect(gx, 4, VIEW_W - gx, VIEW_H - 9);
-        ctx.fillStyle = "rgba(251,253,248,0.18)";
-        for (let x = gx + 6; x < VIEW_W; x += 8) {
-          ctx.fillRect(x, 5, 1, VIEW_H - 11);
-        }
-        ctx.fillStyle = PX.chalk;
-        ctx.fillRect(gx, 4, 2, VIEW_H - 9);
-
-        /* THE UPRIGHTS, at the back of the endzone where they belong — not on
-         * the goal line, which is where they were and which is a decade out of
-         * date for the professional game.
-         *
-         * Drawn head-on: a base post, a crossbar, and two uprights running well
-         * above it, in the real proportions. And in CHALK, not gold. They were
-         * gold, which breaks the one palette rule this project actually
-         * enforces — gold is money and nothing else, ever. The bar that rises
-         * on a touchdown a few lines below is money and stays gold; the
-         * furniture is painted like the rest of the field. */
-        const post = Math.round(WORLD - camX - 8);
-        const mid = Math.round(VIEW_H / 2);
-        ctx.fillStyle = PX.chalk;
-        ctx.fillRect(post, mid - 2, 2, 26); // base post, down to the ground
-        ctx.fillRect(post - 7, mid - 4, 16, 2); // crossbar
-        ctx.fillRect(post - 7, mid - 26, 2, 22); // upright, near side
-        ctx.fillRect(post + 7, mid - 26, 2, 22); // upright, far side
-      }
+      drawField(ctx, VIEW_W, VIEW_H, camX, FIELD);
 
       // The line of scrimmage in orange, the first-down marker in gold. Two
       // dashed lines, and between them is the entire question the play is

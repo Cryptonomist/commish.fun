@@ -19,6 +19,7 @@
  */
 
 import { Laces } from "@/components/Laces";
+import { PX } from "@/lib/pixel";
 
 /** One end zone as a share of the whole box: ten yards of a hundred and
  *  twenty. */
@@ -68,8 +69,12 @@ const LINES = Array.from({ length: 19 }, (_, i) => (i + 1) * 5);
  * YELLOW, and it is the one exception on this layer. Goalposts are painted
  * yellow and a cream one reads as another chalk line. It is deliberately NOT
  * the gold token: gold means money in this system and nothing else, ever, so
- * this is the goalposts' own colour and carries no other meaning. */
-const POST = "#FFC72C";
+ * this is the goalposts' own colour and carries no other meaning.
+ *
+ * The value now lives in the canvas palette, because the game field paints its
+ * posts the same yellow and two copies of a colour is how two fields slowly
+ * stop matching. */
+const POST = PX.post;
 
 function Uprights({ side }: { side: "left" | "right" }) {
   const edge = side === "left" ? { left: 0 } : { right: 0 };
@@ -190,19 +195,45 @@ export function FieldMarkings() {
           nobody. Our own mark says something true instead, and midfield is
           exactly where a brand belongs.
 
+          IT IS A CIRCLE NOW, because that is what a midfield logo is. This
+          used to be the bare laces floating on the grass at 28% of the box's
+          WIDTH, which meant two things went wrong at once: on a wide screen it
+          grew into a shape the height of the field and read as a graphic laid
+          over a picture of a field rather than as paint on it, and with no
+          edge of its own it had nothing holding it to the fifty.
+
+          So: an orange disc with a chalk rim, an inner keyline, and the mark
+          sitting small in the middle of it. Every real field does exactly
+          this, and the reason it works is the ring — a logo needs a boundary
+          before the eye will accept it as painted ground.
+
+          SIZED OFF THE HEIGHT, not the width. A midfield circle is about
+          twenty yards across a fifty-three yard field, so it is a fraction of
+          how WIDE the field is between the sidelines, and on this layer that
+          is the box's height. Sizing it off the width is what let it grow.
+
           The laces are drawn by the Laces component rather than copied here,
           because the one rule the mark has is that it is never redrawn.
 
           Faint on purpose: the headline sits over this part of the field, and
-          this is a watermark rather than a thing to look at. Below the yard
-          numbers' own 0.16, since it is a far larger shape and equal opacity
-          would not read as equal weight. */}
+          this is a watermark rather than a thing to look at. */}
       <span
         aria-hidden="true"
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-cream/[0.12]"
-        style={{ width: "28%", maxWidth: "22rem" }}
+        className="absolute left-1/2 top-1/2 aspect-square h-[54%] max-h-[19rem] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background: "rgba(255,106,43,0.17)",
+          boxShadow: "inset 0 0 0 2px rgba(240,242,236,0.17)",
+        }}
       >
-        <Laces className="block h-auto w-full" />
+        {/* The inner keyline a painted circle carries, so the rim reads as
+            two strokes of paint rather than one hard edge. */}
+        <span
+          className="absolute inset-[8%] rounded-full"
+          style={{ boxShadow: "inset 0 0 0 1px rgba(255,106,43,0.26)" }}
+        />
+        <span className="absolute inset-0 grid place-items-center text-cream/[0.24]">
+          <Laces className="block h-auto w-[40%]" />
+        </span>
       </span>
 
       <Uprights side="left" />

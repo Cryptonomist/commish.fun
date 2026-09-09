@@ -14,6 +14,14 @@
  * No library, no WebGL, no images, no network.
  */
 
+import {
+  drawTextDown,
+  drawTextUp,
+  GLYPH_H,
+  runLength,
+  RUN_THICKNESS,
+} from "@/lib/fieldfont";
+
 /** The canvas palette. These are the same values as the CSS custom properties
  *  in globals.css, repeated here because a canvas cannot read a CSS variable
  *  without a getComputedStyle call per fill, which at 30fps is a real cost for
@@ -34,6 +42,18 @@ export const PX = {
    * vault holds, and it is blue because USDC is. It is used for coins and for
    * nothing else. */
   usdc: "#2775CA",
+  /* THE GOALPOSTS' OWN YELLOW, and the one exception to the rule above.
+   * Goalposts are painted yellow and a cream one reads as another chalk
+   * line, so they get a colour of their own. It is deliberately NOT
+   * `gold`: gold means money here and nothing else, ever. The hero field
+   * on the landing page paints its posts from this same value rather than
+   * keeping a second copy of the number. */
+  post: "#FFC72C",
+  /* The paint on an endzone. Dark enough that chalk lettering on it reads
+   * at two pixels a stroke, and the same night green the rest of the site
+   * is built on, so the stadium belongs to this brand and not a generic
+   * one. */
+  endzone: "#0B1710",
 } as const;
 
 /* THE USDC MARK, PIXELATED. A blue disc, a white ring inside it, and a dollar
@@ -130,51 +150,309 @@ export const SPRITE_W = 8;
  * TUNED against it must not, and `touching` in bowl.ts says so at the site. */
 export const SPRITE_H = 16;
 
+/** Where the marks go. The simulation owns these numbers, because a yard line
+ *  that disagrees with the yard the game is counting is worse than no yard
+ *  line at all, so they are passed in rather than written down twice. */
+export type FieldGeometry = {
+  /** Logical pixels per yard. */
+  yard: number;
+  /** World x of your goal line. The back of your endzone is x = 0. */
+  ownGoal: number;
+  /** World x of their goal line. */
+  goal: number;
+  /** World x of the back of their endzone: the far end line. */
+  world: number;
+};
+
 /* THE FIELD.
  *
  * `camX` is the world coordinate at the left edge of the viewport, so the
- * landing page passes 0 and gets a static field while the game passes a moving
- * camera and gets the same field scrolling under it. Marks are positioned in
- * world space and then offset, which is the only way a mow band stays attached
- * to the same patch of grass as the camera moves — computing them in screen
- * space makes the whole field slide against itself.
+ * landing page passes a fixed one and gets a static view while the game passes
+ * a moving camera and gets the same field scrolling under it. Marks are
+ * positioned in world space and then offset, which is the only way a mow band
+ * stays attached to the same patch of grass as the camera moves. Computing
+ * them in screen space makes the whole field slide against itself.
+ *
+ * THE YARD LINES USED TO BE A LIE. They were drawn every 24 logical pixels,
+ * and a yard is 6, so they fell every FOUR yards and were anchored to the
+ * origin of the world rather than to a goal line. Nothing depended on them, so
+ * nothing complained: they were decoration that happened to look like
+ * measurement. The moment this field carries numbers they stop being
+ * decoration, because a 30 painted on the 32 is not a stylistic choice. They
+ * now come off `f.ownGoal` and step five real yards at a time.
  */
 export function drawField(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
-  camX = 0,
+  camX: number,
+  f: FieldGeometry,
 ): void {
+  /** World x to screen x. Everything below goes through this. */
+  const sx = (worldX: number) => Math.round(worldX - camX);
+  /** Is any of [a, b) on screen? Saves the work of drawing a whole endzone
+   *  that is four hundred pixels off the left edge. */
+  const near = (a: number, b: number) => sx(b) > -2 && sx(a) < w + 2;
+
+  const TOP = 4;
+  const BOT = h - 5;
+
   ctx.fillStyle = PX.turf;
   ctx.fillRect(0, 0, w, h);
 
   // Mow bands, 32 world pixels wide, every other one darker.
   const BAND = 32;
-  const first = Math.floor(camX / BAND) - 1;
-  const last = Math.ceil((camX + w) / BAND) + 1;
+  const firstBand = Math.floor(camX / BAND) - 1;
+  const lastBand = Math.ceil((camX + w) / BAND) + 1;
   ctx.fillStyle = PX.turf2;
-  for (let b = first; b <= last; b++) {
+  for (let b = firstBand; b <= lastBand; b++) {
     if (((b % 2) + 2) % 2 !== 0) continue;
-    ctx.fillRect(Math.round(b * BAND - camX), 0, BAND, h);
+    ctx.fillRect(sx(b * BAND), 0, BAND, h);
   }
 
-  // Sidelines, 4px in from the top and bottom.
+  /* THE ENDZONES, painted rather than shaded.
+   *
+   * These used to be a wash of translucent black with a rake through it, laid
+   * over the field by the game component after the fact. That reads as a
+   * shadow on the grass. A real endzone is a different colour of paint with a
+   * name in it, and it is the single thing that makes a strip of green look
+   * like a stadium rather than a lawn.
+   *
+   * The name runs down the screen because endzone lettering runs parallel to
+   * the goal line, and from this camera that is the short way across.
+   */
+  for (const [from, to] of [
+    [0, f.ownGoal],
+    [f.goal, f.world],
+  ]) {
+    if (!near(from, to)) continue;
+    ctx.fillStyle = PX.endzone;
+    ctx.fillRect(sx(from), TOP, sx(to) - sx(from), BOT - TOP + 1);
+
+    const runH = runLength(ENDZONE_TEXT) * ENDZONE_SCALE;
+    const runW = RUN_THICKNESS * ENDZONE_SCALE;
+    drawTextDown(
+      ctx,
+      ENDZONE_TEXT,
+      sx(from) + Math.round((to - from - runW) / 2),
+      TOP + Math.round((BOT - TOP - runH) / 2),
+      ENDZONE_SCALE,
+      PX.chalk,
+      PX.panel,
+    );
+  }
+
+  // Sidelines, and the end lines that close the box.
   ctx.fillStyle = "rgba(251,253,248,0.35)";
-  ctx.fillRect(0, 4, w, 1);
-  ctx.fillRect(0, h - 5, w, 1);
-
-  // Five-yard lines.
-  ctx.fillStyle = "rgba(251,253,248,0.22)";
-  for (let x = Math.floor(camX / 24) * 24; x < camX + w; x += 24) {
-    ctx.fillRect(Math.round(x - camX), 4, 1, h - 9);
+  ctx.fillRect(0, TOP, w, 1);
+  ctx.fillRect(0, BOT, w, 1);
+  for (const end of [0, f.world]) {
+    if (near(end, end)) ctx.fillRect(sx(end), TOP, 1, BOT - TOP);
   }
 
-  // Hash marks, two rows.
-  ctx.fillStyle = "rgba(251,253,248,0.18)";
-  for (let x = Math.floor(camX / 12) * 12; x < camX + w; x += 12) {
-    const sx = Math.round(x - camX);
-    ctx.fillRect(sx, Math.round(h * 0.28), 2, 1);
-    ctx.fillRect(sx, Math.round(h * 0.72), 2, 1);
+  /* Yard lines every five yards, walked out from your goal line so they land
+   * on real yards. The tens are brighter than the fives, the way they are on
+   * grass. */
+  const firstLine = Math.max(0, Math.floor((camX - f.ownGoal) / f.yard / 5) * 5);
+  for (let yd = firstLine; yd <= 100; yd += 5) {
+    const x = sx(f.ownGoal + yd * f.yard);
+    if (x > w + 2) break;
+    if (x < -2) continue;
+    ctx.fillStyle =
+      yd % 10 === 0 ? "rgba(251,253,248,0.30)" : "rgba(251,253,248,0.18)";
+    ctx.fillRect(x, TOP, 1, BOT - TOP);
+  }
+
+  // The goal lines, the brightest marks on any field.
+  ctx.fillStyle = "rgba(251,253,248,0.75)";
+  for (const g of [f.ownGoal, f.goal]) {
+    if (near(g, g)) ctx.fillRect(sx(g), TOP, 1, BOT - TOP);
+  }
+
+  /* HASH MARKS, EVERY YARD. The NFL sets its hashes 70 feet 9 inches in from
+   * each sideline, which is a far narrower pair than college football's and is
+   * the most recognisable thing about these markings. They stop at the goal
+   * lines, because an endzone carries none. */
+  ctx.fillStyle = "rgba(251,253,248,0.20)";
+  const hashTop = Math.round(TOP + (BOT - TOP) * 0.42);
+  const hashBot = Math.round(TOP + (BOT - TOP) * 0.58);
+  const firstHash = Math.max(0, Math.floor((camX - f.ownGoal) / f.yard));
+  for (let yd = firstHash; yd <= 100; yd++) {
+    if (yd % 5 === 0) continue; // the yard line is already there
+    const x = sx(f.ownGoal + yd * f.yard);
+    if (x > w + 2) break;
+    if (x < -2) continue;
+    ctx.fillRect(x, hashTop, 1, 1);
+    ctx.fillRect(x, hashBot, 1, 1);
+  }
+
+  /* THE MIDFIELD LOGO, under everything that moves. */
+  const midX = f.ownGoal + 50 * f.yard;
+  if (near(midX - LOGO_R, midX + LOGO_R)) {
+    drawMidfieldLogo(ctx, sx(midX), Math.round((TOP + BOT) / 2));
+  }
+
+  /* THE NUMBERS, and they are UPRIGHT rather than lying on their side.
+   *
+   * A real field paints them rotated, and the far row upside down from the
+   * near one, which is what the arcade games of this era copied. The hero
+   * field on the landing page already decided against reproducing that, for a
+   * reason that applies just as well here: an upside-down number on a screen
+   * reads as a rendering fault rather than as a field. The two fields agree,
+   * which matters more than either of them matching a photograph.
+   *
+   * The arrow is the whole difference between a football field and a ruler.
+   * The fifty does not get one, because it is not counting toward anything.
+   */
+  for (let yd = 10; yd <= 90; yd += 10) {
+    const x = sx(f.ownGoal + yd * f.yard);
+    if (x < -20 || x > w + 20) continue;
+    const label = String(yd <= 50 ? yd : 100 - yd);
+    const labelW = runLength(label);
+    const lx = x - Math.round(labelW / 2);
+    for (const y of [NUM_INSET, h - NUM_INSET - GLYPH_H]) {
+      drawTextUp(ctx, label, lx, y, 1, NUM_INK);
+      if (yd !== 50) {
+        arrow(ctx, yd < 50 ? lx - 5 : lx + labelW + 2, y + 1, yd < 50 ? -1 : 1);
+      }
+    }
+  }
+
+  /* THE UPRIGHTS, at the back of BOTH endzones. They used to exist only at the
+   * far end, drawn by the game component, which meant a kickoff return started
+   * in an endzone with no goalpost in it.
+   *
+   * YELLOW, and it is the one exception to this palette. Goalposts are painted
+   * yellow and a cream one reads as another chalk line. It is deliberately NOT
+   * PX.gold: gold means money in this system and nothing else, ever, so the
+   * posts carry their own colour and no other meaning. Same value as the hero
+   * field's, imported from here so there is one of it.
+   */
+  for (const end of [POST_INSET, f.world - POST_INSET]) {
+    if (!near(end - 10, end + 10)) continue;
+    uprights(ctx, sx(end), Math.round((TOP + BOT) / 2));
+  }
+}
+
+const ENDZONE_TEXT = "COMMISH.FUN";
+const ENDZONE_SCALE = 2;
+const NUM_INSET = 7;
+const NUM_INK = "rgba(251,253,248,0.34)";
+
+/** A stepped triangle, pointing at the goal line the number counts toward.
+ *  `dir` is -1 for left, 1 for right. Five rows, drawn rather than typed,
+ *  because a font's arrow next to a bitmap number is the most obvious thing on
+ *  the field. */
+function arrow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  dir: -1 | 1,
+): void {
+  ctx.fillStyle = NUM_INK;
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(x + (dir === 1 ? i : 2 - i), y + i, 1, 5 - i * 2);
+  }
+}
+
+/* How far in from the end line the posts stand.
+ *
+ * Twelve rather than eight, which is not a matter of taste. The camera cannot
+ * travel past the end line, so at eight the far post's outer upright sat in
+ * the last two columns of the viewport and was sliced in half by the edge of
+ * the screen — a goalpost with one leg. Twelve puts the whole crossbar inside
+ * the frame at both ends. Found by rendering it, not by reading it. */
+const POST_INSET = 12;
+
+/* Head on: a base post down to the ground, a crossbar, and two uprights well
+ * above it. Real goalposts are narrow things, and drawing them wide is the
+ * usual tell that somebody guessed. */
+function uprights(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  mid: number,
+): void {
+  ctx.fillStyle = PX.post;
+  ctx.fillRect(x, mid - 2, 2, 26); // base post, down to the ground
+  ctx.fillRect(x - 7, mid - 4, 16, 2); // crossbar
+  ctx.fillRect(x - 7, mid - 26, 2, 22); // upright, near side
+  ctx.fillRect(x + 7, mid - 26, 2, 22); // upright, far side
+}
+
+/** Radius of the painted circle at midfield. */
+const LOGO_R = 25;
+
+/* THE MARK AT THE FIFTY, which is where a field carries the badge of whoever
+ * owns it. This is ours: the laces on an orange disc, painted on the grass.
+ *
+ * NOT THE LEAGUE'S SHIELD, and that is a decision rather than an oversight. A
+ * shield at midfield is the strongest visual claim there is that a field is an
+ * official one, and this product holds people's money and says plainly on
+ * three pages that it is affiliated with nobody.
+ */
+function drawMidfieldLogo(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+): void {
+  /* A filled disc, scanline by scanline. Two of them: a chalk rim a pixel
+   * proud of the orange, so the mark sits on the grass rather than floating
+   * over it.
+   *
+   * THE ORANGE IS NOT OPAQUE, and that is the difference between a logo
+   * painted on a field and a sticker stuck to one. At full strength this is by
+   * some distance the brightest thing on the screen, brighter than the ball
+   * carrier, and the eye goes to it instead of to the play. Letting a quarter
+   * of the grass through mutes it to about what paint on turf actually looks
+   * like, and the mow bands still read faintly underneath it, which is the
+   * detail that sells it. */
+  for (const [r, colour] of [
+    [LOGO_R, "rgba(251,253,248,0.38)"],
+    [LOGO_R - 1, "rgba(255,106,43,0.74)"], // PX.action, thinned
+  ] as const) {
+    ctx.fillStyle = colour;
+    for (let dy = -r; dy <= r; dy++) {
+      const half = Math.round(Math.sqrt(r * r - dy * dy));
+      ctx.fillRect(cx - half, cy + dy, half * 2 + 1, 1);
+    }
+  }
+  drawLaces(ctx, cx, cy, 26, PX.pants);
+}
+
+/* THE LACES, drawn rather than imported, because the component that owns the
+ * mark is an SVG and this is a canvas.
+ *
+ * The proportions are lifted from that SVG exactly: against a spine of height
+ * H, the spine is 0.107H wide, each of the four ticks is 0.583H wide and
+ * 0.107H tall, and their centres sit at 0.321H and 0.107H either side of the
+ * middle. The 14 degree tilt is applied as a shear, one row at a time, which
+ * is the only way to rotate anything in a picture made of squares.
+ */
+export function drawLaces(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  height: number,
+  colour: string,
+): void {
+  const TILT = 0.242; // sin 14 degrees: the top leans left, the foot right
+  const spineW = Math.max(1, Math.round(height * 0.107));
+  const tickW = Math.round(height * 0.583);
+  const tickH = Math.max(1, Math.round(height * 0.107));
+  const half = Math.round(height / 2);
+
+  ctx.fillStyle = colour;
+  const bar = (top: number, rows: number, wide: number) => {
+    for (let i = 0; i < rows; i++) {
+      const y = top + i;
+      const lean = Math.round((y - cy) * TILT);
+      ctx.fillRect(cx + lean - Math.floor(wide / 2), y, wide, 1);
+    }
+  };
+
+  bar(cy - half, half * 2 + 1, spineW);
+  for (const at of [-0.321, -0.107, 0.107, 0.321]) {
+    bar(cy + Math.round(at * height) - Math.floor(tickH / 2), tickH, tickW);
   }
 }
 
