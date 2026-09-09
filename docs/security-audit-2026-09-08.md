@@ -315,7 +315,8 @@ three lockfiles are committed.
    accepted by the cold key with the hot key paying the fee. Every admin
    action from here on (`set-oracle.ts`, `admin-transfer.ts`, a future
    `update_config`) is `KEYPAIR=<stick path> …` with the stick plugged in.
-4. Hardware 2FA on GitHub, Vercel, Cloudflare, Helius, X developer (finding 2).
+4. ~~Hardware 2FA on GitHub, Vercel, Cloudflare, Helius, X developer, Telegram
+   and the recovery email~~ — **done 2026-09-09** (owner's report).
 5. Vercel: preview Deployment Protection, sensitive env vars, spend cap;
    confirm the D1 token scope (finding 2).
 6. `shred -u` the local oracle key copy and the spent buffer key (finding 3).
