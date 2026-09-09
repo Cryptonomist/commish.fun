@@ -1193,3 +1193,101 @@ export function readableProgramError(err: unknown): string {
   }
   return text.split("\n")[0].slice(0, 200);
 }
+
+/* ── Admin handover ───────────────────────────────────────────────────────────
+ *
+ * Two-step transfer of Config.admin: the admin proposes a key, that key
+ * accepts. See AdminTransfer in state.rs. The site never sends these; they
+ * exist for scripts/admin-transfer.ts, and they are here rather than in the
+ * script so the encoding comes from the same vendored IDL as everything
+ * else. */
+
+export function adminTransferPda(): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [utils.bytes.utf8.encode("admin_transfer")],
+    PROGRAM_ID,
+  )[0];
+}
+
+export type ConfigView = {
+  admin: PublicKey;
+  feeTreasury: PublicKey;
+  defaultFeeBps: number;
+  defaultFeeCap: bigint;
+  paused: boolean;
+  bump: number;
+};
+
+export function decodeConfig(data: Uint8Array): ConfigView {
+  const raw = coder.accounts.decode("Config", Buffer.from(data)) as {
+    admin: PublicKey;
+    fee_treasury: PublicKey;
+    default_fee_bps: number;
+    default_fee_cap: BN;
+    paused: boolean;
+    bump: number;
+  };
+  return {
+    admin: new PublicKey(raw.admin),
+    feeTreasury: new PublicKey(raw.fee_treasury),
+    defaultFeeBps: raw.default_fee_bps,
+    defaultFeeCap: BigInt(raw.default_fee_cap.toString()),
+    paused: raw.paused,
+    bump: raw.bump,
+  };
+}
+
+export type AdminTransferView = { pending: PublicKey; bump: number };
+
+export function decodeAdminTransfer(data: Uint8Array): AdminTransferView {
+  const raw = coder.accounts.decode("AdminTransfer", Buffer.from(data)) as {
+    pending: PublicKey;
+    bump: number;
+  };
+  return { pending: new PublicKey(raw.pending), bump: raw.bump };
+}
+
+/** Name, or replace, the key that may take over. The signer must be the admin. */
+export function buildProposeAdmin(args: {
+  admin: PublicKey;
+  newAdmin: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: configPda(), isSigner: false, isWritable: false },
+      { pubkey: adminTransferPda(), isSigner: false, isWritable: true },
+      { pubkey: args.admin, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: coder.instruction.encode("propose_admin", { new_admin: args.newAdmin }),
+  });
+}
+
+/** Take over. The signer must be the key the admin proposed. */
+export function buildAcceptAdmin(args: { pending: PublicKey }): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: configPda(), isSigner: false, isWritable: true },
+      { pubkey: adminTransferPda(), isSigner: false, isWritable: true },
+      { pubkey: args.pending, isSigner: true, isWritable: true },
+    ],
+    data: coder.instruction.encode("accept_admin", {}),
+  });
+}
+
+/** Withdraw a proposal. The signer must be the admin. */
+export function buildCancelAdminTransfer(args: {
+  admin: PublicKey;
+}): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: configPda(), isSigner: false, isWritable: false },
+      { pubkey: adminTransferPda(), isSigner: false, isWritable: true },
+      { pubkey: args.admin, isSigner: true, isWritable: true },
+    ],
+    data: coder.instruction.encode("cancel_admin_transfer", {}),
+  });
+}

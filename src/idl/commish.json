@@ -8,6 +8,81 @@
   },
   "instructions": [
     {
+      "name": "accept_admin",
+      "docs": [
+        "The proposed key takes over. Signed by that key and nobody else, which",
+        "is what proves the key exists and is held before Config is rewritten.",
+        "The proposal account closes on the way out."
+      ],
+      "discriminator": [
+        112,
+        42,
+        45,
+        90,
+        116,
+        181,
+        13,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "transfer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  116,
+                  114,
+                  97,
+                  110,
+                  115,
+                  102,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "transfer"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "advance_week",
       "docs": [
         "Close the week: either the pool is decided, or it moves on."
@@ -38,6 +113,78 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_admin_transfer",
+      "docs": [
+        "Withdraw a proposal. Admin only."
+      ],
+      "discriminator": [
+        38,
+        131,
+        157,
+        31,
+        240,
+        137,
+        44,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "transfer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  116,
+                  114,
+                  97,
+                  110,
+                  115,
+                  102,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         }
       ],
       "args": []
@@ -158,7 +305,7 @@
     {
       "name": "close_member",
       "docs": [
-        "Rent hygiene. Only after this member is done with the pool."
+        "Rent hygiene. Only once this pool can never owe this member anything."
       ],
       "discriminator": [
         221,
@@ -838,6 +985,89 @@
       ]
     },
     {
+      "name": "propose_admin",
+      "docs": [
+        "Name the key that may take over as admin. Admin only; nothing changes",
+        "until that key calls `accept_admin`. Calling this again replaces the",
+        "proposal."
+      ],
+      "discriminator": [
+        121,
+        214,
+        199,
+        212,
+        87,
+        39,
+        117,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "transfer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  116,
+                  114,
+                  97,
+                  110,
+                  115,
+                  102,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "new_admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "reclaim_dues",
       "docs": [
         "The deadman switch.",
@@ -1322,6 +1552,19 @@
   ],
   "accounts": [
     {
+      "name": "AdminTransfer",
+      "discriminator": [
+        8,
+        226,
+        88,
+        128,
+        195,
+        48,
+        234,
+        110
+      ]
+    },
+    {
       "name": "Config",
       "discriminator": [
         155,
@@ -1375,6 +1618,45 @@
     }
   ],
   "events": [
+    {
+      "name": "AdminAccepted",
+      "discriminator": [
+        174,
+        12,
+        76,
+        139,
+        158,
+        99,
+        110,
+        254
+      ]
+    },
+    {
+      "name": "AdminProposed",
+      "discriminator": [
+        129,
+        249,
+        226,
+        227,
+        199,
+        82,
+        110,
+        243
+      ]
+    },
+    {
+      "name": "AdminTransferCancelled",
+      "discriminator": [
+        93,
+        23,
+        69,
+        55,
+        216,
+        128,
+        106,
+        56
+      ]
+    },
     {
       "name": "DuesLocked",
       "discriminator": [
@@ -1883,9 +2165,100 @@
       "code": 6051,
       "name": "BadFeeTreasury",
       "msg": "That token account is not the pool's fee treasury"
+    },
+    {
+      "code": 6052,
+      "name": "FeeTooHigh",
+      "msg": "The platform fee cannot exceed 10%"
+    },
+    {
+      "code": 6053,
+      "name": "StillOwed",
+      "msg": "Claim what this pool owes you before closing the account"
+    },
+    {
+      "code": 6054,
+      "name": "BadAdmin",
+      "msg": "That is not a usable admin key"
     }
   ],
   "types": [
+    {
+      "name": "AdminAccepted",
+      "docs": [
+        "The successor accepted. `previous` administers nothing from here on."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AdminProposed",
+      "docs": [
+        "The admin named a successor. Nothing changes until that key accepts."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AdminTransfer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pending",
+            "docs": [
+              "The key that may call `accept_admin`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AdminTransferCancelled",
+      "docs": [
+        "The admin withdrew a proposal before it was accepted."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "Config",
       "type": {

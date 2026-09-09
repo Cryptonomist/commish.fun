@@ -30,11 +30,16 @@
 //!
 //! ## Trust, stated honestly
 //!
-//! Results enter through the commissioner, checked by members against any
-//! public scoreboard. There is no oracle here and the program does not pretend
-//! otherwise. What it guarantees is that a bad posting can be vetoed by a
-//! majority, that a posting cannot be acted on until its dispute window closes,
-//! and that an abandoned pool always refunds.
+//! Results enter through the commissioner, or through a results oracle the
+//! admin names — two doors into one proposal, checked by members against any
+//! public scoreboard. What the program guarantees is that a bad posting can be
+//! vetoed by a majority, that a posting cannot be acted on until its dispute
+//! window closes, and that an abandoned pool always refunds.
+//!
+//! The admin key can change the default fee (never above `MAX_FEE_BPS`), pause
+//! creation, name the oracle and hand itself over in two steps. It cannot
+//! touch a vault. The upgrade authority can, by shipping different bytes,
+//! which is why that authority belongs on a multisig and not on a laptop.
 
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
@@ -70,7 +75,7 @@ pub mod commish {
         fee_cap: u64,
         creation_fee: u64,
     ) -> Result<()> {
-        require!(fee_bps <= BPS_DENOM, CommishError::BadPrizeSplit);
+        require!(fee_bps <= MAX_FEE_BPS, CommishError::FeeTooHigh);
         let c = &mut ctx.accounts.config;
         c.admin = ctx.accounts.admin.key();
         c.fee_treasury = ctx.accounts.fee_treasury.key();
@@ -89,7 +94,9 @@ pub mod commish {
         creation_fee: u64,
         paused: bool,
     ) -> Result<()> {
-        require!(fee_bps <= BPS_DENOM, CommishError::BadPrizeSplit);
+        // The ceiling is the property: see MAX_FEE_BPS. A fee above it is
+        // refused whoever signs, which is the point of putting it in code.
+        require!(fee_bps <= MAX_FEE_BPS, CommishError::FeeTooHigh);
         let c = &mut ctx.accounts.config;
         c.default_fee_bps = fee_bps;
         c.default_fee_cap = fee_cap;
@@ -448,6 +455,50 @@ pub mod commish {
         Ok(())
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Admin handover. See AdminTransfer in state.rs for why it is two steps.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Name the key that may take over as admin. Admin only; nothing changes
+    /// until that key calls `accept_admin`. Calling this again replaces the
+    /// proposal.
+    pub fn propose_admin(ctx: Context<ProposeAdmin>, new_admin: Pubkey) -> Result<()> {
+        let current = ctx.accounts.config.admin;
+        // Neither nobody nor yourself: the first can never accept, the second
+        // changes nothing and would only leave an open proposal lying around.
+        require!(new_admin != Pubkey::default(), CommishError::BadAdmin);
+        require!(new_admin != current, CommishError::BadAdmin);
+
+        let t = &mut ctx.accounts.transfer;
+        t.pending = new_admin;
+        t.bump = ctx.bumps.transfer;
+        emit!(AdminProposed {
+            admin: current,
+            pending: new_admin,
+        });
+        Ok(())
+    }
+
+    /// The proposed key takes over. Signed by that key and nobody else, which
+    /// is what proves the key exists and is held before Config is rewritten.
+    /// The proposal account closes on the way out.
+    pub fn accept_admin(ctx: Context<AcceptAdmin>) -> Result<()> {
+        let previous = ctx.accounts.config.admin;
+        let admin = ctx.accounts.pending.key();
+        ctx.accounts.config.admin = admin;
+        emit!(AdminAccepted { previous, admin });
+        Ok(())
+    }
+
+    /// Withdraw a proposal. Admin only.
+    pub fn cancel_admin_transfer(ctx: Context<CancelAdminTransfer>) -> Result<()> {
+        emit!(AdminTransferCancelled {
+            admin: ctx.accounts.config.admin,
+            pending: ctx.accounts.transfer.pending,
+        });
+        Ok(())
+    }
+
     /// A member disputes the pending posting — results or payout sheet.
     ///
     /// One vote per member per posting, and a STRICT majority clears it. The
@@ -750,14 +801,7 @@ pub mod commish {
 
         require_eq!(pool.status, STATUS_SETTLED, CommishError::NotSettled);
         require!(!member.claimed, CommishError::AlreadyClaimed);
-
-        // Two shapes of winner, decided by how the pool ended.
-        let is_winner = if pool.winners_week == WEEK_NONE {
-            member.is_alive()
-        } else {
-            member.eliminated_week == pool.winners_week
-        };
-        require!(is_winner, CommishError::NotAWinner);
+        require!(is_pot_winner(pool, member), CommishError::NotAWinner);
 
         let amount = pool.pot_per_winner;
         let seeds: &[&[u8]] = &[SEED_POOL, commissioner.as_ref(), &nonce, &[bump]];
@@ -1069,7 +1113,7 @@ pub mod commish {
         Ok(())
     }
 
-    /// Rent hygiene. Only after this member is done with the pool.
+    /// Rent hygiene. Only once this pool can never owe this member anything.
     pub fn close_member(ctx: Context<CloseMember>) -> Result<()> {
         let pool = &ctx.accounts.pool;
         let member = &ctx.accounts.member;
@@ -1077,10 +1121,24 @@ pub mod commish {
             pool.status == STATUS_SETTLED || pool.status == STATUS_ABANDONED,
             CommishError::NotSettled
         );
-        // Either they took their money or they were never owed any.
+        /* Either they took their money, or there is none to take.
+         *
+         * The second half used to be missing. `paid` is true for every member
+         * from the moment they join and `claimed` is written only by the three
+         * claim paths, so a member who was knocked out could never close: the
+         * pool had settled, they had claimed nothing, and they had nothing to
+         * claim. Their rent stayed locked for good.
+         *
+         * A member is owed nothing once the pool has SETTLED and they are not
+         * one of its winners; a league pays by prize slot rather than by
+         * Member, so after its last slot is claimed nobody is. ABANDONED is
+         * deliberately not in this branch: a refund is still claimable there,
+         * and closing the account would forfeit it. */
+        let owed_nothing = pool.status == STATUS_SETTLED
+            && (pool.is_league() || !is_pot_winner(pool, member));
         require!(
-            member.claimed || !member.paid,
-            CommishError::AlreadyClaimed
+            member.claimed || !member.paid || owed_nothing,
+            CommishError::StillOwed
         );
         Ok(())
     }
@@ -1124,6 +1182,19 @@ fn check_join_open(pool: &Pool, now: i64) -> Result<()> {
         );
     }
     Ok(())
+}
+
+/* Who a settled Survivor pool pays, in one place. `claim_pot` pays these
+ * members and `close_member` refuses to close them until they have claimed;
+ * a predicate written twice is a predicate that drifts. Two shapes of winner,
+ * decided by how the pool ended: one left standing, or everybody out in the
+ * same week, which `winners_week` records. */
+fn is_pot_winner(pool: &Pool, member: &Member) -> bool {
+    if pool.winners_week == WEEK_NONE {
+        member.is_alive()
+    } else {
+        member.eliminated_week == pool.winners_week
+    }
 }
 
 fn init_member(
@@ -1383,6 +1454,60 @@ pub struct SetOracle<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ProposeAdmin<'info> {
+    #[account(seeds = [SEED_CONFIG], bump = config.bump, has_one = admin)]
+    pub config: Account<'info, Config>,
+    /* init_if_needed for the same reason as SetOracle: one instruction both
+     * creates the proposal and replaces it, and the gate is on Config, so a
+     * stranger cannot re-initialise it. */
+    #[account(
+        init_if_needed,
+        payer = admin,
+        space = 8 + AdminTransfer::INIT_SPACE,
+        seeds = [SEED_ADMIN_TRANSFER],
+        bump
+    )]
+    pub transfer: Account<'info, AdminTransfer>,
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct AcceptAdmin<'info> {
+    #[account(mut, seeds = [SEED_CONFIG], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    /* `has_one = pending` is the whole permission check: the signer must be
+     * the key the admin wrote here. Closed to that key, which is paying for
+     * the transaction. */
+    #[account(
+        mut,
+        close = pending,
+        seeds = [SEED_ADMIN_TRANSFER],
+        bump = transfer.bump,
+        has_one = pending @ CommishError::BadAdmin
+    )]
+    pub transfer: Account<'info, AdminTransfer>,
+    #[account(mut)]
+    pub pending: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CancelAdminTransfer<'info> {
+    #[account(seeds = [SEED_CONFIG], bump = config.bump, has_one = admin)]
+    pub config: Account<'info, Config>,
+    #[account(
+        mut,
+        close = admin,
+        seeds = [SEED_ADMIN_TRANSFER],
+        bump = transfer.bump
+    )]
+    pub transfer: Account<'info, AdminTransfer>,
+    #[account(mut)]
+    pub admin: Signer<'info>,
 }
 
 #[derive(Accounts)]

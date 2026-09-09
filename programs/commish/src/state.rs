@@ -244,6 +244,7 @@ mod tests {
         assert_eq!(pool, 1_616, "Pool size changed");
         assert_eq!(member, 201, "Member size changed");
         assert_eq!(config, 92, "Config size changed");
+        assert_eq!(8 + AdminTransfer::INIT_SPACE, 41, "AdminTransfer size changed");
 
         // System-program CreateAccount via CPI caps at 10,240 bytes. Comfortable,
         // but worth failing loudly the day it stops being.
@@ -275,5 +276,30 @@ mod tests {
 pub struct Oracle {
     /// The key that may call `oracle_post_results`. Rotated by the admin.
     pub poster: Pubkey,
+    pub bump: u8,
+}
+
+/* THE ADMIN HANDOVER: a two-step transfer of `Config.admin`.
+ *
+ * WHY IT EXISTS. The admin key was fixed at `init_config` with no way to move
+ * it, which meant the one key that can change the fee, pause creation and
+ * rename the oracle had to stay wherever it was first generated — a hot key
+ * on a laptop. Moving it to a multisig or a cold key needs an instruction, and
+ * that instruction must not be able to hand the program to a typo.
+ *
+ * WHY TWO STEPS. `propose_admin` records the intended key; `accept_admin` is
+ * signed by that key and only then rewrites Config. A pubkey nobody holds can
+ * be proposed, but it can never accept, so the worst a mistake costs is a
+ * `cancel_admin_transfer`. A multisig vault accepts through its own program,
+ * which signs for the vault by CPI; nothing here cares how the signature was
+ * produced, only that it was.
+ *
+ * WHY ITS OWN ACCOUNT rather than a field on Config: the same reason as
+ * `Oracle`. Config cannot grow without migrating the one already deployed. */
+#[account]
+#[derive(InitSpace)]
+pub struct AdminTransfer {
+    /// The key that may call `accept_admin`.
+    pub pending: Pubkey,
     pub bump: u8,
 }

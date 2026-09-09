@@ -108,4 +108,10 @@ pub enum CommishError {
     BadVault,
     #[msg("That token account is not the pool's fee treasury")]
     BadFeeTreasury,
+    #[msg("The platform fee cannot exceed 10%")]
+    FeeTooHigh,
+    #[msg("Claim what this pool owes you before closing the account")]
+    StillOwed,
+    #[msg("That is not a usable admin key")]
+    BadAdmin,
 }

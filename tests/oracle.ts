@@ -76,6 +76,8 @@ describe("commish results oracle - LiteSVM", () => {
     vault: Address;
     members: Address[];
     lock: number;
+    alice: Signer;
+    bob: Signer;
   };
 
   // ------------------------------------------------------------- accounts
@@ -377,6 +379,32 @@ describe("commish results oracle - LiteSVM", () => {
     data: coder.instruction.encode("advance_week", {}),
   });
 
+  const claimPotIx = async (pool: Address, member: Address, wallet: Signer, vault: Address) => ({
+    programAddress,
+    accounts: [
+      { address: pool, role: AccountRole.WRITABLE },
+      { address: member, role: AccountRole.WRITABLE },
+      { address: wallet.address, role: AccountRole.READONLY_SIGNER, signer: wallet },
+      { address: vault, role: AccountRole.WRITABLE },
+      { address: await ata(wallet.address, CANONICAL_USDC), role: AccountRole.WRITABLE },
+      { address: tokenProgram, role: AccountRole.READONLY },
+    ],
+    data: coder.instruction.encode("claim_pot", {}),
+  });
+
+  const closeMemberIx = (pool: Address, member: Address, wallet: Signer) => ({
+    programAddress,
+    accounts: [
+      { address: pool, role: AccountRole.READONLY },
+      { address: member, role: AccountRole.WRITABLE },
+      { address: wallet.address, role: AccountRole.WRITABLE_SIGNER, signer: wallet },
+    ],
+    data: coder.instruction.encode("close_member", {}),
+  });
+
+  /** LiteSVM reports a closed account three different ways. */
+  const gone = (a: any) => !a || ("exists" in a && !a.exists) || a.data.length === 0;
+
   async function fundedSigner(): Promise<Signer> {
     const s = await generateKeyPairSigner();
     svm.airdrop(s.address, lamports(500n * 1_000_000_000n));
@@ -463,7 +491,14 @@ describe("commish results oracle - LiteSVM", () => {
     expect(p.pending_winners).to.equal(winners);
     expect(p.veto_epoch).to.equal(1);
 
-    week1 = { pool: w.pool, vault: w.vault, members: w.members, lock: w.lock };
+    week1 = {
+      pool: w.pool,
+      vault: w.vault,
+      members: w.members,
+      lock: w.lock,
+      alice: w.alice,
+      bob: w.bob,
+    };
   });
 
   it("is the same door: the oracle cannot post before the games could be over", async () => {
@@ -508,6 +543,32 @@ describe("commish results oracle - LiteSVM", () => {
     expect(settled.status).to.equal(STATUS_SETTLED);
     expect(settled.alive_count).to.equal(1);
     expect(settled.winners_count).to.equal(1);
+  });
+
+  it("once settled, a member who was knocked out can close their account", async () => {
+    /* THE RENT LEAK THIS CLOSES. `close_member` used to require `claimed`,
+     * and only the claim paths write it, so a member who lost could never
+     * close: settled pool, nothing claimed, nothing to claim, rent locked
+     * for good. Bob went out in week 1 of the pool above. */
+    const { pool, vault, members, alice, bob } = week1;
+    const [aliceMember, bobMember] = members;
+
+    const bobBefore = svm.getBalance(bob.address) ?? 0n;
+    await sendIx(closeMemberIx(pool, bobMember, bob), bob);
+    expect(svm.getAccount(bobMember)).to.satisfy(gone, "Bob's Member account should be closed");
+    expect(svm.getBalance(bob.address) ?? 0n).to.be.greaterThan(
+      bobBefore,
+      "the rent should come back to Bob",
+    );
+
+    // Alice won and has not claimed. Closing now would forfeit the pot, so
+    // the program refuses until she is paid.
+    await expectFailure(closeMemberIx(pool, aliceMember, alice), alice, "StillOwed");
+
+    await sendIx(await claimPotIx(pool, aliceMember, alice, vault), alice);
+    expect(fetchAccount<any>("Member", aliceMember).claimed).to.equal(true);
+    await sendIx(closeMemberIx(pool, aliceMember, alice), alice);
+    expect(svm.getAccount(aliceMember)).to.satisfy(gone, "a paid winner can close");
   });
 
   it("rotating the key locks the old one out and lets the new one in", async () => {

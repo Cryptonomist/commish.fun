@@ -20,6 +20,7 @@ pub const SEED_CONFIG: &[u8] = b"config";
 pub const SEED_POOL: &[u8] = b"pool";
 pub const SEED_MEMBER: &[u8] = b"member";
 pub const SEED_ORACLE: &[u8] = b"oracle";
+pub const SEED_ADMIN_TRANSFER: &[u8] = b"admin_transfer";
 
 pub const WEEKS: usize = 18;
 pub const MAX_PRIZE_SLOTS: usize = 8;
@@ -37,6 +38,17 @@ pub const TEAM_COUNT: u8 = 32;
 
 /// Basis points are the only percentage unit in the program. 10000 == 100%.
 pub const BPS_DENOM: u16 = 10_000;
+
+/* THE FEE CEILING, in code rather than in policy.
+ *
+ * `update_config` accepted any fee up to BPS_DENOM, which made "the admin
+ * would never set 100%" a promise instead of a property. Fees are copied
+ * into a pool at creation, so no existing pool was ever at risk; every pool
+ * created after a bad update was. A compromised admin key now cannot make a
+ * new pool confiscatory, and a fat-fingered one cannot either. Mainnet runs
+ * 300 bps; the ceiling is ten percent, and raising it is a program upgrade
+ * rather than a transaction. */
+pub const MAX_FEE_BPS: u16 = 1_000;
 
 /* THE TIMING FLOORS, AND THE ONE BUILD THAT SHORTENS THEM.
  *

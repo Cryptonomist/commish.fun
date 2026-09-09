@@ -151,3 +151,24 @@ pub struct ResultsPostedByOracle {
     pub week: u8,
     pub poster: Pubkey,
 }
+
+/// The admin named a successor. Nothing changes until that key accepts.
+#[event]
+pub struct AdminProposed {
+    pub admin: Pubkey,
+    pub pending: Pubkey,
+}
+
+/// The successor accepted. `previous` administers nothing from here on.
+#[event]
+pub struct AdminAccepted {
+    pub previous: Pubkey,
+    pub admin: Pubkey,
+}
+
+/// The admin withdrew a proposal before it was accepted.
+#[event]
+pub struct AdminTransferCancelled {
+    pub admin: Pubkey,
+    pub pending: Pubkey,
+}
