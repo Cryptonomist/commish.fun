@@ -89,8 +89,24 @@ const DEFAULT_POST_DELAY = 3 * 60 * 60;
 
 export async function runCycle(env: Env): Promise<Summary> {
   const cluster = env.HELIUS_CLUSTER === "mainnet" ? "mainnet" : "devnet";
-  const rpc = env.RPC_URL ?? (env.HELIUS_API_KEY ? rpcUrl(cluster, env.HELIUS_API_KEY) : null);
-  if (!rpc) throw new Error("set RPC_URL, or HELIUS_API_KEY with HELIUS_CLUSTER");
+  /* RPC_URL IS FOR DEVNET ONLY. On mainnet the endpoint is derived from the
+   * Helius key and nothing else, so a devnet URL left in a variable cannot
+   * point a worker that believes it is on mainnet at the wrong chain, which is
+   * the quiet failure this repository has been burned by before. Same rule,
+   * and the same reason, as ORACLE_FIXTURE. */
+  const rpc =
+    cluster === "mainnet"
+      ? env.HELIUS_API_KEY
+        ? rpcUrl("mainnet", env.HELIUS_API_KEY)
+        : null
+      : (env.RPC_URL ?? (env.HELIUS_API_KEY ? rpcUrl("devnet", env.HELIUS_API_KEY) : null));
+  if (!rpc) {
+    throw new Error(
+      cluster === "mainnet"
+        ? "mainnet needs HELIUS_API_KEY; RPC_URL is ignored there on purpose"
+        : "set RPC_URL, or HELIUS_API_KEY with HELIUS_CLUSTER",
+    );
+  }
   const connection = new Connection(rpc, "confirmed");
   const poster = posterFromSecret(env.ORACLE_KEYPAIR);
   const season = Number(env.SEASON) || SEASON_YEAR;
