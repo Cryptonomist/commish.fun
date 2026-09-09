@@ -122,7 +122,13 @@ export function drawCoin(
 export type Kit = { lead: string; trim: string };
 
 export const SPRITE_W = 8;
-export const SPRITE_H = 15;
+/* Sixteen, not fifteen, and the extra row went to the helmet. A shell four
+ * rows tall cannot hold a brow, a facemask and a jaw at the same time. There
+ * is nowhere to put the mask that is not either on the player's forehead or
+ * where his chin should be. Everything below the neck moved down a pixel.
+ * Anything that positions a player against this number tracks it; anything
+ * TUNED against it must not, and `touching` in bowl.ts says so at the site. */
+export const SPRITE_H = 16;
 
 /* THE FIELD.
  *
@@ -172,13 +178,13 @@ export function drawField(
   }
 }
 
-/* A PLAYER, 8 wide and 15 tall, drawn as eleven rectangles.
+/* A PLAYER, 8 wide and 16 tall, drawn from a couple of dozen rectangles.
  *
  * This was two rects for a long time and it read as a coloured domino, which
  * is what it was. A sprite of this era is not much more than that, but the
  * "not much" is the whole thing:
  *
- *   a helmet with a crown stripe and a facemask sticking out the front,
+ *   a domed helmet with a crown stripe and a facemask wedging out the front,
  *   one dark pixel for the neck so the head separates from the torso,
  *   shoulders wider than the waist,
  *   a jersey in the club's lead colour,
@@ -230,31 +236,71 @@ export function drawPlayer(
    * than looked at, because at this size the difference is one pixel and it
    * disappears on a screenshot. */
   ctx.fillStyle = PX.panel;
-  ctx.fillRect(x - 1, y, 10, 5); // around the helmet, which is 8 wide
-  ctx.fillRect(x - 2, y + 5, 12, 2); // around the pads, which are 10
-  ctx.fillRect(x, y + 7, 8, 8); // around the jersey and legs, which are 6
+  /* The head takes three bands rather than one rectangle, because the head is
+   * no longer a rectangle. A single rect here leaves dark blocks squatting on
+   * the top corners of a domed crown, which is most of what made the old one
+   * read as a television set. The last band runs a row past the helmet and is
+   * the dark line at the neck: without it the helmet and the jersey are the
+   * same colour touching, and the whole top half reads as one lump. */
+  ctx.fillRect(x + 1, y, 6, 1); // around the crown, which is 4 wide
+  ctx.fillRect(x, y + 1, 8, 1); // around the dome, which is 6
+  ctx.fillRect(x - 1, y + 2, 10, 4); // around the shell, the mask, and the neck
+  ctx.fillRect(x - 2, y + 6, 12, 2); // around the pads, which are 10
+  ctx.fillRect(x, y + 8, 8, 8); // around the jersey and legs, which are 6
 
-  /* THE HELMET IS THE WHOLE READ, and it was too small. Four rows of fifteen is
-   * a head on a person; Tecmo's is closer to a third of the sprite, which is
-   * what makes those players look like footballers in gear rather than men in
-   * coloured shirts. Five rows here, full 8 wide, so it overhangs the waist. */
+  /* THE HELMET IS THE WHOLE READ.
+   *
+   * It used to be a full-width rectangle with a white square punched into the
+   * front, and rendered at size it was a television set: flat on top, square
+   * at the corners, and the facemask sitting inside the shell like a window
+   * rather than in front of it like a cage. Three things fix that.
+   *
+   * THE CROWN IS DOMED. Four pixels across the top, six below it, seven at the
+   * brow. Square corners on a head are the loudest wrong note at this size,
+   * and a shell that widens as it comes down is most of the way to a helmet
+   * before any detail goes on it.
+   *
+   * THE SHELL TAPERS AND THE MASK TAKES THE CORNER. Below the brow the shell
+   * gives up a column a row, and the facemask takes what it gives up: two
+   * pixels at the cheek, three at the jaw. The diagonal where they meet is the
+   * jaw line, and the mask ends up a column PROUD of the brow, which is what
+   * makes it read as hardware bolted to the front rather than paint on the
+   * side.
+   *
+   * A CAGE WITH AIR IN IT WAS TRIED FIRST and it was worse. Leaving the mouth
+   * dark behind a thin bar is what a facemask actually looks like, and at five
+   * rows it renders as a hole in the head with something white in it: an eye,
+   * not a mask. Tecmo drew a solid wedge for the same reason. The gap is the
+   * truer drawing and the wedge is the one that reads, and what reads wins.
+   *
+   * It needed a fifth row for any of this. In four there is a crown, a dome, a
+   * brow and a jaw, and the mask has to go on top of one of them.
+   *
+   * Columns are counted from the BACK of the head so one set of numbers draws
+   * both facings. The head mirrors inside the same 8 wide box, and the
+   * facemask is still the only thing that says which way he is running.
+   *
+   * All of this was drawn by rendering it. `scripts/render-sprite.mjs` puts
+   * the real sprite on a real turf background at 22x, which is the only way
+   * any of the above was knowable: the television, the eye, and the wedge all
+   * look identical in the fillRect calls.
+   */
+  const hx = (c: number, w: number) => (facing === 1 ? x + c : x + 8 - c - w);
+
   ctx.fillStyle = body;
-  ctx.fillRect(x + 1, y, 6, 4);
-  ctx.fillRect(x, y + 1, 8, 3); // the ear holes, widening the helmet
-  // The crown stripe, front to back. One pixel, and it is the first thing that
-  // reads as a football helmet rather than a bean.
+  ctx.fillRect(hx(1, 6), y + 1, 6, 1); // the dome
+  ctx.fillRect(hx(0, 7), y + 2, 7, 1); // the brow, the widest row
+  ctx.fillRect(hx(0, 6), y + 3, 6, 1); // the cheek
+  ctx.fillRect(hx(0, 5), y + 4, 5, 1); // the jaw, with the ear flap behind it
+  // The crown stripe, front to back, inset a pixel each side so it reads as a
+  // stripe running over a curve rather than a lid sitting on a box.
   ctx.fillStyle = trim;
-  ctx.fillRect(x + 1, y, 6, 1);
-  // Facemask, poking out the front, which is what makes it a helmet rather
-  // than a hat — and the only thing that says which way he is running.
+  ctx.fillRect(hx(2, 4), y, 4, 1);
+  // The facemask, filling the corner the shell gives up: two across the cheek,
+  // three across the jaw, a column proud of the brow above it.
   ctx.fillStyle = PX.chalk;
-  ctx.fillRect(facing === 1 ? x + 6 : x, y + 2, 2, 2);
-
-  // A DARK LINE FOR THE NECK. Without it the helmet and the jersey are the
-  // same colour touching, so the whole top half reads as one lump. One pixel
-  // of shadow is what separates a head from a torso.
-  ctx.fillStyle = PX.panel;
-  ctx.fillRect(x + 1, y + 4, 6, 1);
+  ctx.fillRect(hx(6, 2), y + 3, 2, 1);
+  ctx.fillRect(hx(5, 3), y + 4, 3, 1);
 
   /* SHOULDER PADS THAT ACTUALLY FLARE. They used to be 8 wide over a 6 wide
    * jersey — one pixel of shoulder, which is a person standing up straight. The
@@ -262,35 +308,35 @@ export function drawPlayer(
    * in, so the torso is a wedge. That taper is the Tecmo silhouette; everything
    * else is decoration on top of it. */
   ctx.fillStyle = body;
-  ctx.fillRect(x - 1, y + 5, 10, 2); // pads, proud of the hips
-  ctx.fillRect(x + 1, y + 7, 6, 2); // jersey, tapering in
+  ctx.fillRect(x - 1, y + 6, 10, 2); // pads, proud of the hips
+  ctx.fillRect(x + 1, y + 8, 6, 2); // jersey, tapering in
   // The belt in the club's second colour.
   ctx.fillStyle = trim;
-  ctx.fillRect(x + 1, y + 9, 6, 1);
+  ctx.fillRect(x + 1, y + 10, 6, 1);
 
   // Pants, white the way almost every away kit is.
   ctx.fillStyle = o.out ? PX.dim : PX.pants;
-  ctx.fillRect(x + 1, y + 10, 6, 2);
+  ctx.fillRect(x + 1, y + 11, 6, 2);
   // Socks in the trim colour, which is both true of the kit and the only way
   // the stride reads at all: white legs under white pants are invisible.
   ctx.fillStyle = trim;
-  ctx.fillRect(x + 1, y + 12, 2, o.stride ? 3 : 2);
-  ctx.fillRect(x + 5, y + 12, 2, o.stride ? 2 : 3);
+  ctx.fillRect(x + 1, y + 13, 2, o.stride ? 3 : 2);
+  ctx.fillRect(x + 5, y + 13, 2, o.stride ? 2 : 3);
 
   // The ball, tucked under the arm on the side he is facing.
   if (o.ball) {
     ctx.fillStyle = "#7A4A22";
-    ctx.fillRect(facing === 1 ? x + 7 : x - 1, y + 7, 2, 3);
+    ctx.fillRect(facing === 1 ? x + 7 : x - 1, y + 8, 2, 3);
     ctx.fillStyle = PX.chalk;
-    ctx.fillRect(facing === 1 ? x + 7 : x - 1, y + 8, 2, 1);
+    ctx.fillRect(facing === 1 ? x + 7 : x - 1, y + 9, 2, 1);
   }
 
   if (o.out) {
     // The elimination X, stamped over the whole sprite.
     ctx.fillStyle = PX.out;
     for (let i = 0; i < 8; i++) {
-      ctx.fillRect(x + i, y + 3 + i, 1, 1);
-      ctx.fillRect(x + 7 - i, y + 3 + i, 1, 1);
+      ctx.fillRect(x + i, y + 4 + i, 1, 1);
+      ctx.fillRect(x + 7 - i, y + 4 + i, 1, 1);
     }
   }
 }

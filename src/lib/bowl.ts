@@ -311,13 +311,21 @@ export function setupPlay(w: World): void {
   w.spinUsed = false;
 }
 
-/** A tighter box than the sprite. Tackling on the full 8x15 rectangle means
- *  being brought down by a defender's raised knee half a body away, which
- *  reads as the game cheating even though the pixels did touch. */
+/* A tighter box than the sprite. Tackling on the full rectangle means being
+ * brought down by a defender's raised knee half a body away, which reads as
+ * the game cheating even though the pixels did touch.
+ *
+ * NOT DERIVED FROM THE SPRITE, on purpose. These came out of the `.probe/`
+ * search loop like every other balance number, and the height was written as
+ * `SPRITE_H - 8` back when the sprite was fifteen tall. The helmet later grew
+ * a row for cosmetic reasons and that expression would have quietly widened
+ * every tackle in the game by a pixel. A drawing change must not retune the
+ * game; if these want to change, the probe says so. */
+const TACKLE_W = 6;
+const TACKLE_H = 7;
+
 export function touching(a: Body, b: Body): boolean {
-  return (
-    Math.abs(a.x - b.x) < SPRITE_W - 2 && Math.abs(a.y - b.y) < SPRITE_H - 8
-  );
+  return Math.abs(a.x - b.x) < TACKLE_W && Math.abs(a.y - b.y) < TACKLE_H;
 }
 
 /** Move `b` at `speed`, swinging his heading toward the target by at most

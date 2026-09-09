@@ -29,7 +29,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TEAMS } from "@/lib/nfl";
-import { drawCoin, drawField, drawPlayer, PX } from "@/lib/pixel";
+import { drawCoin, drawField, drawPlayer, PX, SPRITE_H } from "@/lib/pixel";
 import { play, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 
 /* Logical resolution. Everything is drawn on integer coordinates at this size
@@ -64,7 +64,7 @@ type Player = {
 function layout(): Player[] {
   const cols = 8;
   const gapX = 26;
-  const gapY = 34; // a 15-tall sprite needs more room than an 8-tall helmet did
+  const gapY = 34; // a 16-tall sprite needs more room than an 8-tall helmet did
   const startX = Math.round((W - (cols - 1) * gapX) / 2) - 4;
   const startY = 22;
   return ROSTER.map(({ lead, trim }, i) => ({
@@ -256,7 +256,12 @@ export default function AttractCabinet({
         // The winner's mark, painted under his feet before he is, so he stands
         // on it rather than in front of it.
         ctx.fillStyle = PX.action;
-        ctx.fillRect(Math.round(hero.x) - 1, Math.round(hero.y) + 15, 10, 1);
+        ctx.fillRect(
+          Math.round(hero.x) - 1,
+          Math.round(hero.y) + SPRITE_H,
+          10,
+          1,
+        );
         /* THE COIN IS PAINTED BEFORE HIM WHILE IT WAITS, because it rests at
          * y 52-67 and his helmet starts at 65 — drawn after, it would sit on
          * top of his head, which is the exact fault the last two versions of
