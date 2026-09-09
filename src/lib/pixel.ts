@@ -407,7 +407,7 @@ function uprights(
  *  below, so the landing page can carry the SAME drawing rather than a
  *  vector lookalike: scripts/build-midfield-logo.mjs renders it once into a
  *  pixel image the hero displays. */
-export const LOGO_R = 25;
+export const LOGO_R = 17;
 
 /* THE MARK AT THE FIFTY, which is where a field carries the badge of whoever
  * owns it. This is ours: the laces on an orange disc, painted on the grass.
@@ -443,17 +443,26 @@ export function drawMidfieldLogo(
       ctx.fillRect(cx - half, cy + dy, half * 2 + 1, 1);
     }
   }
-  drawLaces(ctx, cx, cy, 26, PX.pants);
+  // The mark at just over half the disc, the proportion the tile uses.
+  drawLaces(ctx, cx, cy, Math.round(LOGO_R * 1.05), PX.pants);
 }
 
-/* THE LACES, drawn rather than imported, because the component that owns the
- * mark is an SVG and this is a canvas.
+/* THE LACES, rasterized from the mark's own geometry rather than redrawn.
  *
- * The proportions are lifted from that SVG exactly: against a spine of height
- * H, the spine is 0.107H wide, each of the four ticks is 0.583H wide and
- * 0.107H tall, and their centres sit at 0.321H and 0.107H either side of the
- * middle. The 14 degree tilt is applied as a shear, one row at a time, which
- * is the only way to rotate anything in a picture made of squares.
+ * The mark is five rounded rectangles in an SVG: a spine 18 wide and 168 tall
+ * and four ticks 98 wide and 18 tall, every end fully rounded, the whole
+ * group rotated fourteen degrees counter-clockwise. That last part is the one
+ * a shear cannot do. The first pixel version leaned the spine row by row and
+ * left the ticks flat, and it was directionally wrong: on the real mark the
+ * ticks turn WITH the spine and stay perpendicular to it, so they slope up to
+ * the right while the spine leans top-left.
+ *
+ * So this samples. Every pixel in reach is turned back through the fourteen
+ * degrees and asked whether it lands inside any of the five shapes, in the
+ * SVG's own units, four samples a pixel with a majority deciding. The
+ * geometry is the tile's, the angle is the tile's, and there is nothing here
+ * to drift from it. Cheap enough for a draw loop: a logo this size is a few
+ * hundred pixels.
  */
 export function drawLaces(
   ctx: CanvasRenderingContext2D,
@@ -462,24 +471,51 @@ export function drawLaces(
   height: number,
   colour: string,
 ): void {
-  const TILT = 0.242; // sin 14 degrees: the top leans left, the foot right
-  const spineW = Math.max(1, Math.round(height * 0.107));
-  const tickW = Math.round(height * 0.583);
-  const tickH = Math.max(1, Math.round(height * 0.107));
-  const half = Math.round(height / 2);
-
-  ctx.fillStyle = colour;
-  const bar = (top: number, rows: number, wide: number) => {
-    for (let i = 0; i < rows; i++) {
-      const y = top + i;
-      const lean = Math.round((y - cy) * TILT);
-      ctx.fillRect(cx + lean - Math.floor(wide / 2), y, wide, 1);
+  // SVG units per logical pixel: the spine is 168 units tall.
+  const S = 168 / height;
+  const SIN = 0.2419; // fourteen degrees
+  const COS = 0.9703;
+  const R = 9; // rx on every rectangle: fully rounded ends
+  // [centre x, centre y, width, height] in SVG units, before rotation.
+  const parts: readonly [number, number, number, number][] = [
+    [0, 0, 18, 168],
+    [0, -54, 98, 18],
+    [0, -18, 98, 18],
+    [0, 18, 98, 18],
+    [0, 54, 98, 18],
+  ];
+  const inside = (u: number, v: number): boolean => {
+    for (const [px, py, w, h] of parts) {
+      const dx = Math.abs(u - px);
+      const dy = Math.abs(v - py);
+      if (dx <= w / 2 - R && dy <= h / 2) return true;
+      if (dy <= h / 2 - R && dx <= w / 2) return true;
+      const ex = dx - (w / 2 - R);
+      const ey = dy - (h / 2 - R);
+      if (ex > 0 && ey > 0 && ex * ex + ey * ey <= R * R) return true;
     }
+    return false;
   };
 
-  bar(cy - half, half * 2 + 1, spineW);
-  for (const at of [-0.321, -0.107, 0.107, 0.321]) {
-    bar(cy + Math.round(at * height) - Math.floor(tickH / 2), tickH, tickW);
+  // The rotated mark fits inside a box a little wider than the spine is tall.
+  const reach = Math.ceil(height * 0.6);
+  const ox = cx + 0.5;
+  const oy = cy + 0.5;
+  ctx.fillStyle = colour;
+  for (let py = cy - reach; py <= cy + reach; py++) {
+    for (let px = cx - reach; px <= cx + reach; px++) {
+      let hits = 0;
+      for (const [sx, sy] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {
+        const x = (px + sx - ox) * S;
+        const y = (py + sy - oy) * S;
+        // Turn the point back through +14 degrees to test it against the
+        // unrotated shapes: the mark itself was turned -14.
+        const u = x * COS - y * SIN;
+        const v = x * SIN + y * COS;
+        if (inside(u, v)) hits++;
+      }
+      if (hits >= 2) ctx.fillRect(px, py, 1, 1);
+    }
   }
 }
 

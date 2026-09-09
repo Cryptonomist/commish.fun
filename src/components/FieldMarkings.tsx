@@ -214,17 +214,42 @@ export function FieldMarkings() {
 
           The headline sits over it. It can: every word on this field carries
           a panel-coloured ring and resolves against that, whatever is painted
-          underneath. */}
+          underneath. It is nonetheless a touch more transparent here than on
+          the game field, because the headline's own orange offset print sits
+          on top of it and two full-strength oranges an inch apart read as a
+          clash rather than a scheme. */}
       <span
         aria-hidden="true"
-        className="absolute left-1/2 top-1/2 aspect-square h-[54%] max-h-[19rem] -translate-x-1/2 -translate-y-1/2"
+        className="absolute left-1/2 top-1/2 aspect-square h-[36%] max-h-[12rem] -translate-x-1/2 -translate-y-1/2"
         style={{
           backgroundImage: `url("${MIDFIELD_LOGO}")`,
           backgroundSize: "100% 100%",
           backgroundRepeat: "no-repeat",
           imageRendering: "pixelated",
+          opacity: 0.85,
         }}
       />
+
+      {/* THE NAME IN THE END ZONES, the way the game paints it: COMMISH in
+          cream, .FUN in the action orange, lying on its side and read from
+          the field, so its feet point at the fifty and its top at the back
+          wall. That is a quarter turn counter-clockwise at your end and
+          clockwise at theirs, and the game's field turns exactly the same
+          way. Hidden on phones, where the copy sits over the left end zone
+          and a word behind the headline is clutter. */}
+      {(["left", "right"] as const).map((side) => (
+        <span
+          key={`ez-${side}`}
+          className={[
+            "display absolute top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap uppercase tracking-[0.06em] sm:block",
+            "text-[clamp(0.9rem,2.1vw,1.8rem)] text-cream/[0.22]",
+            side === "left" ? "-rotate-90" : "rotate-90",
+          ].join(" ")}
+          style={{ left: side === "left" ? `${EZ / 2}%` : `${100 - EZ / 2}%` }}
+        >
+          COMMISH<span className="text-action/[0.6]">.FUN</span>
+        </span>
+      ))}
 
       <Uprights side="left" />
       <Uprights side="right" />
