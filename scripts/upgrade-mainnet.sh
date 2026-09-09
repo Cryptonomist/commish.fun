@@ -18,6 +18,11 @@
 #
 set -euo pipefail
 
+# The CLI's standard install location, used only if `solana` is not already
+# on PATH: a shell without the installer's profile line, or a cron.
+command -v solana >/dev/null 2>&1 \
+  || PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+
 RPC="${MAINNET_RPC:-https://api.mainnet-beta.solana.com}"
 GO="${1:-}"
 BIN="target/deploy/commish.so"
