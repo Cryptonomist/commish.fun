@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "commish",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "wsl.exe",
+      "runtimeArgs": ["bash", "-lic", "cd ~/commish.fun && npm run dev"],
       "port": 3000
     }
   ]

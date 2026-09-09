@@ -370,6 +370,8 @@ export default function AttractCabinet({
   return (
     <div
       ref={shellRef}
+      role="group"
+      aria-label="A sample Survivor pool, animated. The players, the pot and the results are invented; this is not a real pool."
       className="game-surface panel-primary scanlines relative overflow-hidden"
     >
       {/* TOP RAIL. Fixed height, never moves between states. */}
@@ -414,20 +416,33 @@ export default function AttractCabinet({
               style={{ imageRendering: "pixelated", aspectRatio: "16 / 9" }}
             />
 
+            {/* SAID ON THE SCREEN ITSELF, not only in the rails around it. The
+                rails say DEMO and INVENTED RESULTS, and a visitor who has just
+                read a hero about real money in real vaults still asked whether
+                the pot counting up here was one of them. The loop looks like a
+                product because it is meant to; so the one word that stops it
+                being mistaken for a live pool sits on the picture. */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-2 top-2 border border-chalk/60 bg-panel/80 px-1.5 font-matrix text-[10px] leading-4 text-chalk"
+            >
+              SAMPLE POOL
+            </span>
+
             {/* The prompt IS the button, filling the lower third, so the mouse
                 path and the keyboard path are the same control rather than two
                 things that can disagree. */}
             <button
               type="button"
               onClick={start}
-              aria-label="Start the demo. Play one week of Survivor."
+              aria-label="Start the demo. Play one sample week of Survivor."
               className="absolute inset-x-0 bottom-0 top-1/2 flex flex-col items-center justify-center gap-2 bg-transparent focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-chalk"
             >
               <span className="font-matrix text-[16px] leading-6 text-chalk motion-safe:animate-pulse">
                 &#9654; PRESS START
               </span>
               <span className="font-matrix text-[10px] leading-4 text-cream-dim">
-                PLAY ONE WEEK. NO WALLET.
+                PLAY ONE SAMPLE WEEK. NO WALLET.
               </span>
             </button>
           </>
@@ -439,12 +454,12 @@ export default function AttractCabinet({
           says so. */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t-2 border-chalk px-3 py-2">
         <span className="font-matrix text-[10px] leading-4 text-cream-dim">
-          DEMO &middot; INVENTED RESULTS
+          SAMPLE SURVIVOR POOL &middot; INVENTED RESULTS
         </span>
         <span className="text-xs text-cream-dim">
           {started
-            ? "Nothing here touches a wallet or the chain."
-            : "Twenty-four play. Thirteen go out. One claims it."}
+            ? "A sample week. Nothing here touches a wallet or the chain."
+            : "Not a real pool. Twenty-four play, thirteen go out, one claims it."}
         </span>
       </div>
     </div>
