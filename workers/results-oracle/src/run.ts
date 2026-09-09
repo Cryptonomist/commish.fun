@@ -50,7 +50,7 @@ import {
   sendOne,
   type PoolAt,
 } from "./chain";
-import { decideWeek, type Board } from "./decide";
+import { decideWeek, struckDown, type Board } from "./decide";
 import { apiSportsFeed, espnFeed, fixtureFeed, type Feed } from "./feeds";
 
 export interface Env {
@@ -175,6 +175,15 @@ export async function runCycle(env: Env): Promise<Summary> {
         const lock = pool.lockTs[week - 1];
         if (!lock) return skip(id, `no lock for week ${week}`);
         if (now < lock + postDelay) return skip(id, `week ${week} not postable until ${lock + postDelay}`);
+        if (struckDown(pool)) {
+          /* Once an hour, not once a tick: the situation persists until a
+           * person acts, and one line an hour is a reminder where six an hour
+           * is a reason to mute the channel. */
+          if (Math.floor(now / 3600) !== Math.floor((now - 600) / 3600)) {
+            await alert(env, `results oracle: ${id} week ${week} was posted and struck down by the members. The oracle will not post it again; the commissioner has to.`);
+          }
+          return skip(id, `week ${week} was struck down; leaving it to the commissioner`);
+        }
 
         const verdict = decideWeek(gamesFor(week), await boardsFor(week), minAgreeing);
         if (!verdict.post) {

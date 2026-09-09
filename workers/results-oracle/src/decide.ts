@@ -59,6 +59,32 @@ export type Verdict =
 const key = (home: string, away: string) => `${away}@${home}`;
 
 /**
+ * Was a posting for the current week already made and struck down?
+ *
+ * THE ORACLE NEVER ARGUES WITH THE MEMBERS. If it posts a week and a majority
+ * vetoes it, the feeds have not changed, so posting again would propose the
+ * identical result every ten minutes until the members gave up. From a veto
+ * onward that week belongs to the commissioner.
+ *
+ * The program leaves exactly one trace of a cleared posting: a veto resets
+ * `pending_week`, the masks and the status, but not `pending_posted_ts`. So
+ * "nothing is pending, yet something was posted after this week's lock" can
+ * only mean a posting for this week was struck down. A leftover timestamp
+ * from an earlier week cannot fool it, because the schedule forces every
+ * week's posting to land before the next week's lock.
+ */
+export function struckDown(pool: {
+  pendingWeek: number;
+  pendingPostedTs: number;
+  currentWeek: number;
+  lockTs: number[];
+}): boolean {
+  const lock = pool.lockTs[pool.currentWeek - 1];
+  if (!lock) return false;
+  return pool.pendingWeek === 0 && pool.pendingPostedTs >= lock;
+}
+
+/**
  * Decide a week. `fixtures` is the schedule the pool was created against;
  * `boards` is what each feed said just now.
  */

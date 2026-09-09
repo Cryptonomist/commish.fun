@@ -192,9 +192,15 @@ cat <<NEXT
        npx wrangler secret put ALERT_WEBHOOK       (optional)
        npx wrangler deploy --var HELIUS_CLUSTER:mainnet
 
-  e. Commit the vendored IDL with the rest:
-       git add -A && git commit -m 'Results oracle live: IDL vendored, worker deployed'
+  e. Now, and only now, stop the site saying the commissioner posts alone:
+       node scripts/oracle-copy.mjs
+     It rewrites the terms, risk and how pages in the present tense and
+     refuses if a sentence it expects has moved. Then:
+       npx tsc --noEmit && npm run test:web
+       git add -A && git commit -m 'Results oracle live: IDL vendored, worker deployed, copy rewritten'
+       git push
 
-  Vercel needs nothing. The program id did not change, and the site's own
-  builders are additive.
+  Vercel rebuilds on the push, which is what puts the new copy in front of
+  people. Its environment variables need nothing: the program id did not
+  change and the site's own builders are additive.
 NEXT

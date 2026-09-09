@@ -10,6 +10,7 @@ import { teamByAbbr } from "@/lib/nfl";
 import type { Game as Fixture } from "@/lib/season";
 import {
   decideWeek,
+  struckDown,
   type Board,
   type Outcome,
 } from "../workers/results-oracle/src/decide";
@@ -117,5 +118,29 @@ describe("the results oracle's decision", () => {
   it("refuses an empty week rather than posting an empty mask", () => {
     const v = decideWeek([], [board("espn", []), board("apisports", [])]);
     expect(v.post).to.equal(false);
+  });
+});
+
+describe("whether the members already struck this week down", () => {
+  /* Week 2 of a pool: lock at 2000. The program leaves pending_posted_ts
+   * alone when a veto clears a posting, which is the only trace there is. */
+  const locks = [1000, 2000, 3000];
+
+  it("is false for a week nobody has posted yet", () => {
+    expect(struckDown({ pendingWeek: 0, pendingPostedTs: 0, currentWeek: 2, lockTs: locks })).to.equal(false);
+  });
+
+  it("is false when the timestamp is last week's, left over after finalize", () => {
+    // Week 1 was posted at 1500, finalized, advanced. Nothing pending now.
+    expect(struckDown({ pendingWeek: 0, pendingPostedTs: 1500, currentWeek: 2, lockTs: locks })).to.equal(false);
+  });
+
+  it("is true when something was posted after this week's lock and nothing is pending", () => {
+    // Posted at 2400, vetoed: pending cleared, timestamp still there.
+    expect(struckDown({ pendingWeek: 0, pendingPostedTs: 2400, currentWeek: 2, lockTs: locks })).to.equal(true);
+  });
+
+  it("is false while that posting is still pending, because that is a different state", () => {
+    expect(struckDown({ pendingWeek: 2, pendingPostedTs: 2400, currentWeek: 2, lockTs: locks })).to.equal(false);
   });
 });

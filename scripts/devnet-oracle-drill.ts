@@ -35,6 +35,7 @@
  * no USDC at all — just rent.
  */
 
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -158,10 +159,14 @@ async function main() {
   console.log(`\ncreating ${plan.pool.toBase58()} (lock in ${LOCK_IN_SECS}s, dispute ${DISPUTE_SECS}s)`);
   console.log(`  ${await send([plan.instruction], [admin])}`);
 
+  /* Deterministic per pool and per bot, through a hash rather than a padded
+   * string: a pool address is 44 characters, so "pool:i" cut to 32 bytes lost
+   * the ":i" and both bots came out as the same wallet. Found by the second
+   * one failing to join. */
   const bots = [0, 1].map((i) =>
     Keypair.fromSeed(
       Uint8Array.from(
-        Buffer.from(`${plan.pool.toBase58()}:${i}`.padEnd(32, "-").slice(0, 32)),
+        createHash("sha256").update(`${plan.pool.toBase58()}:${i}`).digest(),
       ),
     ),
   );
