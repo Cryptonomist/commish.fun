@@ -34,6 +34,11 @@
 # key pays. For --buffer, any funded CLI key: the buffer's rent comes back when
 # the upgrade closes it.
 #
+# A RUN THAT FAILS PART WAY IS RESUMED, NOT REPEATED. Every mode looks for a
+# buffer the authority already owns that holds this exact binary and uses it:
+# the upload is the expensive, flaky part, and the rent in it is the wallet's.
+# See the note above find_buffer for the run that taught this.
+#
 # THIS SCRIPT NEVER PRINTS THE RPC URL. A Helius URL carries the API key, and
 # an earlier version echoed it inside a "next, run this" hint, where a terminal
 # rendered it as a link and it ended up in a chat. Every hint below says
@@ -208,20 +213,76 @@ case "$MODE" in
     ;;
 esac
 
+# A FAILED RUN LEAVES ITS BUFFER BEHIND, holding the whole binary and about
+# 3 SOL of rent. The first --go of the handover upgrade did exactly that:
+# "5 write transactions failed", the CLI gave up before the Upgrade
+# instruction, and a dump afterwards showed every byte had in fact landed —
+# the writes were confirmed late, not lost. The hint at the time said to close
+# the buffer, which throws the upload away, and the wallet was left with 0.15
+# SOL, which the funds check below would then have refused. Resuming from a
+# complete buffer is one transaction, and the CLI takes the buffer by ADDRESS:
+# the ephemeral keypair whose seed phrase it prints is only needed while the
+# account is being created.
+#
+# So look before writing. --go deploys from a matching buffer, --buffer hands
+# one over instead of writing a second, and the dry run reports one. A buffer
+# holding different bytes is named and left alone: it is somebody's decision,
+# not this script's, whether that upload was wanted.
+RESUME_BUFFER=""
+RESUME_OWNER=""
+find_buffer() {
+  local owner="$1" list b have
+  list=$(solana program show --buffers --buffer-authority "$owner" --url "$RPC" 2>/dev/null \
+    | awk '$2 == "|" && $3 ~ /^[1-9A-HJ-NP-Za-km-z]+$/ && length($1) >= 32 {print $1}' || true)
+  for b in $list; do
+    solana program dump "$b" /tmp/leftover-buffer.so --url "$RPC" >/dev/null 2>&1 || continue
+    have=$(head -c "$SIZE" /tmp/leftover-buffer.so | sha256sum | awk '{print $1}')
+    if [ "$have" = "$LOCAL_SHA" ]; then
+      RESUME_BUFFER="$b"
+      RESUME_OWNER="$owner"
+      ok "buffer $b already holds this exact binary: it will be used, not rewritten"
+      return 0
+    fi
+    warn "buffer $b (authority $owner) holds different bytes. Left alone; its rent comes back with: solana program close $b --url \"\$MAINNET_RPC\""
+  done
+  return 0
+}
+if [ "$MODE" != "--verify" ]; then
+  find_buffer "$AUTHORITY"
+  [ -n "$RESUME_BUFFER" ] || [ "$PAYER" = "$AUTHORITY" ] || find_buffer "$PAYER"
+fi
+
 say "4. Funds"
 
-# An upgrade writes the whole program into a buffer account first, which has
-# to be rent-exempt for its size until the upgrade closes it and returns the
-# lamports. So the wallet needs the buffer's rent plus fees for a moment, and
-# gets nearly all of it back — to the buffer's authority, so with --buffer the
-# rent returns to the multisig's vault, not to this key.
-NEED=$(solana rent "$SIZE" --url "$RPC" 2>/dev/null | awk '/Rent-exempt minimum/{print $3}')
-BALANCE=$(solana balance --url "$RPC" | awk '{print $1}')
-[ -n "$NEED" ] || bad "could not ask the cluster what a $SIZE byte buffer costs"
-if awk "BEGIN{exit !($BALANCE < $NEED + 0.05)}"; then
-  bad "wallet has $BALANCE SOL; the buffer needs $NEED SOL plus fees while the upgrade runs. Nearly all of it comes back."
+if [ -n "$RESUME_BUFFER" ]; then
+  # The rent is already paid, by the run that wrote the buffer. Fees only.
+  BALANCE=$(solana balance --url "$RPC" | awk '{print $1}')
+  if awk "BEGIN{exit !($BALANCE < 0.02)}"; then
+    bad "wallet has $BALANCE SOL. Resuming needs only transaction fees, but more than that; send 0.05 SOL."
+  fi
+  ok "wallet $BALANCE SOL covers the fees; the buffer's rent comes back after the upgrade"
+else
+  # An upgrade writes the whole program into a buffer account first, which
+  # has to be rent-exempt for its size until the upgrade closes it and returns
+  # the lamports. So the wallet needs the buffer's rent plus fees for a
+  # moment, and gets nearly all of it back — to the buffer's authority, so
+  # with --buffer the rent returns to the multisig's vault, not to this key.
+  NEED=$(solana rent "$SIZE" --url "$RPC" 2>/dev/null | awk '/Rent-exempt minimum/{print $3}')
+  BALANCE=$(solana balance --url "$RPC" | awk '{print $1}')
+  [ -n "$NEED" ] || bad "could not ask the cluster what a $SIZE byte buffer costs"
+  if awk "BEGIN{exit !($BALANCE < $NEED + 0.05)}"; then
+    bad "wallet has $BALANCE SOL; the buffer needs $NEED SOL plus fees while the upgrade runs. Nearly all of it comes back."
+  fi
+  ok "wallet $BALANCE SOL covers the $NEED SOL buffer (returned after the upgrade)"
 fi
-ok "wallet $BALANCE SOL covers the $NEED SOL buffer (returned after the upgrade)"
+
+# HOW THE WRITES ARE SENT. The default path hands ~130 write transactions to
+# validator TPUs over QUIC from this machine, and from a WSL2 network that is
+# where "5 write transactions failed" came from. --use-rpc sends them through
+# the configured RPC instead, which is what a Helius URL is for, and a higher
+# sign-attempt ceiling keeps the CLI re-signing across blockhash expiry rather
+# than giving up with the buffer written and the upgrade not done.
+SEND_ARGS=(--use-rpc --max-sign-attempts 25)
 
 case "$RPC" in
   *api.mainnet-beta.solana.com*)
@@ -237,17 +298,26 @@ fi
 if [ "$MODE" = "--buffer" ]; then
   say "5. Write the buffer and hand it to the authority"
 
-  # The CLI's own output is scrubbed of the URL too: on a failure it quotes
-  # the endpoint it was talking to.
-  WROTE=$(solana program write-buffer "$BIN" --url "$RPC" --commitment finalized 2>&1 | sed "s#$RPC#\$MAINNET_RPC#g") \
-    || { printf '%s\n' "$WROTE"; bad "write-buffer did not complete. If a buffer was left behind: solana program show --buffers --url \"\$MAINNET_RPC\", then close it."; }
-  BUFFER=$(printf '%s' "$WROTE" | awk '/Buffer:/{print $2}')
-  [ -n "$BUFFER" ] || { printf '%s\n' "$WROTE"; bad "could not read the buffer address from write-buffer's output"; }
-  ok "buffer $BUFFER holds the binary"
+  if [ -n "$RESUME_BUFFER" ]; then
+    BUFFER="$RESUME_BUFFER"
+    ok "using buffer $BUFFER, written by an earlier run"
+  else
+    # The CLI's own output is scrubbed of the URL too: on a failure it quotes
+    # the endpoint it was talking to.
+    WROTE=$(solana program write-buffer "$BIN" "${SEND_ARGS[@]}" --url "$RPC" --commitment finalized 2>&1 | sed "s#$RPC#\$MAINNET_RPC#g") \
+      || { printf '%s\n' "$WROTE"; bad "write-buffer did not complete. Re-run --buffer: a buffer it left behind is found and reused. Do not close it."; }
+    BUFFER=$(printf '%s' "$WROTE" | awk '/Buffer:/{print $2}')
+    [ -n "$BUFFER" ] || { printf '%s\n' "$WROTE"; bad "could not read the buffer address from write-buffer's output"; }
+    ok "buffer $BUFFER holds the binary"
+  fi
 
-  solana program set-buffer-authority "$BUFFER" --new-buffer-authority "$AUTHORITY" --url "$RPC" >/dev/null \
-    || bad "could not give buffer $BUFFER to $AUTHORITY. Close it (solana program close $BUFFER --url \"\$MAINNET_RPC\") and start again."
-  ok "buffer authority is now $AUTHORITY"
+  if [ "$RESUME_OWNER" = "$AUTHORITY" ]; then
+    ok "buffer authority is already $AUTHORITY"
+  else
+    solana program set-buffer-authority "$BUFFER" --new-buffer-authority "$AUTHORITY" --url "$RPC" >/dev/null \
+      || bad "could not give buffer $BUFFER to $AUTHORITY. Re-run --buffer to try again; the buffer is kept."
+    ok "buffer authority is now $AUTHORITY"
+  fi
 
   cat <<NEXT
 
@@ -275,16 +345,20 @@ say "5. Upgrade"
 
 AUTH_ARGS=()
 [ -n "${UPGRADE_AUTHORITY_KEYPAIR:-}" ] && AUTH_ARGS=(--upgrade-authority "$UPGRADE_AUTHORITY_KEYPAIR")
+RESUME_ARGS=()
+[ -n "$RESUME_BUFFER" ] && RESUME_ARGS=(--buffer "$RESUME_BUFFER")
 
-# The CLI quotes its endpoint in some failures; scrub it before it is shown.
+# With --buffer and the file both given, the CLI compares the buffer to the
+# file, rewrites only the chunks that differ, and sends the Upgrade. The CLI
+# quotes its endpoint in some failures; scrub it before it is shown.
 solana program deploy "$BIN" \
   --program-id "$KEYPAIR" \
   "${AUTH_ARGS[@]}" \
+  "${RESUME_ARGS[@]}" \
+  "${SEND_ARGS[@]}" \
   --url "$RPC" \
   --commitment finalized 2>&1 | sed "s#$RPC#\$MAINNET_RPC#g" \
-  || bad "the upgrade did not complete. If a buffer was left behind: solana program show --buffers --url \"\$MAINNET_RPC\", then close it."
-[ "${PIPESTATUS[0]}" = "0" ] \
-  || bad "the upgrade did not complete. If a buffer was left behind: solana program show --buffers --url \"\$MAINNET_RPC\", then close it."
+  || bad "the upgrade did not complete. The buffer it wrote is kept; re-run --go and it resumes from it. Do not close it."
 ok "upgrade transaction finalized"
 
 say "6. Prove the chain holds this binary"

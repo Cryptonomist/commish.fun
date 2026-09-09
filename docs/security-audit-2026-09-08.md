@@ -32,13 +32,17 @@ Done and verified since the review:
 - **`main` is protected**: force pushes and deletions blocked, enforced for
   admins too. To force-push deliberately, switch the rule off first in
   Settings → Branches.
-- **The program changes from finding 4 are written and tested**, not yet on
-  mainnet: the two-step admin handover (`propose_admin`, `accept_admin`,
-  `cancel_admin_transfer`, a new `AdminTransfer` PDA), `MAX_FEE_BPS = 1000`
-  enforced at init and on every update, and `close_member` for a member a
-  settled pool can never owe. 38 LiteSVM tests (10 new), the Rust size test,
-  200 web tests, 166 encoding checks and `tsc` all pass. The binary is 510,024
-  bytes and fits the 534,048-byte ProgramData account, so no extend is needed.
+- **The program changes from finding 4 are on mainnet** (slot 445612492,
+  on-chain sha256 `93bae0ab…` equal to the tested build): the two-step admin
+  handover (`propose_admin`, `accept_admin`, `cancel_admin_transfer`, a new
+  `AdminTransfer` PDA), `MAX_FEE_BPS = 1000` enforced at init and on every
+  update, and `close_member` for a member a settled pool can never owe. 38
+  LiteSVM tests (10 new), the Rust size test, 200 web tests, 166 encoding
+  checks and `tsc` all pass. The first `--go` stalled after writing the
+  buffer ("5 write transactions failed", every byte in fact landed) and was
+  finished from that buffer; the script now resumes from a leftover buffer
+  by itself and sends writes through the RPC rather than to validator TPUs.
+  `Config.admin` is still the hot key until the handover below runs.
 - `scripts/admin-transfer.ts` runs the handover (`status`, `propose`,
   `cancel`, `accept`, `accept --print` for a multisig), and
   `scripts/upgrade-mainnet.sh` gained `--buffer` and `--verify` so an upgrade
@@ -289,10 +293,8 @@ three lockfiles are committed.
 
 ## Owner checklist
 
-1. Ship the upgrade that carries the handover, the fee cap and the
-   `close_member` fix, while the CLI key is still the upgrade authority:
-   `MAINNET_RPC=<helius url> ./scripts/upgrade-mainnet.sh --go` (finding 4).
-   Do it between weeks, not while a week's results are pending.
+1. ~~Ship the upgrade that carries the handover, the fee cap and the
+   `close_member` fix~~ — **done 2026-09-09**, slot 445612492.
 2. Create the multisig and move the upgrade authority to it (finding 1).
 3. Hand the admin over: `admin-transfer.ts propose` from the CLI key, then
    `accept` from the successor — `accept --print` for a multisig (finding 4a).
