@@ -42,7 +42,6 @@ import {
   Connection,
   Keypair,
   LAMPORTS_PER_SOL,
-  PublicKey,
   SystemProgram,
   Transaction,
   sendAndConfirmTransaction,
