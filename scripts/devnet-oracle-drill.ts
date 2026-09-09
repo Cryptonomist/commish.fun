@@ -25,6 +25,17 @@
  * week that is actually played, which is exactly why the commissioner's own
  * door stays open.
  *
+ * EVERY WAIT IS ON THE CHAIN'S CLOCK. The first version waited on this
+ * machine's clock and lost twice: once when a wall clock stepped under a
+ * monotonic timer, and once when the skew between this machine and the
+ * validator shifted from ten seconds to two between one tick and the next,
+ * so a wait that had ended here had not ended there. The program judges
+ * every floor by the Clock sysvar, the worker now does too, and so does this.
+ *
+ * IT RESUMES. DRILL_POOL=<address> skips creation and picks up a pool in
+ * whatever state an earlier run left it, which is how a refusal gets a second
+ * look without another five minutes of clock.
+ *
  * NEEDS, on devnet: the upgraded program (with set_oracle), an Oracle account
  * naming target/deploy/oracle-devnet.json (scripts/set-oracle.ts), that key
  * holding a little SOL for fees, and the CLI key holding enough to fund two
@@ -55,6 +66,7 @@ import { gamesFor, weekOf } from "@/lib/season";
 import { TEAMS } from "@/lib/nfl";
 import { minWeekGapSecs } from "@/lib/schedule";
 
+import { chainNow } from "../workers/results-oracle/src/chain";
 import { runCycle, type Env } from "../workers/results-oracle/src/run";
 import type { Board } from "../workers/results-oracle/src/decide";
 
@@ -77,6 +89,8 @@ if (P.USDC_MINT.toBase58() !== DEVNET_USDC) {
 const POSTER_FILE = path.resolve("target/deploy/oracle-devnet.json");
 const DISPUTE_SECS = 60;
 const LOCK_IN_SECS = 150;
+/** Seconds after the program's floor before a tick is attempted. */
+const MARGIN = 4;
 
 const connection = new Connection(RPC, "confirmed");
 const admin = loadKeypair(path.join(os.homedir(), ".config/solana/id.json"));
@@ -92,15 +106,25 @@ async function send(ixs: TransactionInstruction[], signers: Keypair[]): Promise<
   return sendAndConfirmTransaction(connection, tx, signers, { commitment: "confirmed" });
 }
 
-const now = () => Math.floor(Date.now() / 1000);
+const machineNow = () => Math.floor(Date.now() / 1000);
 const sleep = (s: number) => new Promise((r) => setTimeout(r, s * 1000));
 
-async function waitUntil(ts: number, what: string) {
-  const left = ts - now();
-  if (left > 0) {
-    console.log(`  waiting ${left}s for ${what}`);
-    await sleep(left);
+/** Wait until the CHAIN says it is `ts`, re-reading rather than trusting one
+ *  sleep, because the skew between here and the validator moves. */
+async function waitForChain(ts: number, what: string) {
+  for (;;) {
+    const chain = await chainNow(connection);
+    const left = ts - chain;
+    if (left <= 0) return;
+    console.log(`  waiting ${left}s for ${what} (chain ${chain}, here ${machineNow()})`);
+    await sleep(Math.min(left, 20) + 1);
   }
+}
+
+async function readPool(address: PublicKey): Promise<P.PoolView> {
+  const info = await connection.getAccountInfo(address, "confirmed");
+  if (!info) throw new Error(`no pool at ${address.toBase58()}`);
+  return P.decodePool(info.data);
 }
 
 /* A board in which every week-one fixture is final, `winnerAbbr` won its game
@@ -141,24 +165,16 @@ async function main() {
   const loserTeam = playing[1];
   const board = fixtureBoard(week, winnerTeam.abbr, loserTeam.abbr);
 
-  // ---- a pool on the fastclock floors -----------------------------------
-  /* DRILL_POOL resumes against a pool an earlier run left behind, skipping
-   * creation and joining. It exists because the first thing this drill found
-   * was a refusal to post that needed a second look at the same pool, and a
-   * pool that already has its picks in is the only way to take that look
-   * without another five minutes of clock. */
+  // ---- a pool on the fastclock floors, or one left by an earlier run -----
   let poolAddress: PublicKey;
-  let locks: number[];
   if (process.env.DRILL_POOL) {
     poolAddress = new PublicKey(process.env.DRILL_POOL);
-    const info = await connection.getAccountInfo(poolAddress);
-    if (!info) throw new Error(`no pool at ${poolAddress.toBase58()}`);
-    locks = P.decodePool(info.data).lockTs;
-    console.log(`\nresuming ${poolAddress.toBase58()} (lock ${locks[0]}, now ${now()})`);
+    const p = await readPool(poolAddress);
+    console.log(`\nresuming ${poolAddress.toBase58()} at status ${p.status}, week ${p.currentWeek}`);
   } else {
     const gap = minWeekGapSecs(DISPUTE_SECS) + 60;
-    const first = now() + LOCK_IN_SECS;
-    locks = Array.from({ length: 18 }, (_, i) => first + i * gap);
+    const first = (await chainNow(connection)) + LOCK_IN_SECS;
+    const locks = Array.from({ length: 18 }, (_, i) => first + i * gap);
     const plan = P.buildCreatePool({
       commissioner: admin.publicKey,
       nonce: P.randomNonce(),
@@ -181,9 +197,7 @@ async function main() {
      * second one failing to join. */
     const bots = [0, 1].map((i) =>
       Keypair.fromSeed(
-        Uint8Array.from(
-          createHash("sha256").update(`${plan.pool.toBase58()}:${i}`).digest(),
-        ),
+        Uint8Array.from(createHash("sha256").update(`${plan.pool.toBase58()}:${i}`).digest()),
       ),
     );
     for (const [i, bot] of bots.entries()) {
@@ -210,7 +224,7 @@ async function main() {
       console.log(`  bot ${i + 1} ${bot.publicKey.toBase58().slice(0, 8)}… joined and picked ${team.abbr}`);
     }
   }
-  const plan = { pool: poolAddress };
+  const id = poolAddress.toBase58();
 
   // ---- the worker, exactly as deployed, with a stand-in for the feeds ----
   const env: Env = {
@@ -221,50 +235,56 @@ async function main() {
     MIN_POST_DELAY_SECS: "60",
     ORACLE_FIXTURE: JSON.stringify(board),
   };
-  const mine = (s: Awaited<ReturnType<typeof runCycle>>) => ({
-    chainNow: s.now,
-    actions: s.actions.filter((a) => a.pool === plan.pool.toBase58()),
-    errors: s.errors.filter((e) => e.pool === plan.pool.toBase58() || e.pool === "-"),
-    skipped: s.skipped.filter((k) => k.pool === plan.pool.toBase58()),
-  });
+  const tick = async (label: string) => {
+    console.log(`\n${label}`);
+    const s = await runCycle(env);
+    console.log(`  chain clock ${s.now}  (this machine ${machineNow()})`);
+    for (const a of s.actions.filter((a) => a.pool === id)) console.log(`  did   ${a.did}\n        ${a.sig}`);
+    for (const k of s.skipped.filter((k) => k.pool === id)) console.log(`  skip  ${k.why}`);
+    for (const e of s.errors.filter((e) => e.pool === id || e.pool === "-")) console.log(`  ERR   ${e.error}`);
+    return s;
+  };
 
-  /* Three seconds past the floor rather than one: the program's floor is
-   * judged by the validator's clock and the worker's by this machine's, and
-   * devnet's clock is not this machine's. */
-  await waitUntil(locks[0] + 63, "the lock and the posting floor");
-  console.log(`\ntick 1: should post week 1 (wall clock ${now()}, floor ${locks[0] + 60})`);
-  const t1 = mine(await runCycle(env));
-  report(t1);
-  if (!t1.actions.some((a) => a.did.startsWith("posted week 1"))) {
-    throw new Error("the worker did not post");
+  /* Each stage waits on the chain for the floor the program enforces, ticks
+   * once, and re-reads. Starting from whatever state the pool is in is what
+   * lets a resumed run pick up where a refused one stopped. */
+  let pool = await readPool(poolAddress);
+
+  if (
+    (pool.status === P.STATUS_OPEN || pool.status === P.STATUS_LOCKED) &&
+    pool.pendingWeek === P.WEEK_NONE
+  ) {
+    await waitForChain(pool.lockTs[pool.currentWeek - 1] + 60 + MARGIN, "the lock and the posting floor");
+    const s = await tick("tick: should post week 1");
+    if (!s.actions.some((a) => a.pool === id && a.did.startsWith("posted week 1"))) {
+      throw new Error("the worker did not post");
+    }
+    pool = await readPool(poolAddress);
   }
 
-  const posted = P.decodePool((await connection.getAccountInfo(plan.pool))!.data);
-  await waitUntil(posted.pendingPostedTs + DISPUTE_SECS + 3, "the dispute window");
-  console.log(`\ntick 2: should finalize, settle both, and settle the pool (wall clock ${now()})`);
-  const t2 = mine(await runCycle(env));
-  report(t2);
+  if (pool.status === P.STATUS_RESULTS_POSTED) {
+    await waitForChain(pool.pendingPostedTs + pool.disputeWindowSecs + MARGIN, "the dispute window");
+    await tick("tick: should finalize, settle both, and close the pool");
+    pool = await readPool(poolAddress);
+  }
 
-  const after = P.decodePool((await connection.getAccountInfo(plan.pool))!.data);
+  if (pool.status === P.STATUS_FINALIZED) {
+    await tick("tick: should settle the rest and close the pool");
+    pool = await readPool(poolAddress);
+  }
+
   const members = await connection.getProgramAccounts(P.PROGRAM_ID, {
-    filters: P.memberAccountFilters(plan.pool),
+    filters: P.memberAccountFilters(poolAddress),
   });
-  console.log(`\npool     status ${after.status} (4 = SETTLED)  alive ${after.aliveCount}  week ${after.currentWeek}`);
+  console.log(`\npool     status ${pool.status} (4 = SETTLED)  alive ${pool.aliveCount}  week ${pool.currentWeek}`);
   for (const m of members) {
     const v = P.decodeMember(m.account.data);
     console.log(`member   ${v.displayName.padEnd(6)} eliminated week ${v.eliminatedWeek}  processed ${v.processedWeek}`);
   }
-  if (after.status !== P.STATUS_SETTLED || after.aliveCount !== 1) {
+  if (pool.status !== P.STATUS_SETTLED || pool.aliveCount !== 1) {
     throw new Error("the pool did not settle to one survivor");
   }
   console.log("\nDRILL PASSED: the worker posted, finalized, settled and closed the week on devnet.");
-}
-
-function report(t: { chainNow: number; actions: { did: string; sig?: string }[]; errors: { error: string }[]; skipped: { why: string }[] }) {
-  console.log(`  chain clock ${t.chainNow}  (this machine ${now()})`);
-  for (const a of t.actions) console.log(`  did   ${a.did}\n        ${a.sig}`);
-  for (const k of t.skipped) console.log(`  skip  ${k.why}`);
-  for (const e of t.errors) console.log(`  ERR   ${e.error}`);
 }
 
 main().catch((e) => {
