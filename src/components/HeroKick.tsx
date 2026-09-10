@@ -35,18 +35,33 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BAR_X,
   GAP_HALF,
+  kickReadout,
   launch,
   meterReading,
   type Shot,
   stepShot,
   teeFor,
+  windDrift,
   windFrom,
+  windMph,
   yardsFor,
 } from "@/lib/kick";
 import { PX } from "@/lib/pixel";
 import { play } from "@/lib/sfx";
 
 type Phase = "idle" | "power" | "aim" | "flight" | "good" | "wide" | "short";
+
+/* The first attempt's wind, from the seed the game has always started on, so
+ * the sequence of winds a run deals is the same one it dealt before the gauge
+ * existed. Drawn once, at module load. */
+const FIRST_WIND = windFrom(1);
+
+/* The yardage meter's two colours, on grass. `out` alone is 2.24:1 on turf and
+ * the project's own rule is fill only; its lit variant is the one legal for
+ * text. `alive` is 4.61:1 on turf and needs no substitute. Both sit inside the
+ * `field-type` outline, which puts a panel edge behind every glyph. */
+const REACHES = "var(--color-alive)";
+const SHORT = "var(--color-out-lit)";
 
 export function HeroKick() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -68,16 +83,33 @@ export function HeroKick() {
   const shotRef = useRef<Shot | null>(null);
   const madeRef = useRef(0);
   const holdRef = useRef(0); // frames to hold a result on screen
-  const seedRef = useRef(1);
 
-  /* Deterministic per-attempt wind. Math.random would do, but a seed that
-   * advances per kick means a run can be described and repeated when somebody
-   * reports that a particular kick felt wrong. */
-  const nextWind = () => {
-    const { wind, next } = windFrom(seedRef.current);
+  /* THE WIND IS DRAWN BEFORE THE KICK, NOT DURING IT.
+   *
+   * It used to be drawn at the instant the aim was locked, which meant it did
+   * not exist while you were aiming — so a gauge could not have helped, and the
+   * whole difficulty of the game was a number nobody could see. Now each
+   * attempt's wind is drawn as soon as the previous kick lands and shown the
+   * whole way through, which is what turns aiming into a decision.
+   *
+   * Still deterministic, from a seed that advances per kick, so a run can be
+   * described and repeated when somebody says a particular kick felt wrong. The
+   * ref is what the simulation reads; the state is what the gauge renders. */
+  const seedRef = useRef(FIRST_WIND.next);
+  const windRef = useRef(FIRST_WIND.wind);
+  const [wind, setWind] = useState(FIRST_WIND.wind);
+
+  const rollWind = useCallback(() => {
+    const { wind: w, next } = windFrom(seedRef.current);
     seedRef.current = next;
-    return wind;
-  };
+    windRef.current = w;
+    setWind(w);
+  }, []);
+
+  /** The live yardage readout. Written straight to the DOM from the draw loop,
+   *  because it changes every frame and React has no business re-rendering
+   *  thirty times a second for a number. */
+  const readoutRef = useRef<HTMLSpanElement | null>(null);
 
   const goPhase = useCallback((p: Phase) => {
     phaseRef.current = p;
@@ -106,11 +138,12 @@ export function HeroKick() {
       /* The aim meter runs -1..1 across the middle of its sweep, so stopping
        * it dead centre is a straight kick and either edge is a hook. */
       aimRef.current = meterReading(meterRef.current) * 2 - 1;
+      // The wind the gauge has been showing, not a fresh one.
       shotRef.current = launch(
         teeX(),
         powerRef.current,
         aimRef.current,
-        nextWind(),
+        windRef.current,
       );
       goPhase("flight");
       play("snap");
@@ -197,6 +230,17 @@ export function HeroKick() {
           ctx.fillRect(mx + Math.round(mw / 2), my - 2, 1, 7);
         }
       }
+
+      /* THE YARDAGE METER, live while power sweeps. The number is how far this
+       * kick would carry if you pressed now, on the same scale as the spot's
+       * own distance, so the two can be compared by eye. Written straight to
+       * the node rather than through React: it changes every frame. */
+      const readout = readoutRef.current;
+      if (readout && p === "power") {
+        const r = kickReadout(teeX(), meterReading(meterRef.current));
+        readout.textContent = `${r.yards} YD`;
+        readout.style.color = r.reaches ? REACHES : SHORT;
+      }
       ctx.imageSmoothingEnabled = false;
     };
 
@@ -255,6 +299,12 @@ export function HeroKick() {
               holdRef.current = 30;
               goPhase(out);
               play(good ? "win" : "out");
+              /* The next kick's wind, drawn the moment this one lands, so the
+               * gauge always shows the wind you are about to kick into. Drawn
+               * here rather than when the result clears, because pressing
+               * again during the result starts the next attempt at once, and
+               * it must not reuse the wind that decided this one. */
+              rollWind();
             }
           }
         }
@@ -283,7 +333,7 @@ export function HeroKick() {
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [goPhase, teeX]);
+  }, [goPhase, teeX, rollWind]);
 
   /* -------------------------------------------------------------- controls */
 
@@ -343,10 +393,25 @@ export function HeroKick() {
              and the canvas runs at three screen pixels to one, so the track
              occupies roughly centre+21 to centre+36; the first attempt put the
              label at centre+34 and it landed on top of the bar. */
-          className="pointer-events-none absolute -translate-x-1/2 font-matrix text-[9px] leading-3 field-type"
+          className="pointer-events-none absolute flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap font-matrix text-[9px] leading-3 field-type"
           style={{ left: `${teeX() * 100}%`, top: "calc(50% + 46px)" }}
         >
-          {phase === "power" ? "POWER" : "AIM"}
+          {phase === "power" ? (
+            <>
+              POWER
+              {/* Filled by the draw loop, not by React: it changes every frame.
+                  Deliberately childless so a React render can never overwrite
+                  what the loop last wrote. */}
+              <span ref={readoutRef} />
+            </>
+          ) : (
+            <>
+              AIM
+              {/* The wind again, beside the bar, because aiming is the moment
+                  it matters and the gauge in the corner is out of the eyeline. */}
+              <WindText wind={wind} />
+            </>
+          )}
         </span>
       ) : null}
 
@@ -361,11 +426,20 @@ export function HeroKick() {
           1088, y 0 to 96, empty because the badge is short and the h1 starts
           below it. It is also the region least likely to be squeezed as the
           hero reflows, since everything else here grows downward. */}
+      {/* THE HUD. Distance to the posts, the wind you are about to kick into,
+          and the button.
+
+          `field-type` rather than the `text-cream-dim` this used to be, because
+          it sits on the grass and this component's own note, on the label
+          below the ball, records that cream-dim fails contrast on turf by the
+          project's measurement. The distance had been quietly breaking that
+          rule since it shipped. */}
       <div className="pointer-events-auto absolute right-0 top-0 flex items-center gap-3">
-        <span className="font-matrix text-[10px] leading-4 text-cream-dim">
+        <span className="font-matrix text-[10px] leading-4 field-type">
           {yards} YD
           {made > 0 ? <span className="text-gold"> · {streak}</span> : null}
         </span>
+        <WindGauge wind={wind} />
         <button
           type="button"
           onClick={press}
@@ -376,5 +450,84 @@ export function HeroKick() {
         </button>
       </div>
     </div>
+  );
+}
+
+/* THE WIND ARROW, drawn as five-by-five pixels rather than typed as a glyph.
+ *
+ * The pixel faces this page uses carry a small glyph set and no arrows, so an
+ * arrow character would fall back to a system font and sit on the hero looking
+ * pasted in. Drawn pointing down and flipped for up. It points the way the
+ * wind carries the ball, which `windDrift` is tested to match against a real
+ * flight. `currentColor`, so it takes the chalk the text around it is set in. */
+const ARROW_CELLS: [number, number][] = [
+  [2, 0],
+  [2, 1],
+  [0, 2],
+  [1, 2],
+  [2, 2],
+  [3, 2],
+  [4, 2],
+  [1, 3],
+  [2, 3],
+  [3, 3],
+  [2, 4],
+];
+
+function WindArrow({ down }: { down: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      width="10"
+      height="10"
+      viewBox="0 0 5 5"
+      shapeRendering="crispEdges"
+      className="shrink-0"
+      style={down ? undefined : { transform: "scaleY(-1)" }}
+    >
+      {ARROW_CELLS.map(([x, y]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="currentColor" />
+      ))}
+    </svg>
+  );
+}
+
+/** The wind as the eye reads it: an arrow and a number, or CALM. */
+function WindText({ wind }: { wind: number }) {
+  const drift = windDrift(wind);
+  if (drift === "calm") return <span>CALM</span>;
+  return (
+    <span className="flex items-center gap-1">
+      <WindArrow down={drift === "down"} />
+      {windMph(wind)} MPH
+    </span>
+  );
+}
+
+/* THE GAUGE, in the corner next to the distance.
+ *
+ * Visible before the kick as well as during it, because the wind for the next
+ * attempt is drawn the moment the last one lands. That is the whole reason it
+ * can help: you read the flag, then you decide how to aim.
+ *
+ * The visual is hidden from assistive technology and a sentence stands in for
+ * it, because "down arrow twelve M P H" read aloud is not information. */
+function WindGauge({ wind }: { wind: number }) {
+  const drift = windDrift(wind);
+  const mph = windMph(wind);
+  const spoken =
+    drift === "calm"
+      ? "No wind."
+      : `Wind ${mph} miles an hour, carrying the ball toward the ${
+          drift === "down" ? "bottom" : "top"
+        } of the field.`;
+  return (
+    <span className="flex items-center gap-1.5 font-matrix text-[10px] leading-4 field-type">
+      <span aria-hidden="true" className="flex items-center gap-1.5">
+        {drift === "calm" ? null : <span>WIND</span>}
+        <WindText wind={wind} />
+      </span>
+      <span className="sr-only">{spoken}</span>
+    </span>
   );
 }

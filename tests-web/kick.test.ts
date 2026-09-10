@@ -16,14 +16,22 @@ import { expect } from "chai";
 
 import {
   BAR_X,
+  carryFor,
   GAP_HALF,
+  kickReadout,
   LADDER,
+  launch,
   MAX_AGE,
   meterReading,
+  reachesPosts,
   resolve,
+  stepShot,
   teeFor,
+  windDrift,
   windFrom,
+  windMph,
   WIND_MAX,
+  WIND_MPH_MAX,
   yardsFor,
 } from "../src/lib/kick";
 
@@ -225,6 +233,153 @@ describe("the meter reading", () => {
     for (const sweep of [-0.5, -3, 7.25, 1e6]) {
       const r = meterReading(sweep);
       expect(r, `sweep ${sweep}`).to.be.within(0, 1);
+    }
+  });
+});
+
+/* THE YARDAGE METER.
+ *
+ * It makes one promise, and a meter that breaks it is worse than no meter:
+ * green means the kick has the distance and red means it will die short. These
+ * sweep every spot on the ladder against a fine grid of power and check that
+ * promise against the real flight, not against the meter's own arithmetic. */
+describe("the yardage meter", () => {
+  /** A hundred and one powers from dead to full. */
+  const POWERS = Array.from({ length: 101 }, (_, i) => i / 100);
+
+  it("carries further the harder it is kicked", () => {
+    for (let i = 1; i < POWERS.length; i++) {
+      expect(carryFor(POWERS[i]), `power ${POWERS[i]}`).to.be.above(
+        carryFor(POWERS[i - 1]),
+      );
+    }
+  });
+
+  /* The numbers launch() documents in its own comment. Pinning them here means
+   * the comment and the meter both have to change if the flight does. */
+  it("carries as far as launch() says a kick does", () => {
+    expect(carryFor(0)).to.be.closeTo(0.53, 0.01);
+    expect(carryFor(0.5)).to.be.closeTo(0.69, 0.01);
+    expect(carryFor(1)).to.be.closeTo(0.85, 0.01);
+  });
+
+  it("measures carry by flying the real kick, not a copy of its maths", () => {
+    // A kick started far enough back that it can never reach the posts runs to
+    // the age cap, and where it stops is exactly the carry.
+    for (const power of [0, 0.3, 0.7, 1]) {
+      const s = launch(-10, power, 0, 0);
+      while (stepShot(s) === "flying") {
+        // fly it
+      }
+      expect(s.x + 10, `power ${power}`).to.equal(carryFor(power));
+    }
+  });
+
+  /* THE PROMISE. Asked of `resolve`, the same function the game uses. */
+  it("says it reaches exactly when a straight kick in still air goes through", () => {
+    for (const tee of SPOTS) {
+      for (const power of POWERS) {
+        const made = resolve(tee, power, 0, 0).outcome === "good";
+        expect(reachesPosts(tee, power), `tee ${tee.toFixed(3)} power ${power}`).to.equal(made);
+        expect(kickReadout(tee, power).reaches).to.equal(made);
+      }
+    }
+  });
+
+  /* The number and the colour are both rounded, and could tie at the boundary.
+   * They must never contradict each other on screen. */
+  it("never shows a number that argues with its colour", () => {
+    for (const tee of SPOTS) {
+      const spot = yardsFor(tee);
+      for (const power of POWERS) {
+        const { yards, reaches } = kickReadout(tee, power);
+        if (reaches) {
+          expect(yards, `made from ${spot} at power ${power}`).to.be.at.least(spot);
+        } else {
+          expect(yards, `short of ${spot} at power ${power}`).to.be.below(spot);
+        }
+      }
+    }
+  });
+
+  it("never runs backwards as the power bar rises", () => {
+    for (const tee of SPOTS) {
+      let prev = -Infinity;
+      for (const power of POWERS) {
+        const { yards } = kickReadout(tee, power);
+        expect(yards, `tee ${tee.toFixed(3)} power ${power}`).to.be.at.least(prev);
+        prev = yards;
+      }
+    }
+  });
+
+  /* The meter is only useful if both colours actually occur. At the near spot
+   * every power has the leg, which is the documented design; at the far spot a
+   * weak kick must read red and a strong one green, or the meter is scenery. */
+  it("shows both colours where power actually decides the kick", () => {
+    const far = teeFor(LADDER);
+    expect(kickReadout(far, 0).reaches).to.equal(false);
+    expect(kickReadout(far, 1).reaches).to.equal(true);
+    // And at the near spot, as launch() intends, even a dead kick gets there.
+    expect(kickReadout(teeFor(0), 0).reaches).to.equal(true);
+  });
+
+  it("reads a sane distance for a field goal", () => {
+    for (const power of [0, 0.5, 1]) {
+      const { yards } = kickReadout(teeFor(LADDER), power);
+      expect(yards, `power ${power}`).to.be.within(17, 99);
+    }
+  });
+
+  it("does not trip over a power the meter should never hand it", () => {
+    expect(carryFor(-1)).to.equal(carryFor(0));
+    expect(carryFor(2)).to.equal(carryFor(1));
+  });
+});
+
+/* THE WIND GAUGE. The arrow has to point the way the ball actually goes. */
+describe("the wind gauge", () => {
+  it("reads 0 to 20 mph and nothing outside it", () => {
+    expect(windMph(0)).to.equal(0);
+    expect(windMph(WIND_MAX)).to.equal(WIND_MPH_MAX);
+    expect(windMph(-WIND_MAX)).to.equal(WIND_MPH_MAX);
+    expect(windMph(WIND_MAX * 10)).to.equal(WIND_MPH_MAX);
+    expect(windMph(WIND_MAX / 2)).to.equal(10);
+  });
+
+  it("reads the same strength whichever way it blows", () => {
+    for (const w of [0.0001, 0.0003, 0.0007]) {
+      expect(windMph(w)).to.equal(windMph(-w));
+    }
+  });
+
+  /* THE ONE THAT MATTERS. A gauge pointing the wrong way is a trap. Fly a
+   * straight kick in each wind and check the ball went where the arrow said. */
+  it("points the way the ball actually drifts", () => {
+    for (const wind of [WIND_MAX, WIND_MAX / 3, -WIND_MAX / 3, -WIND_MAX]) {
+      const s = launch(teeFor(0), 1, 0, wind);
+      for (let i = 0; i < 20; i++) stepShot(s);
+      const drift = windDrift(wind);
+      if (drift === "down") expect(s.y, `wind ${wind}`).to.be.above(0.5);
+      if (drift === "up") expect(s.y, `wind ${wind}`).to.be.below(0.5);
+    }
+  });
+
+  it("calls a wind calm only when it reads 0 mph", () => {
+    expect(windDrift(0)).to.equal("calm");
+    expect(windDrift(WIND_MAX / 1000)).to.equal("calm");
+    expect(windMph(WIND_MAX / 1000)).to.equal(0);
+    expect(windDrift(WIND_MAX)).to.not.equal("calm");
+  });
+
+  it("covers every wind the game can deal", () => {
+    let seed = 1;
+    for (let i = 0; i < 1_000; i++) {
+      const { wind, next } = windFrom(seed);
+      seed = next;
+      const mph = windMph(wind);
+      expect(mph).to.be.within(0, WIND_MPH_MAX);
+      expect(["up", "down", "calm"]).to.include(windDrift(wind));
     }
   });
 });

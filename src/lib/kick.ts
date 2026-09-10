@@ -167,3 +167,91 @@ export function windFrom(seed: number): { wind: number; next: number } {
   const next = (seed * 1664525 + 1013904223) >>> 0;
   return { wind: ((next >>> 16) / 65535 - 0.5) * 2 * WIND_MAX, next };
 }
+
+/* THE WIND GAUGE.
+ *
+ * The whole difficulty of this game is holding a line against a crosswind, and
+ * until now the crosswind was invisible. It was also decided at the moment the
+ * aim was set, so even a gauge could not have helped: the number did not exist
+ * yet when it mattered. The component now draws each attempt's wind before the
+ * attempt starts and shows it throughout, which is what makes aiming a
+ * decision instead of a guess.
+ *
+ * Read in miles an hour because that is how a kicker reads a flag, and every
+ * kicking game since the NES has put it on screen that way. It is a display
+ * scale, not physics: WIND_MAX is the strongest gust the tests proved is still
+ * makeable from the longest spot, and it reads as 20. */
+export const WIND_MPH_MAX = 20;
+
+/** The crosswind as a kicker reads it off the flags: 0 to 20 mph. */
+export function windMph(wind: number): number {
+  const strength = Math.min(Math.abs(wind), WIND_MAX) / WIND_MAX;
+  return Math.round(strength * WIND_MPH_MAX);
+}
+
+/** Which way the wind carries the ball.
+ *
+ * The field is drawn top-down with y growing downward, and `stepShot` adds the
+ * wind to y every frame, so a positive wind carries the ball toward the bottom
+ * sideline. "Calm" is anything that rounds to 0 mph, so the arrow never points
+ * at a wind the number says is not there. */
+export function windDrift(wind: number): "up" | "down" | "calm" {
+  if (windMph(wind) === 0) return "calm";
+  return wind > 0 ? "down" : "up";
+}
+
+/* THE YARDAGE METER, AND THE PROMISE IT MAKES.
+ *
+ * The number in the corner has always said how far away the posts are. What
+ * it never said is how far THIS kick will go, which is the only thing the
+ * power bar is asking you to decide. So while power is sweeping, a second
+ * number reads the carry live, green when it has the distance and red when it
+ * will die short.
+ *
+ * A meter that reads green and then falls short is worse than no meter, so the
+ * rules below are chosen so that cannot happen:
+ *
+ *   Carry is measured by flying a kick, not by formula. The flight constants
+ *   live in `launch` and `stepShot`, and a second copy of them here is exactly
+ *   how the meter would drift from the kick the first time either was touched.
+ *
+ *   Whether it reaches is asked of the real simulation, `resolve`, for a
+ *   straight kick in still air. Aim and wind can still miss it wide; the meter
+ *   answers only whether the leg is there, which is the only thing power sets.
+ *
+ *   The number is clamped against the colour at the boundary. Both are rounded
+ *   yards, and a raw reading can tie the posts' distance while falling a hair
+ *   short. So a kick that makes it never reads short of the posts, and one that
+ *   does not never reads as far as them. */
+
+/** How far a kick at this power travels before it runs out of legs, as a share
+ *  of the field's width. */
+export function carryFor(power: number): number {
+  const p = Math.min(1, Math.max(0, power));
+  // Far enough back that it can never reach the posts, so it flies to the end.
+  const start = -10;
+  const s = launch(start, p, 0, 0);
+  while (stepShot(s) === "flying") {
+    // Fly it. `stepShot` advances the ball and reports when it is done.
+  }
+  return s.x - start;
+}
+
+/** Does a straight kick at this power, in still air, reach the posts? */
+export function reachesPosts(tee: number, power: number): boolean {
+  return resolve(tee, Math.min(1, Math.max(0, power)), 0, 0).outcome === "good";
+}
+
+export type Readout = { yards: number; reaches: boolean };
+
+/** What the yardage meter shows for this spot and power. */
+export function kickReadout(tee: number, power: number): Readout {
+  const reaches = reachesPosts(tee, power);
+  const spot = yardsFor(tee);
+  /* The longest field goal this power can make: the spot a kick of this carry
+   * would arrive at the bar from. On the same scale as the spot's own label,
+   * so the two numbers on screen can be compared by eye. */
+  const raw = yardsFor(BAR_X - carryFor(power));
+  const yards = reaches ? Math.max(raw, spot) : Math.min(raw, spot - 1);
+  return { yards, reaches };
+}
