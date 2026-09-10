@@ -58,6 +58,149 @@ pub fn survives(pool_type: u8, o: Outcome) -> Result<bool> {
     }
 }
 
+/* PLAYOFF BRACKETS, the mode kit's second seam.
+ *
+ * `survives` answers the question every elimination mode asks. A bracket asks a
+ * different one — how many points did this entry just earn — so it gets its own
+ * pure function rather than a bool forced to mean something it does not. Both
+ * live here for the same reason: deciding who is owed money must be provable
+ * with `cargo test` and no validator.
+ *
+ * A bracket entry is four `u32` masks, one per round, and bit N means seed N.
+ * See the note in `constants`: seeds rather than teams is what lets one engine
+ * score the NFL playoffs and the College Football Playoff without knowing a
+ * single team name.
+ */
+pub type Bracket = [u32; BRACKET_ROUNDS];
+
+/// Every seed in a field of this size, as a mask. Bit N == seed N.
+pub fn seed_field(seeds: u8) -> Result<u32> {
+    require!(
+        (MIN_BRACKET_SEEDS..=MAX_BRACKET_SEEDS).contains(&seeds),
+        CommishError::BadBracketSize
+    );
+    // seeds <= 16, so this cannot touch the sign bit or overflow.
+    Ok((1u32 << seeds) - 1)
+}
+
+/// How many teams come out of each round of a field this size.
+///
+/// The derivation is in `constants`: both formats field eight teams in round
+/// two, so round one produces `seeds - 8` winners and the rest is 4, 2, 1.
+pub fn bracket_shape(seeds: u8) -> Result<[u32; BRACKET_ROUNDS]> {
+    require!(
+        (MIN_BRACKET_SEEDS..=MAX_BRACKET_SEEDS).contains(&seeds),
+        CommishError::BadBracketSize
+    );
+    Ok([(seeds - 8) as u32, 4, 2, 1])
+}
+
+/// How many teams sit out the first round on a bye.
+///
+/// Round one plays `2 * (seeds - 8)` teams, so the rest are resting:
+/// `seeds - 2 * (seeds - 8)` == `16 - seeds`. Two in the NFL, four in the CFP.
+pub fn bracket_byes(seeds: u8) -> Result<u32> {
+    require!(
+        (MIN_BRACKET_SEEDS..=MAX_BRACKET_SEEDS).contains(&seeds),
+        CommishError::BadBracketSize
+    );
+    Ok((MAX_BRACKET_SEEDS - seeds) as u32)
+}
+
+/* Is this a bracket somebody could actually have filled in?
+ *
+ * Counting alone is not enough. An entry with the right number of picks in
+ * every round can still have a team losing in the divisional round and then
+ * winning the Super Bowl: the counts are right and the bracket is nonsense. A
+ * real bracket NARROWS — whoever you have in the final is someone you had in
+ * the semi-final — and that is a subset test.
+ *
+ * EXCEPT ACROSS THE BYE, which is the trap. Round two is not drawn from round
+ * one's winners alone; the teams that sat out the first round join it. So
+ * `entry[1]` may legitimately contain seeds absent from `entry[0]`, and a plain
+ * subset test there would reject every entry that has a bye team going deep —
+ * which in the CFP is most of them, since all four byes could win. What IS true
+ * is that only a bye team can appear from nowhere, so at most `16 - seeds` of
+ * round two's picks may be new. From round two on there are no byes left and
+ * the subset rule is exact.
+ *
+ * This is a structural check, not a re-derivation of the seeding: the program
+ * does not know which seeds hold the byes, because that differs by sport and
+ * the program deliberately does not know the sport. An entry that slips through
+ * — a low seed treated as a bye — can only cost the person who submitted it,
+ * since a team that actually lost in round one never appears in round two's
+ * posted winners and so scores nothing.
+ *
+ * Enforced at entry and never again. Scoring a malformed bracket later would be
+ * arithmetic on a lie, and by then the buy-in is already in the vault.
+ */
+pub fn validate_bracket(entry: Bracket, seeds: u8) -> Result<()> {
+    let field = seed_field(seeds)?;
+    let shape = bracket_shape(seeds)?;
+    let byes = bracket_byes(seeds)?;
+
+    for r in 0..BRACKET_ROUNDS {
+        // Only seeds that exist, and exactly as many as the round advances.
+        require!(entry[r] & !field == 0, CommishError::BadBracket);
+        require!(entry[r].count_ones() == shape[r], CommishError::BadBracket);
+    }
+    // Round two may introduce bye teams, and no more of them than there are.
+    require!(
+        (entry[1] & !entry[0]).count_ones() <= byes,
+        CommishError::BadBracket
+    );
+    // After that, nobody advances out of a round they were not in.
+    for r in 2..BRACKET_ROUNDS {
+        require!(entry[r] & !entry[r - 1] == 0, CommishError::BadBracket);
+    }
+    Ok(())
+}
+
+/// What one round of an entry just scored.
+///
+/// A push cannot happen here and is not modelled: a playoff game is played to a
+/// winner, however long it takes. If one were ever cancelled outright the week
+/// simply is not posted, which is the same answer the weekly modes give.
+pub fn bracket_round_points(picks: u32, winners: u32, round: usize) -> Result<u32> {
+    require!(round < BRACKET_ROUNDS, CommishError::BadBracket);
+    // At most 16 bits can match and the weight is at most 8, so a u32 has room
+    // many times over; checked anyway, because this is money arithmetic.
+    (picks & winners)
+        .count_ones()
+        .checked_mul(BRACKET_ROUND_POINTS[round])
+        .ok_or(CommishError::MathOverflow.into())
+}
+
+/// What a completed entry is worth against a completed set of results.
+///
+/// Used by the site and the tests to show a standing; the program scores one
+/// round at a time as each is finalized, and the two must agree.
+pub fn bracket_total(entry: Bracket, winners: Bracket) -> Result<u32> {
+    let mut total = 0u32;
+    for r in 0..BRACKET_ROUNDS {
+        total = total
+            .checked_add(bracket_round_points(entry[r], winners[r], r)?)
+            .ok_or(CommishError::MathOverflow)?;
+    }
+    Ok(total)
+}
+
+/// The most a perfect entry can score in a field this size.
+pub fn bracket_perfect_score(seeds: u8) -> Result<u32> {
+    let shape = bracket_shape(seeds)?;
+    let mut total = 0u32;
+    for r in 0..BRACKET_ROUNDS {
+        total = total
+            .checked_add(
+                shape[r]
+                    .checked_mul(BRACKET_ROUND_POINTS[r])
+                    .ok_or(CommishError::MathOverflow)?,
+            )
+            .ok_or(CommishError::MathOverflow)?;
+    }
+    Ok(total)
+}
+
 /// The platform's cut of a settled pool, capped.
 ///
 /// Pulled out of `advance_week` because it is money arithmetic with a cap and
@@ -227,6 +370,226 @@ mod tests {
         // pool asking for both is correctly refused rather than sold and stuck.
         let seven_days = 7 * 24 * 60 * 60;
         assert!(min_week_gap(seven_days as u32).unwrap() > seven_days);
+    }
+
+    /* PLAYOFF BRACKETS.
+     *
+     * Two real formats, checked as themselves rather than as abstract numbers,
+     * because the whole claim of this engine is that one set of rules scores
+     * both. NFL: 14 seeds, two byes. CFP: 12 seeds, four byes.
+     */
+    const NFL: u8 = 14;
+    const CFP: u8 = 12;
+
+    /// Seeds 0..n-1 as a mask, for building entries readably.
+    fn m(seeds: &[u8]) -> u32 {
+        seeds.iter().fold(0u32, |acc, s| acc | (1u32 << s))
+    }
+
+    /// A well-formed NFL entry: the top six advance, then four, then two, then one.
+    fn nfl_entry() -> Bracket {
+        [
+            m(&[0, 1, 2, 3, 4, 5]),
+            m(&[0, 1, 2, 3]),
+            m(&[0, 1]),
+            m(&[0]),
+        ]
+    }
+
+    /// A well-formed CFP entry where all four bye seeds win their quarter-final,
+    /// so round two shares nothing with round one. Legal, and the case a plain
+    /// subset rule would have thrown out.
+    fn cfp_entry_all_byes_advance() -> Bracket {
+        [
+            m(&[8, 9, 10, 11]), // the four first-round games
+            m(&[0, 1, 2, 3]),   // the four byes all win
+            m(&[0, 1]),
+            m(&[0]),
+        ]
+    }
+
+    #[test]
+    fn both_formats_have_the_shape_their_sport_actually_plays() {
+        assert_eq!(bracket_shape(NFL).unwrap(), [6, 4, 2, 1]);
+        assert_eq!(bracket_shape(CFP).unwrap(), [4, 4, 2, 1]);
+        assert_eq!(bracket_byes(NFL).unwrap(), 2);
+        assert_eq!(bracket_byes(CFP).unwrap(), 4);
+    }
+
+    #[test]
+    fn a_field_that_has_no_four_round_shape_is_refused() {
+        for seeds in [0u8, 1, 8, 17, 32, 255] {
+            assert!(bracket_shape(seeds).is_err(), "{seeds} seeds must refuse");
+            assert!(seed_field(seeds).is_err(), "{seeds} seeds must refuse");
+            assert!(bracket_byes(seeds).is_err(), "{seeds} seeds must refuse");
+        }
+        // The edges of the supported range are supported.
+        assert_eq!(bracket_shape(MIN_BRACKET_SEEDS).unwrap()[0], 1);
+        assert_eq!(bracket_shape(MAX_BRACKET_SEEDS).unwrap()[0], 8);
+        assert_eq!(bracket_byes(MAX_BRACKET_SEEDS).unwrap(), 0);
+    }
+
+    #[test]
+    fn the_field_mask_is_exactly_the_seeds_that_exist() {
+        assert_eq!(seed_field(NFL).unwrap().count_ones(), 14);
+        assert_eq!(seed_field(CFP).unwrap().count_ones(), 12);
+        // Seed 12 exists in the NFL field and does not exist in the CFP field.
+        assert!(seed_field(NFL).unwrap() & (1 << 12) != 0);
+        assert!(seed_field(CFP).unwrap() & (1 << 12) == 0);
+    }
+
+    #[test]
+    fn a_well_formed_entry_is_accepted_in_both_sports() {
+        validate_bracket(nfl_entry(), NFL).unwrap();
+        validate_bracket(cfp_entry_all_byes_advance(), CFP).unwrap();
+    }
+
+    #[test]
+    fn a_round_with_the_wrong_number_of_picks_is_refused() {
+        let mut short = nfl_entry();
+        short[0] = m(&[0, 1, 2, 3, 4]); // five advance out of the wild card round
+        assert!(validate_bracket(short, NFL).is_err());
+
+        let mut two_champions = nfl_entry();
+        two_champions[3] = m(&[0, 1]);
+        assert!(validate_bracket(two_champions, NFL).is_err());
+
+        // An empty entry is the degenerate version of the same mistake.
+        assert!(validate_bracket([0, 0, 0, 0], NFL).is_err());
+    }
+
+    /* THE ONE THAT COUNTING ALONE WOULD MISS. A team that loses in the
+     * divisional round cannot win the Super Bowl, and an entry saying otherwise
+     * is not a bracket. */
+    #[test]
+    fn a_team_cannot_come_back_from_a_round_it_lost() {
+        let mut risen = nfl_entry();
+        risen[3] = m(&[2]); // seed 2 is not in the conference round picks
+        assert_eq!(risen[3].count_ones(), 1, "still the right count");
+        assert!(validate_bracket(risen, NFL).is_err());
+
+        let mut risen_semi = nfl_entry();
+        risen_semi[2] = m(&[0, 9]); // seed 9 never made the divisional round
+        assert!(validate_bracket(risen_semi, NFL).is_err());
+    }
+
+    #[test]
+    fn round_two_may_add_bye_teams_but_no_more_than_exist() {
+        // The NFL rests two, so two new faces in the divisional round is legal.
+        let two_new = [
+            m(&[0, 1, 2, 3, 4, 5]),
+            m(&[0, 1, 12, 13]),
+            m(&[0, 12]),
+            m(&[0]),
+        ];
+        validate_bracket(two_new, NFL).unwrap();
+
+        // Three would mean a third bye the format does not have.
+        let three_new = [
+            m(&[0, 1, 2, 3, 4, 5]),
+            m(&[0, 11, 12, 13]),
+            m(&[0, 12]),
+            m(&[0]),
+        ];
+        assert!(validate_bracket(three_new, NFL).is_err());
+    }
+
+    #[test]
+    fn a_seed_the_field_does_not_have_is_refused() {
+        // Seed 12 exists in a 14-team field but not in a 12-team one.
+        let mut out_of_field = nfl_entry();
+        out_of_field[0] = m(&[0, 1, 2, 3, 4, 12]);
+        validate_bracket(out_of_field, NFL).unwrap();
+        assert!(validate_bracket(out_of_field, CFP).is_err());
+    }
+
+    #[test]
+    fn a_perfect_entry_scores_the_published_number() {
+        // 6x1 + 4x2 + 2x4 + 8 = 30, and 4x1 + 4x2 + 2x4 + 8 = 28.
+        assert_eq!(bracket_perfect_score(NFL).unwrap(), 30);
+        assert_eq!(bracket_perfect_score(CFP).unwrap(), 28);
+
+        let entry = nfl_entry();
+        assert_eq!(bracket_total(entry, entry).unwrap(), 30);
+        let cfp = cfp_entry_all_byes_advance();
+        assert_eq!(bracket_total(cfp, cfp).unwrap(), 28);
+    }
+
+    #[test]
+    fn an_entry_that_gets_nothing_right_scores_nothing() {
+        let entry = nfl_entry();
+        let results: Bracket = [
+            m(&[6, 7, 8, 9, 10, 11]),
+            m(&[6, 7, 8, 9]),
+            m(&[6, 7]),
+            m(&[6]),
+        ];
+        assert_eq!(bracket_total(entry, results).unwrap(), 0);
+    }
+
+    /* Each round is worth double the last, which is the property that makes the
+     * final matter without making the first round decoration. */
+    #[test]
+    fn a_later_round_is_worth_double_the_one_before() {
+        let one_seed = m(&[0]);
+        for r in 0..BRACKET_ROUNDS {
+            assert_eq!(
+                bracket_round_points(one_seed, one_seed, r).unwrap(),
+                BRACKET_ROUND_POINTS[r]
+            );
+        }
+        assert_eq!(BRACKET_ROUND_POINTS, [1, 2, 4, 8]);
+        // Calling a round that does not exist is refused, not wrapped.
+        assert!(bracket_round_points(one_seed, one_seed, BRACKET_ROUNDS).is_err());
+    }
+
+    #[test]
+    fn a_round_scores_only_the_teams_it_actually_got_right() {
+        // Four picked, two of them right, in the round worth two apiece.
+        let picks = m(&[0, 1, 2, 3]);
+        let winners = m(&[0, 1, 8, 9]);
+        assert_eq!(bracket_round_points(picks, winners, 1).unwrap(), 4);
+        // A win by a team nobody picked is worth nothing to this entry.
+        assert_eq!(bracket_round_points(0, winners, 1).unwrap(), 0);
+    }
+
+    /* The site shows a running standing from the whole entry; the program adds
+     * one round at a time as each is finalized. If those two ever disagree the
+     * leaderboard is lying about who is winning somebody's money. */
+    #[test]
+    fn scoring_round_by_round_agrees_with_scoring_all_at_once() {
+        let entry = nfl_entry();
+        let results: Bracket = [
+            m(&[0, 1, 2, 9, 10, 11]), // three of six right
+            m(&[0, 1, 9, 10]),        // two of four right
+            m(&[0, 9]),               // one of two right
+            m(&[9]),                  // champion wrong
+        ];
+        let mut running = 0u32;
+        for r in 0..BRACKET_ROUNDS {
+            running += bracket_round_points(entry[r], results[r], r).unwrap();
+        }
+        assert_eq!(running, bracket_total(entry, results).unwrap());
+        // 3x1 + 2x2 + 1x4 + 0 = 11.
+        assert_eq!(running, 11);
+    }
+
+    #[test]
+    fn no_entry_can_ever_beat_a_perfect_one() {
+        for seeds in MIN_BRACKET_SEEDS..=MAX_BRACKET_SEEDS {
+            let shape = bracket_shape(seeds).unwrap();
+            let field = seed_field(seeds).unwrap();
+            let perfect = bracket_perfect_score(seeds).unwrap();
+            // Every seed winning every round is the most any scoring can find.
+            let all: Bracket = [field, field, field, field];
+            let mut most = 0u32;
+            for r in 0..BRACKET_ROUNDS {
+                // The results only ever carry `shape[r]` winners.
+                let winners = (1u32 << shape[r]) - 1;
+                most += bracket_round_points(all[r], winners, r).unwrap();
+            }
+            assert_eq!(most, perfect, "{seeds} seeds");
+        }
     }
 
     #[test]

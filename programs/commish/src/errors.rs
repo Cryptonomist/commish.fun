@@ -122,4 +122,8 @@ pub enum CommishError {
     FeeCapZero,
     #[msg("That is not a usable treasury")]
     BadTreasury,
+    #[msg("A playoff bracket needs between 9 and 16 seeds")]
+    BadBracketSize,
+    #[msg("That bracket does not fill every round correctly")]
+    BadBracket,
 }

@@ -141,9 +141,69 @@ pub const POOL_LEAGUE: u8 = 8;
 pub const POOL_TYPE_MAX: u8 = 8;
 
 /// Modes whose money path is implemented and tested.
+///
+/// POOL_BRACKET is deliberately NOT here yet. Its scoring engine is written and
+/// unit-tested below and in `rules`, but the instruction that takes a bracket
+/// entry and the settle arm that pays on it are not, and this list is the one
+/// gate that decides whether a mode can hold somebody's money. It moves in the
+/// same commit that finishes those, not before.
 pub fn mode_enabled(pool_type: u8) -> bool {
     matches!(pool_type, POOL_SURVIVOR | POOL_LOSER | POOL_LEAGUE)
 }
+
+/* PLAYOFF BRACKETS: THE PART THAT IS THE SAME IN BOTH SPORTS.
+ *
+ * A bracket pool is not a season of picks. Every entry is filled in ONCE,
+ * before the first playoff kickoff, and then nobody touches it again: what
+ * changes each round is the score, not the picks. Nobody is eliminated either
+ * — a busted bracket keeps playing for second — so the elimination machinery
+ * every other pick mode runs on does not apply, and the winner is whoever
+ * finishes with the most points.
+ *
+ * SEEDS, NOT TEAMS, is the decision that makes one engine serve both the NFL
+ * playoffs and the College Football Playoff. Everywhere else in this program a
+ * bit in a `u32` means "team N" out of the 32 NFL clubs, which is useless for
+ * college: there are 130-odd FBS programs and no fixed index. So in a bracket
+ * a bit means SEED N in that pool's own field — seed 0 through seed 13. The
+ * program never learns which school or club a seed is; the site holds that
+ * mapping, the same way it already holds the schedule. One engine, two sports,
+ * and a third the day somebody wants March.
+ *
+ * FOUR ROUNDS, which is true of both by luck rather than design. The NFL plays
+ * wild card, divisional, conference and Super Bowl; the twelve-team CFP plays
+ * first round, quarter-final, semi-final and final.
+ */
+pub const BRACKET_ROUNDS: usize = 4;
+
+/* How many teams survive each round, derived rather than tabled.
+ *
+ * Both formats converge on eight teams in round two, because both end in a
+ * four-round march to one champion. Byes are what differ: the NFL rests two
+ * teams and plays twelve, the CFP rests four and plays eight. Write `p` for the
+ * teams playing round one, so round one produces `p / 2` winners and round two
+ * fields `p / 2 + byes == 8`. Substituting `byes = seeds - p` gives
+ * `seeds - p / 2 == 8`, so round one's winners are simply `seeds - 8`:
+ *
+ *     NFL   14 seeds -> 6, 4, 2, 1
+ *     CFP   12 seeds -> 4, 4, 2, 1
+ *
+ * which is why this is arithmetic and not a lookup table with two rows in it.
+ * A field outside 9..=16 has no four-round shape and is refused.
+ */
+pub const MIN_BRACKET_SEEDS: u8 = 9;
+pub const MAX_BRACKET_SEEDS: u8 = 16;
+
+/* What a correct pick is worth, by round.
+ *
+ * Doubling is the convention every office bracket already uses, and it is not
+ * arbitrary: it makes each round worth roughly the same in total, so the final
+ * matters without the early rounds being decoration. In both formats the
+ * rounds come out near enough level and a perfect entry is a round number:
+ *
+ *     NFL   6x1 + 4x2 + 2x4 + 1x8  =  6 + 8 + 8 + 8  = 30
+ *     CFP   4x1 + 4x2 + 2x4 + 1x8  =  4 + 8 + 8 + 8  = 28
+ */
+pub const BRACKET_ROUND_POINTS: [u32; BRACKET_ROUNDS] = [1, 2, 4, 8];
 
 /* Pool status. Both state machines share the field; league pools use
  * SheetPosted/SheetFinalized where pick pools use ResultsPosted/Finalized. */
