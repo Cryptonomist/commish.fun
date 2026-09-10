@@ -166,6 +166,42 @@ export function validateBracket(
   return null;
 }
 
+/* WHAT WINS THE POT: a perfect bracket, and nothing else.
+ *
+ * Every game in a round has to be right, so one missed game in the first round
+ * ends an entry as surely as losing the final. Mirrors `bracket_survives_round`
+ * in Rust.
+ *
+ * Usually nobody wins, and the site has to say so plainly rather than letting
+ * somebody assume the closest bracket takes it. When no entry is perfect the
+ * pot is refunded in full: `reclaim_dues` splits the vault pro rata after the
+ * refund deadline and charges no fee, because the fee is only ever taken when a
+ * pool actually settles on a winner. Jackpot, or your buy-in back. */
+export function survivesRound(picks: number, winners: number): boolean {
+  return picks === winners;
+}
+
+/** Is this entry still perfect after `posted` rounds have been finalized? */
+export function stillPerfect(
+  entry: Bracket,
+  winners: Bracket,
+  posted: number,
+): boolean {
+  const through = Math.min(Math.max(posted, 0), BRACKET_ROUNDS);
+  for (let r = 0; r < through; r++) {
+    if (!survivesRound(entry[r], winners[r])) return false;
+  }
+  return true;
+}
+
+/* Everything below scores an entry in POINTS, which decides no money.
+ *
+ * It is the standing the site shows while the playoffs run — who is still
+ * alive, who busted on wild card weekend — and nothing more. The pot is decided
+ * by `stillPerfect` above. Keeping them apart matters: a leaderboard that looks
+ * like a payout order, in a pool that pays only perfection, tells people they
+ * are owed money they are not. */
+
 /** What one round scored. */
 export function roundPoints(
   picks: number,

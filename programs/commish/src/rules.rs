@@ -156,6 +156,54 @@ pub fn validate_bracket(entry: Bracket, seeds: u8) -> Result<()> {
     Ok(())
 }
 
+/* WHAT WINS THE POT: a perfect bracket, and nothing else.
+ *
+ * The pot rule is not a scoring rule. Every game in the round has to be right,
+ * so an entry either carries all the way to the trophy or it is out, and one
+ * missed game in the first round ends it as surely as losing the final. That
+ * makes this a SURVIVAL question, which is why it returns a bool and lands on
+ * the same elimination machinery every pick mode already runs on: a miss sets
+ * `eliminated_week`, whoever is still standing after the last round takes the
+ * pot, and two perfect entries split it the way two survivors already do.
+ *
+ * THE CASE THIS DESIGN HAS TO ANSWER OUT LOUD: usually nobody wins. Thirteen
+ * NFL games picked at a coin flip is one perfect bracket in 8,192, and picking
+ * favourites well still leaves it a long shot. Entries also correlate, because
+ * everybody likes the same favourites, so a pool tends to end with several
+ * perfect brackets or none at all rather than exactly one.
+ *
+ * When it is none, the pot must not be paid to the nearly-perfect and must not
+ * sit in the vault. It is refunded: `reclaim_dues` splits the vault pro rata
+ * after the refund deadline and takes no fee, because the fee is only ever
+ * charged by `advance_week` on a pool that actually settled. So a bracket pool
+ * pays a jackpot or gives everyone their buy-in back, and there is no third
+ * outcome. `advance_week` must therefore NOT apply the Survivor rule that hands
+ * the pot to whoever was alive when everybody went out — in a bracket that
+ * would pay the nearly-perfect, which is exactly what this mode does not do.
+ */
+pub fn bracket_survives_round(picks: u32, winners: u32) -> bool {
+    picks == winners
+}
+
+/// Is this entry still perfect after `posted` rounds have been finalized?
+///
+/// The live status the site shows while the playoffs run, and the same
+/// question the settle crank asks one round at a time.
+pub fn bracket_still_perfect(entry: Bracket, winners: Bracket, posted: usize) -> bool {
+    let through = posted.min(BRACKET_ROUNDS);
+    (0..through).all(|r| bracket_survives_round(entry[r], winners[r]))
+}
+
+/* Everything below scores an entry in POINTS, which decides no money at all.
+ *
+ * It is for the standing the site shows while a bracket pool runs — who is
+ * closest, who busted in the first round — and for the day a pool wants a
+ * points format instead of a jackpot. The pot is decided by
+ * `bracket_survives_round` above and by nothing here. Keeping the two apart is
+ * deliberate: a leaderboard that looks like a payout order, in a pool that pays
+ * only perfection, is a lie about who is owed money.
+ */
+
 /// What one round of an entry just scored.
 ///
 /// A push cannot happen here and is not modelled: a playoff game is played to a
@@ -501,6 +549,62 @@ mod tests {
         out_of_field[0] = m(&[0, 1, 2, 3, 4, 12]);
         validate_bracket(out_of_field, NFL).unwrap();
         assert!(validate_bracket(out_of_field, CFP).is_err());
+    }
+
+    /* THE POT RULE. Every game in the round, or you are out. */
+    #[test]
+    fn a_round_carries_an_entry_only_when_every_game_is_right() {
+        let picks = m(&[0, 1, 2, 3]);
+        assert!(bracket_survives_round(picks, picks));
+        // Three of four right is out, the same as none of four.
+        assert!(!bracket_survives_round(picks, m(&[0, 1, 2, 9])));
+        assert!(!bracket_survives_round(picks, m(&[6, 7, 8, 9])));
+        // Extra or missing teams are both wrong, not near enough.
+        assert!(!bracket_survives_round(picks, m(&[0, 1, 2])));
+        assert!(!bracket_survives_round(picks, m(&[0, 1, 2, 3, 4])));
+    }
+
+    #[test]
+    fn one_missed_game_in_the_first_round_ends_it() {
+        let entry = nfl_entry();
+        // Correct in every round except the first.
+        let results: Bracket = [m(&[0, 1, 2, 3, 4, 9]), entry[1], entry[2], entry[3]];
+        assert!(!bracket_still_perfect(entry, results, 1));
+        assert!(!bracket_still_perfect(entry, results, BRACKET_ROUNDS));
+        // And that entry still scores well, which is exactly why points do not
+        // decide the pot: 5 right in round one plus three perfect rounds.
+        assert_eq!(bracket_total(entry, results).unwrap(), 5 + 8 + 8 + 8);
+    }
+
+    #[test]
+    fn an_entry_is_perfect_until_a_round_says_otherwise() {
+        let entry = nfl_entry();
+        // Nothing posted yet: nobody has busted.
+        assert!(bracket_still_perfect(entry, [0, 0, 0, 0], 0));
+        // Two rounds posted and both right.
+        let two: Bracket = [entry[0], entry[1], 0, 0];
+        assert!(bracket_still_perfect(entry, two, 2));
+        // The third round goes wrong.
+        let three: Bracket = [entry[0], entry[1], m(&[0, 9]), 0];
+        assert!(bracket_still_perfect(entry, three, 2));
+        assert!(!bracket_still_perfect(entry, three, 3));
+        // Asking past the end of the bracket cannot read off the end.
+        assert!(bracket_still_perfect(entry, entry, 99));
+    }
+
+    #[test]
+    fn only_a_flawless_entry_survives_the_whole_bracket() {
+        let entry = nfl_entry();
+        assert!(bracket_still_perfect(entry, entry, BRACKET_ROUNDS));
+        for r in 0..BRACKET_ROUNDS {
+            // Break exactly one round, leave the rest perfect.
+            let mut broken = entry;
+            broken[r] ^= m(&[0]) | m(&[6]);
+            assert!(
+                !bracket_still_perfect(entry, broken, BRACKET_ROUNDS),
+                "round {r} broken must end the entry"
+            );
+        }
     }
 
     #[test]

@@ -25,6 +25,8 @@ import {
   roundPoints,
   seedField,
   seedsIn,
+  stillPerfect,
+  survivesRound,
   validateBracket,
   type Bracket,
 } from "@/lib/bracket";
@@ -147,6 +149,51 @@ describe("validating an entry", () => {
     const entry: Bracket = [m(0, 1, 2, 3, 4, 12), m(0, 1, 2, 3), m(0, 1), m(0)];
     expect(validateBracket(entry, NFL)).to.equal(null);
     expect(validateBracket(entry, CFP)?.message).to.contain("not in this field");
+  });
+});
+
+describe("what wins the pot", () => {
+  it("carries an entry only when every game in the round is right", () => {
+    const picks = m(0, 1, 2, 3);
+    expect(survivesRound(picks, picks)).to.equal(true);
+    expect(survivesRound(picks, m(0, 1, 2, 9))).to.equal(false);
+    expect(survivesRound(picks, m(0, 1, 2))).to.equal(false);
+    expect(survivesRound(picks, m(0, 1, 2, 3, 4))).to.equal(false);
+  });
+
+  /* The entry that finishes second is worth nothing, and the site has to be
+   * able to say that without ambiguity. */
+  it("ends an entry on one missed game, however well it scores after", () => {
+    const entry = nflEntry();
+    const results: Bracket = [m(0, 1, 2, 3, 4, 9), entry[1], entry[2], entry[3]];
+    expect(stillPerfect(entry, results, BRACKET_ROUNDS)).to.equal(false);
+    // Five of six, then three perfect rounds: 29 of a possible 30, and no pot.
+    expect(bracketTotal(entry, results)).to.equal(29);
+  });
+
+  it("holds an entry perfect until a posted round says otherwise", () => {
+    const entry = nflEntry();
+    expect(stillPerfect(entry, [0, 0, 0, 0], 0)).to.equal(true);
+    const twoRight: Bracket = [entry[0], entry[1], 0, 0];
+    expect(stillPerfect(entry, twoRight, 2)).to.equal(true);
+    const thirdWrong: Bracket = [entry[0], entry[1], m(0, 9), 0];
+    expect(stillPerfect(entry, thirdWrong, 2)).to.equal(true);
+    expect(stillPerfect(entry, thirdWrong, 3)).to.equal(false);
+    // Asking past the end, or before the start, cannot read off the bracket.
+    expect(stillPerfect(entry, entry, 99)).to.equal(true);
+    expect(stillPerfect(entry, [0, 0, 0, 0], -1)).to.equal(true);
+  });
+
+  it("lets only a flawless entry survive the whole bracket", () => {
+    const entry = nflEntry();
+    expect(stillPerfect(entry, entry, BRACKET_ROUNDS)).to.equal(true);
+    for (let r = 0; r < BRACKET_ROUNDS; r++) {
+      const broken: Bracket = [...entry] as Bracket;
+      broken[r] ^= m(0) | m(6);
+      expect(stillPerfect(entry, broken, BRACKET_ROUNDS), `round ${r}`).to.equal(
+        false,
+      );
+    }
   });
 });
 
