@@ -17,11 +17,54 @@ import {
   LAMPORTS_PER_SOL,
   lamportsToCreate,
   lamportsToJoin,
+  lamportsToPlay,
   rentFor,
   shortfall,
   solNeeded,
+  solToPlay,
+  topUpToPlay,
   WALLET_FLOOR,
 } from "../src/lib/funding";
+
+/* WHAT A SPONSORED FRIEND NEEDS TO USE THE SEAT THEY WERE GIVEN.
+ *
+ * The on-chain suite proves `sponsor_join` hands a seat to a wallet that has
+ * never held anything. It also proves the consequence: that wallet cannot sign
+ * a pick or receive a pot without some SOL. These pin the budget a sponsor is
+ * offered to send alongside the seat. */
+describe("what a sponsored member needs to play a season", () => {
+  it("covers the wallet floor, a token account, every pick and a claim", () => {
+    const perSig = 5_000;
+    const expected =
+      WALLET_FLOOR + rentFor(165) + 19 * perSig + /* headroom */ 20_000;
+    expect(lamportsToPlay()).to.equal(expected);
+  });
+
+  /* THE FLOOR IS THE TRAP. A brand-new account cannot receive a transfer that
+   * leaves it below its own rent-exempt minimum, so a "just send them a little"
+   * top-up smaller than the floor would be refused by the chain outright. */
+  it("never offers a first transfer smaller than the rent floor", () => {
+    expect(topUpToPlay(0)).to.be.greaterThan(WALLET_FLOOR);
+    expect(topUpToPlay(0)).to.equal(lamportsToPlay());
+  });
+
+  it("sends only the gap, and nothing when they already have enough", () => {
+    const half = Math.floor(lamportsToPlay() / 2);
+    expect(topUpToPlay(half)).to.equal(lamportsToPlay() - half);
+    expect(topUpToPlay(lamportsToPlay())).to.equal(0);
+    expect(topUpToPlay(lamportsToPlay() * 10)).to.equal(0);
+  });
+
+  it("does not trip over a negative or fractional balance", () => {
+    expect(topUpToPlay(-1)).to.equal(lamportsToPlay());
+    expect(topUpToPlay(1.9)).to.equal(lamportsToPlay() - 1);
+  });
+
+  it("is a few thousandths of a SOL, rounded up and never down", () => {
+    expect(solToPlay()).to.equal(0.003);
+    expect(solToPlay() * LAMPORTS_PER_SOL).to.be.at.least(lamportsToPlay());
+  });
+});
 
 describe("what it costs to start", () => {
   describe("rent, against figures the chain actually returned", () => {

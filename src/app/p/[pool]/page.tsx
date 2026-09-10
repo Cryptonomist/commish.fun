@@ -29,6 +29,7 @@ import { LeaguePanel } from "@/components/LeaguePanel";
 import { PickGrid } from "@/components/PickGrid";
 import { ReclaimDues } from "@/components/ReclaimDues";
 import { ResultsPanel } from "@/components/ResultsPanel";
+import { SponsorSeat } from "@/components/SponsorSeat";
 import { formatUsdc, shortAddress } from "@/lib/format";
 import {
   buildJoinPool,
@@ -356,6 +357,19 @@ export default function PoolPage() {
                       ? "Loser"
                       : "Survivor"
                 }
+              />
+            ) : null}
+
+            {/* The other half of filling a pool. A link reaches the friends
+                who can pay their own way; this reaches the ones who cannot,
+                by letting the commissioner buy their seat. It renders only for
+                the commissioner, because the program refuses anybody else. */}
+            {pool.status === STATUS_OPEN && poolKey ? (
+              <SponsorSeat
+                className="mt-6"
+                poolKey={poolKey}
+                pool={pool}
+                onChanged={refresh}
               />
             ) : null}
 

@@ -138,3 +138,53 @@ export function shortfall(args: {
     addUsdc,
   };
 }
+
+/* WHAT A SPONSORED MEMBER NEEDS TO PLAY A SEASON.
+ *
+ * `sponsor_join` buys a seat for somebody who has never held a token, and the
+ * on-chain suite proves the program is happy with that: the seat belongs to
+ * them, they pay nothing to receive it. But signing is not free. Every pick is
+ * a transaction whose fee somebody's SOL pays, this site makes the member the
+ * fee payer on their own picks, and a winner needs a token account to be paid
+ * into, which costs rent the first time. A friend with a wallet and nothing in
+ * it can therefore be handed a seat and then be unable to use it.
+ *
+ * So a sponsor can send this much SOL in the same transaction as the seat.
+ * It is budgeted for the worst season rather than the likely one:
+ *
+ *   the wallet's own rent floor   a brand-new account cannot receive less than
+ *                                 its rent-exempt minimum, so a top-up smaller
+ *                                 than this is refused outright by the chain
+ *   one pick per week, all 18     a member who survives the whole season
+ *   one claim                     plus the token account the pot lands in
+ *   headroom                      the same margin every other figure here gets
+ *
+ * About 0.003 SOL, or roughly half a dollar. Advisory like everything else in
+ * this file, and rounded up before it reaches a screen. */
+const SIGNATURE_FEE = 5_000;
+const PICKS_PER_SEASON = 18;
+
+export function lamportsToPlay(): number {
+  return (
+    WALLET_FLOOR +
+    rentFor(TOKEN_ACCOUNT_BYTES) +
+    (PICKS_PER_SEASON + 1) * SIGNATURE_FEE +
+    FEE_HEADROOM
+  );
+}
+
+/** The same budget in SOL, rounded up to a clean thousandth. */
+export function solToPlay(): number {
+  return Math.ceil((lamportsToPlay() / LAMPORTS_PER_SOL) * 1000) / 1000;
+}
+
+/* How much to send a wallet that already holds `haveLamports`.
+ *
+ * Zero when they already have enough, so a sponsor never pays for SOL that is
+ * not needed. Otherwise the gap to the full budget — which for a wallet that
+ * has never been funded is the whole budget, and so always clears the rent
+ * floor that a smaller first transfer would trip over. */
+export function topUpToPlay(haveLamports: number): number {
+  const have = Math.max(0, Math.floor(haveLamports));
+  return Math.max(0, lamportsToPlay() - have);
+}
