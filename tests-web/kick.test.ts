@@ -17,15 +17,18 @@ import { expect } from "chai";
 import {
   BAR_X,
   carryFor,
+  clearsTheLadder,
   GAP_HALF,
   kickReadout,
   LADDER,
   launch,
+  LEVELS,
   MAX_AGE,
   meterReading,
   reachesPosts,
   resolve,
   stepShot,
+  TEE_FAR,
   teeFor,
   windDrift,
   windFrom,
@@ -381,5 +384,71 @@ describe("the wind gauge", () => {
       expect(mph).to.be.within(0, WIND_MPH_MAX);
       expect(["up", "down", "calm"]).to.include(windDrift(wind));
     }
+  });
+});
+
+/* THE LADDER, AND ITS END.
+ *
+ * It used to top out at 66 yards and then offer that same kick forever, with
+ * no finish and nothing for getting there. It now runs to 75, and a make from
+ * the last spot clears it. These pin that the finish is a real achievement: it
+ * comes only from a clean run, and the last kick is hard without being luck. */
+describe("clearing the ladder", () => {
+  it("runs from 44 yards to 75, one kick from every spot", () => {
+    expect(yardsFor(teeFor(0))).to.equal(44);
+    expect(yardsFor(TEE_FAR)).to.equal(75);
+    // Interpolated, so equal to floating-point rounding rather than bit for bit.
+    expect(teeFor(LADDER)).to.be.closeTo(TEE_FAR, 1e-12);
+    expect(yardsFor(teeFor(LADDER))).to.equal(yardsFor(TEE_FAR));
+    expect(LEVELS).to.equal(LADDER + 1);
+  });
+
+  it("clears only on a make from the final spot", () => {
+    expect(clearsTheLadder(LADDER, true)).to.equal(true);
+    // A miss from the final spot sends you back, it does not finish anything.
+    expect(clearsTheLadder(LADDER, false)).to.equal(false);
+    // Every earlier make is just the next rung.
+    for (let made = 0; made < LADDER; made++) {
+      expect(clearsTheLadder(made, true), `make from spot ${made}`).to.equal(false);
+    }
+  });
+
+  /* The rungs keep their old spacing, so no step is a sudden wall. */
+  it("keeps every rung a few yards apart, with no sudden jump", () => {
+    for (let i = 1; i <= LADDER; i++) {
+      const step = yardsFor(teeFor(i)) - yardsFor(teeFor(i - 1));
+      expect(step, `rung ${i}`).to.be.within(3, 4);
+    }
+  });
+
+  /** The weakest power, to the nearest hundredth, that reaches from a spot. */
+  const powerNeeded = (tee: number): number => {
+    for (let p = 0; p <= 100; p++) {
+      if (reachesPosts(tee, p / 100)) return p / 100;
+    }
+    return Infinity;
+  };
+
+  /* Difficulty should rise with every rung, never fall back. */
+  it("asks for more power at every step back", () => {
+    let prev = -1;
+    for (const tee of SPOTS) {
+      const need = powerNeeded(tee);
+      expect(need, `tee ${tee.toFixed(2)}`).to.be.at.least(prev);
+      prev = need;
+    }
+  });
+
+  /* THE FINALE. Makeable, and demanding: only the top slice of the power
+   * meter reaches from 75, and the yardage meter shows that slice in green so
+   * it can be learned. A window this narrow is a finale; a wider one would be
+   * a formality, and none at all would be a wall. */
+  it("makes the last kick demanding but possible", () => {
+    const need = powerNeeded(TEE_FAR);
+    expect(need, "the final spot is out of reach").to.be.at.most(1);
+    // Only the top fifth of the bar or less has the leg...
+    expect(need).to.be.at.least(0.8);
+    // ...but it is a slice, not a single frame at the very peak.
+    expect(1 - need).to.be.at.least(0.05);
   });
 });

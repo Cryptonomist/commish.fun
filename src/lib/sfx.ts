@@ -302,7 +302,10 @@ export type Sound =
   | "snap"
   | "tackle"
   | "first"
-  | "spin";
+  | "spin"
+  /* Clearing the homepage kick's whole ladder. Heard once per run at most,
+   * so it can afford to be the longest sound on the site. */
+  | "champion";
 
 /** Fire and forget. Silent when disabled, silent when unsupported, never
  *  throws into a click handler. */
@@ -356,6 +359,19 @@ export function play(sound: Sound): void {
        * sounding when the result of pressing it arrives. */
       case "spin":
         sweep(330, 990, 120, 0, "sawtooth");
+        break;
+      /* THE CHAMPION. The shape every arcade stage-clear has: a run up the
+       * major chord, a beat, then the octave held with the fifth under it. It
+       * starts where `win` starts, so it reads as that sound grown up rather
+       * than as a different game. */
+      case "champion":
+        note(523, 80);
+        note(659, 80, 0.09);
+        note(784, 80, 0.18);
+        note(1047, 90, 0.27);
+        note(784, 70, 0.42);
+        note(1047, 320, 0.5);
+        note(784, 320, 0.5);
         break;
     }
   } catch {

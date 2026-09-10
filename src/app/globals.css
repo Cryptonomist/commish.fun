@@ -546,6 +546,21 @@ body {
   to { transform: translateX(-50%); }
 }
 
+/* The homepage kick's finale card. A pop in six stepped frames rather than a
+   smooth ease, because the field it lands on is drawn in hard pixels and a
+   buttery scale would be the one thing on it that is not. It ends at full
+   size and full opacity, so the blanket reduced-motion rule below, which
+   finishes every animation instantly, leaves it resting exactly right. */
+.kick-cleared {
+  animation: kick-cleared 0.5s steps(6, end) both;
+}
+@keyframes kick-cleared {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  80% { transform: scale(0.96); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

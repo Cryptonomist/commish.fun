@@ -33,13 +33,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  type Bit,
+  burst,
+  CONFETTI_MAX_FRAMES,
+  stepConfetti,
+} from "@/lib/confetti";
+import {
   BAR_X,
+  clearsTheLadder,
   GAP_HALF,
   kickReadout,
   launch,
+  LEVELS,
   meterReading,
   type Shot,
   stepShot,
+  TEE_FAR,
   teeFor,
   windDrift,
   windFrom,
@@ -49,7 +58,22 @@ import {
 import { PX } from "@/lib/pixel";
 import { play } from "@/lib/sfx";
 
-type Phase = "idle" | "power" | "aim" | "flight" | "good" | "wide" | "short";
+type Phase =
+  | "idle"
+  | "power"
+  | "aim"
+  | "flight"
+  | "good"
+  | "wide"
+  | "short"
+  /** The last kick of a clean run went through. */
+  | "cleared";
+
+/** How long the finale card stays up, in frames at 30 a second. */
+const CLEARED_HOLD = 120;
+
+/** The longest kick on the ladder, for the finale's own words. */
+const FINAL_YARDS = yardsFor(TEE_FAR);
 
 /* The first attempt's wind, from the seed the game has always started on, so
  * the sequence of winds a run deals is the same one it dealt before the gauge
@@ -111,6 +135,13 @@ export function HeroKick() {
    *  thirty times a second for a number. */
   const readoutRef = useRef<HTMLSpanElement | null>(null);
 
+  /* THE FINALE'S CONFETTI, in a ref for the same reason as the ball: it moves
+   * every frame. It runs on its own and is not tied to a phase, so pressing
+   * KICK straight away starts the next run while the last of it is still
+   * falling rather than cutting the celebration off. Null when there is none. */
+  const confettiRef = useRef<Bit[] | null>(null);
+  const confettiFramesRef = useRef(0);
+
   const goPhase = useCallback((p: Phase) => {
     phaseRef.current = p;
     setPhase(p);
@@ -121,7 +152,13 @@ export function HeroKick() {
   /** One press. The whole game is this function three times. */
   const press = useCallback(() => {
     const p = phaseRef.current;
-    if (p === "idle" || p === "good" || p === "wide" || p === "short") {
+    if (
+      p === "idle" ||
+      p === "good" ||
+      p === "wide" ||
+      p === "short" ||
+      p === "cleared"
+    ) {
       meterRef.current = 0;
       goPhase("power");
       play("move");
@@ -241,6 +278,16 @@ export function HeroKick() {
         readout.textContent = `${r.yards} YD`;
         readout.style.color = r.reaches ? REACHES : SHORT;
       }
+
+      // The finale's confetti, last, so it falls over everything else.
+      const bits = confettiRef.current;
+      if (bits) {
+        for (const b of bits) {
+          if (!b.alive) continue;
+          ctx.fillStyle = b.color;
+          ctx.fillRect(px(b.x), py(b.y), b.size, b.size);
+        }
+      }
       ctx.imageSmoothingEnabled = false;
     };
 
@@ -293,12 +340,26 @@ export function HeroKick() {
             dirty = true;
             if (out !== "flying") {
               const good = out === "good";
-              madeRef.current = good ? madeRef.current + 1 : 0;
+              const madeBefore = madeRef.current;
+              /* THE FINALE. A make from the last spot clears the run: the card
+               * goes up, the fanfare plays if sound is on, the confetti leaves
+               * from the posts, and the ball goes back to the start for the
+               * next run. Everything else is the ladder as it always was. */
+              const cleared = clearsTheLadder(madeBefore, good);
+              madeRef.current = cleared ? 0 : good ? madeBefore + 1 : 0;
               setMade(madeRef.current);
-              setStreak((n) => (good ? n + 1 : 0));
-              holdRef.current = 30;
-              goPhase(out);
-              play(good ? "win" : "out");
+              setStreak((n) => (cleared ? 0 : good ? n + 1 : 0));
+              holdRef.current = cleared ? CLEARED_HOLD : 30;
+              goPhase(cleared ? "cleared" : out);
+              play(cleared ? "champion" : good ? "win" : "out");
+              /* No flying confetti under reduced motion: a hundred and twenty
+               * pieces bursting across the screen is precisely what that
+               * setting asks not to be shown. The card still goes up, still
+               * says what happened, and the fanfare still plays if sound is on. */
+              if (cleared && !reduced) {
+                confettiRef.current = burst(seedRef.current);
+                confettiFramesRef.current = 0;
+              }
               /* The next kick's wind, drawn the moment this one lands, so the
                * gauge always shows the wind you are about to kick into. Drawn
                * here rather than when the result clears, because pressing
@@ -307,6 +368,18 @@ export function HeroKick() {
               rollWind();
             }
           }
+        }
+
+        /* The confetti falls on its own clock. It stops when the last piece
+         * has gone, or at the hard cap — which the confetti tests prove it
+         * never reaches — so a stray piece cannot keep this redrawing. */
+        if (confettiRef.current) {
+          confettiFramesRef.current += 1;
+          const alive = stepConfetti(confettiRef.current);
+          if (alive === 0 || confettiFramesRef.current > CONFETTI_MAX_FRAMES) {
+            confettiRef.current = null;
+          }
+          dirty = true;
         }
 
         if (holdRef.current > 0) {
@@ -350,7 +423,9 @@ export function HeroKick() {
               ? "NO GOOD"
               : phase === "short"
                 ? "SHORT"
-                : "KICK";
+                : phase === "cleared"
+                  ? "CHAMPION!"
+                  : "KICK";
 
   const yards = yardsFor(teeX());
 
@@ -426,6 +501,39 @@ export function HeroKick() {
           1088, y 0 to 96, empty because the badge is short and the h1 starts
           below it. It is also the region least likely to be squeezed as the
           hero reflows, since everything else here grows downward. */}
+      {/* THE FINALE CARD. A clean run from 44 yards to the last spot.
+
+          On a panel rather than as bare text, because it lands on the headline
+          and bare lettering over bare lettering is unreadable; the panel is the
+          same card every other message on this site sits on. The big line is
+          the goalposts' yellow, not gold, because gold means money here and
+          nothing else. The numbers come from the ladder's own constants, so
+          lengthening it can never leave the card claiming the old distance.
+
+          Pops in over six stepped frames to match the pixels it sits on, and
+          lands on its resting size, so reduced motion simply shows it there. */}
+      {phase === "cleared" ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          {/* Larger than the headline it covers, on purpose: a first version
+              at text-2xl sat on top of bigger lettering and read as a caption
+              rather than the payoff. */}
+          <div className="kick-cleared panel flex flex-col items-center gap-3 px-10 py-7 text-center">
+            <span
+              className="font-matrix text-5xl leading-none field-type"
+              style={{ color: PX.post }}
+            >
+              {LEVELS} FOR {LEVELS}!
+            </span>
+            <span className="font-matrix text-xs leading-4 text-chalk">
+              THE LAST ONE FROM {FINAL_YARDS} YARDS
+            </span>
+          </div>
+        </div>
+      ) : null}
+
       {/* THE HUD. Distance to the posts, the wind you are about to kick into,
           and the button.
 
@@ -447,6 +555,14 @@ export function HeroKick() {
           aria-live="polite"
         >
           {label}
+          {/* The finale card is hidden from assistive technology so the change
+              is not read twice, so the sentence it says lives here, on the one
+              control that is already announced. */}
+          {phase === "cleared" ? (
+            <span className="sr-only">
+              {` You made all ${LEVELS} kicks in a row, the last from ${FINAL_YARDS} yards. Press to play again.`}
+            </span>
+          ) : null}
         </button>
       </div>
     </div>

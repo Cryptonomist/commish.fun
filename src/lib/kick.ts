@@ -28,12 +28,48 @@ export const GAP_HALF = 0.058;
 
 /** Where the ball is spotted for the shortest kick, as a share of the width:
  *  far enough from the posts to be a kick, near enough to leave the headline
- *  alone. And the longest, once somebody has made a few. */
+ *  alone. */
 export const TEE_NEAR = 0.62;
-export const TEE_FAR = 0.3;
+
+/* AND THE LONGEST: 75 YARDS, AND WHY IT STOPS THERE.
+ *
+ * The ladder used to end at 66, which was a choice rather than a limit, and
+ * players ran out of game there. Two things bound how far back it can go, and
+ * it was worth measuring which one actually binds.
+ *
+ * The page does not. Measured at 1366x768, the 66-yard spot already puts the
+ * ball on the headline's last line, so walking it further left changes nothing
+ * a visitor sees; it stays clear of the left end zone's lettering until about
+ * 78 yards.
+ *
+ * The leg does. A full-power kick carries about 0.85 of the field before it
+ * runs out of legs (see `launch`), so from 78 yards only a perfect 1.0 on the
+ * power meter gets there, and a meter peak is a single frame. 75 yards needs
+ * about 0.89 or better: the top eleventh of the sweep, around a fifth of a
+ * second each time the bar passes, shown green on the yardage meter so it can
+ * be learned. Hard, fair, and a finale rather than a coin toss.
+ *
+ * The ladder in between keeps the old spacing of roughly three and a half
+ * yards a rung, so the power a kick needs rises smoothly from nothing at 44 to
+ * that top eleventh at 75 rather than jumping at the end. */
+export const TEE_FAR = 0.17;
 
 /** Makes required to walk the tee all the way back. */
-export const LADDER = 6;
+export const LADDER = 9;
+
+/** Kicks in a clean run: one from every spot, the last from TEE_FAR. */
+export const LEVELS = LADDER + 1;
+
+/* CLEARING THE LADDER.
+ *
+ * A miss has always sent the ball back to the start, so a run is a streak: a
+ * make from every spot in a row. The ladder used to top out and then simply
+ * keep offering the longest kick forever, with no end and nothing for getting
+ * there. Now a make from the final spot finishes the run. `madeBefore` is the
+ * streak going into the kick, which is the spot it was taken from. */
+export function clearsTheLadder(madeBefore: number, good: boolean): boolean {
+  return good && madeBefore >= LADDER;
+}
 
 /** A kick that has not arrived in this many steps never will. Without it a
  *  ball with almost no power drifts forever and the button never comes back. */
