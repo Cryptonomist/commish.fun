@@ -44,6 +44,7 @@ import {
   MAX_MEMBERS,
 } from "@/lib/program";
 import {
+  defaultStartWeek,
   firstKickoffFor,
   seasonLockSchedule,
   refundDeadlineFor,
@@ -82,7 +83,28 @@ export default function NewPool() {
   const [disputeWindow, setDisputeWindow] = useState(
     String(DEFAULT_DISPUTE_WINDOW_SECS / WINDOW_UNIT_SECS),
   );
+  /* The start week follows the season: week one until week one kicks off, week
+   * two from that moment, and so on — see `defaultStartWeek`. It is only the
+   * DEFAULT; the field is still typed, and a commissioner who wants to open a
+   * pool in week fourteen types fourteen.
+   *
+   * WHICH IS A CLOCK READING, so it obeys the hydration rule spelled out below
+   * and is NOT taken in the initialiser. Week one is the constant both the
+   * server and the first client render agree on, and the effect moves it to the
+   * real week immediately after — the same shape as `duesDeadline`. Taking it
+   * here instead would put a stale prerender's week in the HTML and the true
+   * week in the browser, which is error #418 and a form that remounts under
+   * whoever is filling it in. */
   const [week, setWeek] = useState("1");
+  const [earliestWeek, setEarliestWeek] = useState(1);
+
+  useEffect(() => {
+    const w = defaultStartWeek();
+    setEarliestWeek(w);
+    /* Never clobber a week already typed: this runs after hydration, and a
+     * fast typist beats it. */
+    setWeek((current) => (current === "1" ? String(w) : current));
+  }, []);
 
   /* TWO PRODUCTS BEHIND ONE FORM.
    *
@@ -527,9 +549,21 @@ export default function NewPool() {
                     inputMode="numeric"
                     className="rounded-xl border border-night-3 bg-night-2 px-4 py-3.5 text-cream outline-none focus:border-action"
                   />
+                  {/* The hint follows the season too. In August it explains
+                      that a pool need not start in week one; in November it
+                      explains why it cannot. */}
                   <span className="text-xs text-cream-dim">
-                    A pool does not have to start in week 1. Anything from 1 to{" "}
-                    {WEEKS}, as long as that week has not kicked off yet.
+                    {earliestWeek === 1
+                      ? `A pool does not have to start in week 1. Anything from 1 to ${WEEKS}, as long as that week has not kicked off yet.`
+                      : `${
+                          earliestWeek === 2
+                            ? "Week 1 has"
+                            : `Weeks 1 to ${earliestWeek - 1} have`
+                        } kicked off. ${
+                          earliestWeek === WEEKS
+                            ? `Week ${WEEKS} is the last one left.`
+                            : `Anything from ${earliestWeek} to ${WEEKS}.`
+                        }`}
                   </span>
                 </label>
               )}

@@ -81,6 +81,44 @@ export function minWeekGapSecs(disputeWindowSecs: number): number {
   return MIN_POST_DELAY_SECS + disputeWindowSecs;
 }
 
+/* WHERE THE FORM SHOULD START, TODAY.
+ *
+ * `create_pool` refuses a start week that has already kicked off, so a form
+ * hardcoded to week one is correct for about four months and then proposes an
+ * illegal pool for the rest of the season — the commissioner types a buy-in,
+ * reads the schedule, and only the validator tells them the week is gone. The
+ * default has to move with the season: week one until week one locks, week two
+ * the moment it does, and so on to the end.
+ *
+ * ROLLS AT THE LOCK, NOT AT THE END OF THE WEEK. The lock is the first kickoff,
+ * and it is the instant a pool can no longer start there — a pick submitted
+ * after it would be a pick on a game in progress. So the boundary this reads is
+ * exactly the boundary `submit_pick` enforces.
+ *
+ * The last week is the floor. Once week eighteen has locked there is no legal
+ * start week at all, and it is `validateSchedule`'s job to say so; returning a
+ * nineteenth week here would only invent one that the season does not have.
+ */
+export function defaultStartWeek(
+  nowSecs: number = Math.floor(Date.now() / 1000),
+): number {
+  /* A fast clock rebuilds the season from an anchor five minutes out, so the
+   * start week is always ahead of the clock and week one is always right. */
+  if (FAST_CLOCK) return 1;
+  const locks = realLockSchedule();
+  const next = locks.findIndex((lock) => lock > nowSecs);
+  return next === -1 ? WEEKS : next + 1;
+}
+
+/** True once every week in the season has kicked off: no pick pool can start. */
+export function seasonIsOver(
+  nowSecs: number = Math.floor(Date.now() / 1000),
+): boolean {
+  if (FAST_CLOCK) return false;
+  const locks = realLockSchedule();
+  return locks[WEEKS - 1] <= nowSecs;
+}
+
 /* Eighteen weekly locks, in unix seconds.
  *
  * ON A REAL CLOCK THESE ARE FACTS, NOT ARITHMETIC, and `firstKickoff` is
@@ -155,10 +193,15 @@ export function validateSchedule(opts: {
     };
   }
   if (locks[startWeek - 1] <= nowSecs) {
-    return {
-      field: "startWeek",
-      message: "That week has already kicked off. Start from a later one.",
-    };
+    /* "Start from a later one" is advice the last week cannot take. When every
+     * week has kicked off the answer is not a different number, it is that the
+     * season has no room left in it. */
+    const message =
+      locks[WEEKS - 1] <= nowSecs
+        ? `Week ${WEEKS} has kicked off, so the season has no week left to ` +
+          `start on. A league collects dues with no schedule at all.`
+        : "That week has already kicked off. Start from a later one.";
+    return { field: "startWeek", message };
   }
 
   const minGap = minWeekGapSecs(disputeWindowSecs);
