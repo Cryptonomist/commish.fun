@@ -1,0 +1,38 @@
+# LINE ENDINGS ARE LF, EVERYWHERE, FOR EVERYBODY.
+#
+# This repository lives on the WSL filesystem and is worked on from both sides
+# of it. Git for Windows is installed with core.autocrlf=true, which rewrites
+# text files with CRLF line endings whenever it checks them out. On a Linux tree
+# that breaks every shell script outright: bash reads the carriage return as
+# part of the interpreter name and fails with "bash\r: No such file or
+# directory". The mainnet upgrade is one of those scripts.
+#
+# Nothing is broken today, because every file here is stored and checked out as
+# LF. What was missing is anything stopping the first branch switch, reset or
+# stash pop from Windows from changing that. This file does, and because it is
+# committed it protects every clone on every platform, which a setting on one
+# machine cannot. It overrides core.autocrlf for this repository only.
+#
+# text=auto lets git detect binary files by content and leave them alone; the
+# explicit list below is belt and braces for the binary types this repo holds.
+
+* text=auto eol=lf
+
+# Run by an interpreter that cannot tolerate a carriage return. Stated
+# explicitly so they stay LF even if the default above is ever loosened.
+*.sh text eol=lf
+
+# Binary. Never converted, never diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.so binary
