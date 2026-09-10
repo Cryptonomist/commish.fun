@@ -20,8 +20,13 @@ import {
   bracketShape,
   bracketTotal,
   formatFor,
+  ladderGroupBps,
+  ladderMemberShare,
+  payoutTable,
   perfectScore,
+  perfectShare,
   pointsRemaining,
+  type Standing,
   roundPoints,
   seedField,
   seedsIn,
@@ -30,6 +35,7 @@ import {
   validateBracket,
   type Bracket,
 } from "@/lib/bracket";
+import { slotAmount } from "@/lib/program";
 
 const NFL = 14;
 const CFP = 12;
@@ -194,6 +200,125 @@ describe("what wins the pot", () => {
         false,
       );
     }
+  });
+});
+
+describe("who gets paid", () => {
+  const LADDER_3 = [6_000, 3_000, 1_000];
+  const LADDER_5 = [6_000, 2_500, 1_000, 300, 200];
+  const POT = BigInt(1_000_000);
+
+  /** Standings from scores, highest first. A perfect entry is flagged. */
+  const stand = (...scores: (number | "perfect")[]): Standing[] =>
+    scores.map((s, i) => ({
+      wallet: `w${i}`,
+      points: s === "perfect" ? 30 : s,
+      perfect: s === "perfect",
+    }));
+
+  const sum = (xs: bigint[]) => xs.reduce((a, b) => a + b, BigInt(0));
+
+  it("gives one perfect entry everything", () => {
+    expect(payoutTable(stand("perfect", 22, 19), LADDER_3, POT)).to.deep.equal([
+      BigInt(1_000_000),
+      BigInt(0),
+      BigInt(0),
+    ]);
+  });
+
+  it("splits evenly between two perfect entries and ignores the ladder", () => {
+    expect(
+      payoutTable(stand("perfect", "perfect", 22), LADDER_3, POT),
+    ).to.deep.equal([BigInt(500_000), BigInt(500_000), BigInt(0)]);
+    // Three of them, and the dust stays in the vault.
+    const three = payoutTable(stand("perfect", "perfect", "perfect"), LADDER_3, POT);
+    expect(three).to.deep.equal([BigInt(333_333), BigInt(333_333), BigInt(333_333)]);
+    expect(POT - sum(three)).to.equal(BigInt(1));
+  });
+
+  it("pays the ladder when nobody is perfect", () => {
+    const paid = payoutTable(stand(26, 22, 19, 12), LADDER_3, POT);
+    expect(paid).to.deep.equal([BigInt(600_000), BigInt(300_000), BigInt(100_000), BigInt(0)]);
+    expect(sum(paid)).to.equal(POT);
+  });
+
+  it("splits the slots a tie spans", () => {
+    // Two tied for second take the second and third slots, twenty each.
+    expect(payoutTable(stand(26, 22, 22, 12), LADDER_3, POT)).to.deep.equal([
+      BigInt(600_000),
+      BigInt(200_000),
+      BigInt(200_000),
+      BigInt(0),
+    ]);
+    // Two tied for first take sixty and thirty, forty-five each.
+    expect(payoutTable(stand(26, 26, 19, 4), LADDER_3, POT)).to.deep.equal([
+      BigInt(450_000),
+      BigInt(450_000),
+      BigInt(100_000),
+      BigInt(0),
+    ]);
+  });
+
+  /* The bug a league on this program already walked into: a pool with fewer
+   * members than slots must still pay out in full on settlement day. */
+  it("pays out in full when the pool is smaller than the ladder", () => {
+    const paid = payoutTable(stand(26, 22, 19), LADDER_5, POT);
+    expect(paid).to.deep.equal([BigInt(600_000), BigInt(250_000), BigInt(150_000)]);
+    expect(sum(paid)).to.equal(POT);
+    expect(payoutTable(stand(26), LADDER_5, POT)).to.deep.equal([POT]);
+    expect(payoutTable(stand(7, 7), LADDER_5, POT)).to.deep.equal([
+      BigInt(500_000),
+      BigInt(500_000),
+    ]);
+  });
+
+  it("pays a finisher below the ladder nothing rather than throwing", () => {
+    const paid = payoutTable(stand(26, 22, 19, 12, 9), LADDER_3, POT);
+    expect(paid.slice(3)).to.deep.equal([BigInt(0), BigInt(0)]);
+    expect(ladderGroupBps(LADDER_3, 9, 1, true)).to.equal(0);
+  });
+
+  /* The safety property. A vault can never be asked for more than it holds. */
+  it("never overpays the pot, whatever the standings", () => {
+    const ladders = [LADDER_3, LADDER_5, [10_000], [2_500, 2_500, 2_500, 2_500]];
+    const boards = [
+      stand(30),
+      stand("perfect", "perfect", 4),
+      stand(26, 22, 19),
+      stand(26, 26, 26, 26),
+      stand(26, 22, 22, 22, 4),
+      stand(9, 9, 9, 9, 9, 9, 9),
+      stand(30, 29, 28, 27, 26, 25, 24, 23, 22, 21),
+    ];
+    for (const ladder of ladders) {
+      for (const board of boards) {
+        for (const pot of [BigInt(0), BigInt(1), BigInt(7), BigInt(1_000_000), BigInt(999_999_999_999)]) {
+          const total = sum(payoutTable(board, ladder, pot));
+          expect(total <= pot, `${ladder} ${board.length} ${pot}`).to.equal(true);
+          // Nothing stranded beyond rounding dust.
+          expect(pot - total < BigInt(board.length + 1)).to.equal(true);
+        }
+      }
+    }
+  });
+
+  /* A league's prize slots and a bracket's ladder are the same arithmetic, and
+   * `slotAmount` in program.ts is the one the league already pays on. Pinned
+   * here so the two cannot drift apart while both are described as "60/30/10". */
+  it("pays a solo rank group exactly what a league prize slot pays", () => {
+    for (const bps of [10_000, 6_000, 3_000, 1_000, 300, 1, 0]) {
+      for (const pot of [BigInt(0), BigInt(7), BigInt(1_000_000), BigInt(123_456_789)]) {
+        expect(ladderMemberShare(pot, bps, 1), `${bps} of ${pot}`).to.equal(
+          slotAmount(bps, pot),
+        );
+      }
+    }
+  });
+
+  it("refuses a group that covers more than the whole pot", () => {
+    expect(() => ladderMemberShare(POT, 10_001, 1)).to.throw();
+    expect(() => ladderMemberShare(POT, 5_000, 0)).to.throw();
+    expect(() => perfectShare(POT, 0)).to.throw();
   });
 });
 

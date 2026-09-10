@@ -194,6 +194,82 @@ pub fn bracket_still_perfect(entry: Bracket, winners: Bracket, posted: usize) ->
     (0..through).all(|r| bracket_survives_round(entry[r], winners[r]))
 }
 
+/* WHO GETS PAID, once the last round is finalized.
+ *
+ * Two shapes, and which one applies is decided by whether anybody went the
+ * whole way:
+ *
+ *   at least one perfect entry -> they split the entire pot evenly and the
+ *                                 ladder is not consulted at all
+ *   no perfect entry          -> the ladder pays the top finishers by points
+ *
+ * A tie is split, in both shapes. Two perfect brackets take half each. Two
+ * members tied for second in a 60/30/10 pool split the second and third slots
+ * between them, twenty per cent each, which is what every sports payout does
+ * with a tie and the only answer that does not need a coin toss on chain.
+ *
+ * THE SLOT THAT NOBODY FILLS IS THE TRAP HERE, and it has already been walked
+ * into once on this program: a league with three prize slots and two payers
+ * could not post a sheet, and a slot left unassigned is not lost but IS locked
+ * until the refund deadline. A bracket ladder is filled by score rather than by
+ * hand, so the same shortfall arrives whenever a pool has fewer members than
+ * slots. The last rank group therefore absorbs every slot the pool was too
+ * small to reach: three members against a 60/25/10/3/2 ladder pay 60, 25 and
+ * 15. The pot leaves the vault in full on the day it settles, which is the
+ * whole point of not repeating that bug.
+ */
+
+/// What each perfect entry takes. The ladder is not consulted.
+///
+/// Integer division, so the dust stays in the vault rather than going to
+/// whoever claims first. Same rule as `pot_per_winner`.
+pub fn perfect_share(payable: u64, perfect_count: u16) -> Result<u64> {
+    require!(perfect_count > 0, CommishError::NotSettled);
+    Ok(payable / perfect_count as u64)
+}
+
+/// The share of the pot one rank group covers, in basis points.
+///
+/// `taken` is how many slots the groups above it have already used, `size` is
+/// how many members are tied on this score, and `last` says this is the lowest
+/// scoring group in the pool, which is the one that absorbs any slots the
+/// roster never reached. A group starting past the end of the ladder covers
+/// nothing, which is how a fourth-place finisher in a three-slot pool is paid
+/// zero rather than reverting.
+pub fn ladder_group_bps(ladder: &[u16], taken: usize, size: usize, last: bool) -> Result<u32> {
+    require!(size > 0, CommishError::BadPrizeSplit);
+    let start = taken.min(ladder.len());
+    let end = if last {
+        ladder.len()
+    } else {
+        taken.saturating_add(size).min(ladder.len())
+    }
+    .max(start);
+    let mut total: u32 = 0;
+    for slot in &ladder[start..end] {
+        total = total
+            .checked_add(*slot as u32)
+            .ok_or(CommishError::MathOverflow)?;
+    }
+    Ok(total)
+}
+
+/// What one member of a rank group is paid, given the share that group covers.
+///
+/// The division happens once, against the real pot, so a tie splits the money
+/// rather than splitting a percentage and rounding twice.
+pub fn ladder_member_share(payable: u64, covered_bps: u32, size: usize) -> Result<u64> {
+    require!(size > 0, CommishError::BadPrizeSplit);
+    require!(covered_bps <= BPS_DENOM as u32, CommishError::BadPrizeSplit);
+    let raw = (payable as u128)
+        .checked_mul(covered_bps as u128)
+        .ok_or(CommishError::MathOverflow)?
+        / BPS_DENOM as u128
+        / size as u128;
+    // covered_bps <= BPS_DENOM and size >= 1, so this is at most `payable`.
+    Ok(raw as u64)
+}
+
 /* Everything below scores an entry in POINTS, which decides no money at all.
  *
  * It is for the standing the site shows while a bracket pool runs — who is
@@ -605,6 +681,173 @@ mod tests {
                 "round {r} broken must end the entry"
             );
         }
+    }
+
+    /* WHO GETS PAID.
+     *
+     * `pay_out` walks a whole standings list the way the settle crank will,
+     * so a test can assert on the money every member actually receives rather
+     * than on one function's return value. Scores go in highest first.
+     */
+    const LADDER_3: [u16; 3] = [6_000, 3_000, 1_000];
+    const LADDER_5: [u16; 5] = [6_000, 2_500, 1_000, 300, 200];
+
+    fn pay_out(scores: &[u32], ladder: &[u16], payable: u64) -> Vec<u64> {
+        let perfect = scores.iter().filter(|s| **s == u32::MAX).count() as u16;
+        if perfect > 0 {
+            let share = perfect_share(payable, perfect).unwrap();
+            return scores
+                .iter()
+                .map(|s| if *s == u32::MAX { share } else { 0 })
+                .collect();
+        }
+        let mut paid = vec![0u64; scores.len()];
+        let mut i = 0;
+        let mut taken = 0usize;
+        while i < scores.len() {
+            let mut j = i;
+            while j < scores.len() && scores[j] == scores[i] {
+                j += 1;
+            }
+            let size = j - i;
+            let last = j == scores.len();
+            let bps = ladder_group_bps(ladder, taken, size, last).unwrap();
+            let share = ladder_member_share(payable, bps, size).unwrap();
+            for slot in paid.iter_mut().take(j).skip(i) {
+                *slot = share;
+            }
+            taken += size;
+            i = j;
+        }
+        paid
+    }
+
+    /// A perfect entry is modelled as the top score there is.
+    const PERFECT: u32 = u32::MAX;
+
+    #[test]
+    fn one_perfect_entry_takes_everything() {
+        let paid = pay_out(&[PERFECT, 22, 19, 4], &LADDER_3, 1_000_000);
+        assert_eq!(paid, vec![1_000_000, 0, 0, 0]);
+    }
+
+    #[test]
+    fn two_perfect_entries_split_it_evenly_and_the_ladder_is_ignored() {
+        let paid = pay_out(&[PERFECT, PERFECT, 22, 19], &LADDER_3, 1_000_000);
+        assert_eq!(paid, vec![500_000, 500_000, 0, 0]);
+        // Three of them, and the dust stays in the vault rather than going to
+        // whoever claims first.
+        let paid = pay_out(&[PERFECT, PERFECT, PERFECT], &LADDER_3, 1_000_000);
+        assert_eq!(paid, vec![333_333, 333_333, 333_333]);
+        assert_eq!(1_000_000 - paid.iter().sum::<u64>(), 1);
+    }
+
+    #[test]
+    fn with_nobody_perfect_the_ladder_pays_the_top_finishers() {
+        let paid = pay_out(&[26, 22, 19, 12, 4], &LADDER_3, 1_000_000);
+        assert_eq!(paid, vec![600_000, 300_000, 100_000, 0, 0]);
+        assert_eq!(paid.iter().sum::<u64>(), 1_000_000);
+    }
+
+    /* A tie takes the slots it spans and splits them. Two tied for second in a
+     * 60/30/10 pool take twenty each, not thirty and ten decided by a coin. */
+    #[test]
+    fn a_tie_splits_the_slots_it_covers() {
+        let paid = pay_out(&[26, 22, 22, 12], &LADDER_3, 1_000_000);
+        assert_eq!(paid, vec![600_000, 200_000, 200_000, 0]);
+        assert_eq!(paid.iter().sum::<u64>(), 1_000_000);
+    }
+
+    #[test]
+    fn a_tie_at_the_top_splits_the_top_slots() {
+        // Two tied for first take 60 + 30, forty-five each; third still gets 10.
+        let paid = pay_out(&[26, 26, 19, 4], &LADDER_3, 1_000_000);
+        assert_eq!(paid, vec![450_000, 450_000, 100_000, 0]);
+        assert_eq!(paid.iter().sum::<u64>(), 1_000_000);
+    }
+
+    #[test]
+    fn everybody_tied_splits_the_whole_pot() {
+        let paid = pay_out(&[12, 12, 12, 12], &LADDER_3, 1_000_000);
+        assert_eq!(paid, vec![250_000; 4]);
+        assert_eq!(paid.iter().sum::<u64>(), 1_000_000);
+    }
+
+    /* THE BUG A LEAGUE ALREADY WALKED INTO, refused here by construction: a
+     * pool with fewer members than slots must still pay its pot out in full on
+     * settlement day, not strand the tail until a refund deadline. */
+    #[test]
+    fn a_pool_smaller_than_its_ladder_still_pays_out_in_full() {
+        let paid = pay_out(&[26, 22, 19], &LADDER_5, 1_000_000);
+        // 60, 25, and the last finisher absorbing 10 + 3 + 2.
+        assert_eq!(paid, vec![600_000, 250_000, 150_000]);
+        assert_eq!(paid.iter().sum::<u64>(), 1_000_000);
+
+        // Down to a single member, who takes the lot.
+        let paid = pay_out(&[26], &LADDER_5, 1_000_000);
+        assert_eq!(paid, vec![1_000_000]);
+
+        // And a short pool whose members are all tied.
+        let paid = pay_out(&[7, 7], &LADDER_5, 1_000_000);
+        assert_eq!(paid, vec![500_000, 500_000]);
+    }
+
+    #[test]
+    fn a_finisher_below_the_ladder_is_paid_nothing_rather_than_reverting() {
+        let paid = pay_out(&[26, 22, 19, 12, 9, 4], &LADDER_3, 1_000_000);
+        assert_eq!(&paid[3..], &[0, 0, 0]);
+        assert_eq!(ladder_group_bps(&LADDER_3, 9, 1, false).unwrap(), 0);
+        // Even as the last group, once the ladder is used up there is nothing
+        // left to absorb.
+        assert_eq!(ladder_group_bps(&LADDER_3, 9, 1, true).unwrap(), 0);
+    }
+
+    /* THE SAFETY PROPERTY. Whatever the standings, whatever the ties, whatever
+     * the ladder, the vault can never be asked for more than it holds. A pool
+     * that overpays cannot be fixed after the fact: the last claimant simply
+     * finds an empty vault. */
+    #[test]
+    fn the_pot_can_never_be_overpaid() {
+        let ladders: [&[u16]; 4] = [&LADDER_3, &LADDER_5, &[10_000], &[2_500; 4]];
+        let standings: [&[u32]; 8] = [
+            &[30],
+            &[30, 30],
+            &[26, 22, 19],
+            &[26, 26, 26, 26],
+            &[26, 22, 22, 22, 4],
+            &[9, 9, 9, 9, 9, 9, 9],
+            &[PERFECT, PERFECT, 4],
+            &[30, 29, 28, 27, 26, 25, 24, 23, 22, 21],
+        ];
+        for ladder in ladders {
+            for scores in standings {
+                for payable in [0u64, 1, 7, 1_000_000, 999_999_999_999] {
+                    let paid = pay_out(scores, ladder, payable);
+                    let total: u64 = paid.iter().sum();
+                    assert!(
+                        total <= payable,
+                        "ladder {ladder:?} standings {scores:?} payable {payable} paid {total}"
+                    );
+                    // And never more than the dust behind, so nothing is stranded.
+                    assert!(
+                        payable - total < scores.len() as u64 + 1,
+                        "ladder {ladder:?} standings {scores:?} left {} behind",
+                        payable - total
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_ladder_that_sums_to_a_hundred_pays_a_hundred() {
+        for ladder in [&LADDER_3[..], &LADDER_5[..]] {
+            assert_eq!(ladder.iter().map(|b| *b as u32).sum::<u32>(), BPS_DENOM as u32);
+        }
+        // And a group cannot be handed more than the whole pot to divide.
+        assert!(ladder_member_share(1_000_000, BPS_DENOM as u32 + 1, 1).is_err());
+        assert!(ladder_member_share(1_000_000, 5_000, 0).is_err());
+        assert!(perfect_share(1_000_000, 0).is_err());
     }
 
     #[test]

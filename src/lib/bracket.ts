@@ -194,6 +194,102 @@ export function stillPerfect(
   return true;
 }
 
+/* WHO GETS PAID, mirroring `rules.rs`.
+ *
+ * At least one perfect entry and they split the whole pot evenly, ladder
+ * ignored. Nobody perfect and the ladder pays the top finishers by points. A
+ * tie splits the slots it spans, so two members tied for second in a 60/30/10
+ * pool take twenty each rather than thirty and ten decided by a coin toss.
+ *
+ * The last rank group absorbs any slot the roster was too small to reach, so a
+ * three-person pool against a five-slot ladder still pays its pot out in full
+ * on the day it settles. A league on this program once could not post a payout
+ * at all for exactly that reason, and an unfilled slot locks money until the
+ * refund deadline.
+ *
+ * Amounts are micro-USDC as bigint, the way the rest of the client carries
+ * money, and written as `BigInt(...)` rather than `0n` because the project
+ * targets ES2017. Integer division throughout, so the dust stays in the vault.
+ *
+ * `ladderMemberShare` with a single member is the same arithmetic as
+ * `slotAmount` in `program.ts`, which pays a league's prize slots. The two are
+ * pinned together by a test rather than sharing an import, so this module stays
+ * free of web3 dependencies the way `rules.rs` stays free of Anchor accounts. */
+
+const BPS_DENOM = BigInt(10_000);
+const ZERO = BigInt(0);
+
+/** What each perfect entry takes. */
+export function perfectShare(payable: bigint, perfectCount: number): bigint {
+  if (perfectCount <= 0) throw new Error("A perfect share needs a winner.");
+  return payable / BigInt(perfectCount);
+}
+
+/** The share one rank group covers, in basis points. */
+export function ladderGroupBps(
+  ladder: readonly number[],
+  taken: number,
+  size: number,
+  last: boolean,
+): number {
+  if (size <= 0) throw new Error("A rank group has at least one member.");
+  const start = Math.min(taken, ladder.length);
+  const end = Math.max(
+    last ? ladder.length : Math.min(taken + size, ladder.length),
+    start,
+  );
+  let total = 0;
+  for (let i = start; i < end; i++) total += ladder[i];
+  return total;
+}
+
+/** What one member of a rank group is paid. */
+export function ladderMemberShare(
+  payable: bigint,
+  coveredBps: number,
+  size: number,
+): bigint {
+  if (size <= 0) throw new Error("A rank group has at least one member.");
+  if (coveredBps < 0 || BigInt(coveredBps) > BPS_DENOM) {
+    throw new Error("A group cannot cover more than the whole pot.");
+  }
+  return (payable * BigInt(coveredBps)) / BPS_DENOM / BigInt(size);
+}
+
+/** A finished or in-progress standing, highest score first. */
+export type Standing = { wallet: string; points: number; perfect: boolean };
+
+/* What every member would be paid if the pool settled on these standings.
+ *
+ * The site's answer to "what am I playing for", usable mid-playoffs as a
+ * projection and after the final as the real thing. Returns a share for every
+ * standing in the order given. */
+export function payoutTable(
+  standings: readonly Standing[],
+  ladder: readonly number[],
+  payable: bigint,
+): bigint[] {
+  const perfect = standings.filter((s) => s.perfect).length;
+  if (perfect > 0) {
+    const share = perfectShare(payable, perfect);
+    return standings.map((s) => (s.perfect ? share : ZERO));
+  }
+  const paid = standings.map(() => ZERO);
+  let i = 0;
+  let taken = 0;
+  while (i < standings.length) {
+    let j = i;
+    while (j < standings.length && standings[j].points === standings[i].points) j++;
+    const size = j - i;
+    const bps = ladderGroupBps(ladder, taken, size, j === standings.length);
+    const share = ladderMemberShare(payable, bps, size);
+    for (let k = i; k < j; k++) paid[k] = share;
+    taken += size;
+    i = j;
+  }
+  return paid;
+}
+
 /* Everything below scores an entry in POINTS, which decides no money.
  *
  * It is the standing the site shows while the playoffs run — who is still
