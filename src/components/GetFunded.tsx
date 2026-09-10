@@ -172,10 +172,14 @@ export function GetFunded({
           title="Your wallet's own buy button"
           best
         >
-          Phantom and Solflare both sell SOL and USDC by card, inside the
-          wallet. This is the one to use: the money arrives in the right wallet
-          on the right network, and there is no address to paste and nothing to
-          mistype. Look for <em>Buy</em> or <em>Deposit</em>.
+          Phantom and Solflare both sell SOL and USDC inside the wallet, by
+          card and by <strong className="text-cream">Apple Pay</strong> or
+          Google Pay. This is the one to use: the money arrives in the right
+          wallet on the right network, and there is no address to paste and
+          nothing to mistype. Look for <em>Buy</em> or <em>Deposit</em>. First
+          purchase usually wants a photo of your ID, which is the step that
+          catches people out, so start it before the pool locks rather than
+          five minutes before kickoff.
         </Route>
 
         <Route n={2} title="Already hold SOL? Swap some">

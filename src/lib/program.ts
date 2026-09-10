@@ -473,6 +473,82 @@ export function buildJoinPool(args: JoinPoolArgs): JoinPoolPlan {
   return { instruction, member, payerAta, vault };
 }
 
+/* SPONSORED JOIN: the commissioner buys somebody else's seat.
+ *
+ * WHY THIS IS THE ONBOARDING ANSWER. The members of a pool are the
+ * commissioner's friends, on phones, mostly without wallets. Every route into
+ * USDC costs them an identity check, a minimum and a second currency for rent,
+ * and that is where a $25 pool loses people. This instruction skips all of it:
+ * one person who already holds crypto pays the buy-ins, and the seat belongs to
+ * the wallet named in `wallet` from the moment it is created.
+ *
+ * IT DOES NOT PUT THE POT BACK IN ONE PERSON'S POCKET, which is the obvious
+ * worry given what this product is for. The sponsor fronts a fixed, known
+ * amount into the vault and never holds it. The seat, the picks and the claim
+ * all belong to the member, so a sponsored winner is paid by their own
+ * signature exactly like anybody else. What the sponsor is owed back is a
+ * private matter between two friends, and it is not the pot.
+ *
+ * ONLY THE COMMISSIONER. The program's `has_one = commissioner` means nobody
+ * else can buy a seat for a third party, so this cannot be used to stuff a
+ * roster from outside. It does mean a commissioner can fill a pool with wallets
+ * they control, which is the sock-puppet problem the veto already carries and
+ * the README already admits to.
+ *
+ * THE COMMISSIONER PAYS TWICE: the buy-in from their USDC, and the rent on the
+ * new Member account from their SOL. Both are theirs and neither is refundable
+ * by this program, so a UI should say the SOL part out loud before signing. */
+export type SponsorJoinArgs = {
+  pool: PublicKey;
+  /** The wallet the seat belongs to. Never the signer. */
+  wallet: PublicKey;
+  /** The commissioner, who signs and pays. */
+  commissioner: PublicKey;
+  displayName: string;
+};
+
+export function buildSponsorJoin(args: SponsorJoinArgs): JoinPoolPlan {
+  if (enc.encode(args.displayName).length > MAX_DISPLAY_NAME) {
+    throw new Error(`Display name is longer than ${MAX_DISPLAY_NAME} bytes`);
+  }
+  /* Sponsoring yourself is `join_pool` with extra steps and a worse error: the
+   * Member PDA is the same account, so the program would refuse it as already
+   * initialised after the wallet popup rather than before it. */
+  if (args.wallet.equals(args.commissioner)) {
+    throw new Error(
+      "That is your own wallet. Join the pool normally instead of sponsoring yourself.",
+    );
+  }
+
+  /* The seat is derived from the SPONSORED wallet, and the USDC comes from the
+   * SIGNER's account. Those two being different keys is the whole instruction,
+   * and swapping them is the mistake this builder exists to make impossible. */
+  const member = memberPda(args.pool, args.wallet);
+  const payerAta = ataFor(args.commissioner, USDC_MINT);
+  const vault = ataFor(args.pool, USDC_MINT);
+
+  const data = coder.instruction.encode("sponsor_join", {
+    wallet: args.wallet,
+    display_name: args.displayName,
+  });
+
+  const instruction = new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: args.pool, isSigner: false, isWritable: true },
+      { pubkey: member, isSigner: false, isWritable: true },
+      { pubkey: args.commissioner, isSigner: true, isWritable: true },
+      { pubkey: payerAta, isSigner: false, isWritable: true },
+      { pubkey: vault, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+
+  return { instruction, member, payerAta, vault };
+}
+
 export const NO_PICK = 255;
 export const WEEK_NONE = 0;
 export const TEAM_COUNT = 32;
