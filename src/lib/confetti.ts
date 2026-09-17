@@ -69,17 +69,37 @@ function generator(seed: number): () => number {
   };
 }
 
+/* WHERE A BURST LEAVES FROM. The homepage's posts are at its right-hand edge,
+ * so its confetti sprays back across the field. The arcade's kicks are seen
+ * from behind, with the posts in the middle of the picture, so theirs goes
+ * both ways. Shares of the canvas, like everything else here. */
+export type Origin = {
+  points: readonly { x: number; y: number }[];
+  sideways: "back" | "both";
+};
+
+const HOMEPAGE_POSTS: Origin = {
+  points: [
+    { x: BAR_X, y: 0.5 - GAP_HALF },
+    { x: BAR_X, y: 0.5 + GAP_HALF },
+  ],
+  sideways: "back",
+};
+
 /** One celebration's worth of confetti, leaving from both uprights. */
-export function burst(seed: number, count = CONFETTI_COUNT): Bit[] {
+export function burst(seed: number, count = CONFETTI_COUNT, origin: Origin = HOMEPAGE_POSTS): Bit[] {
   const rand = generator(seed);
   const bits: Bit[] = [];
   for (let i = 0; i < count; i++) {
-    const top = i % 2 === 0;
+    const from = origin.points[i % origin.points.length];
     bits.push({
-      x: BAR_X,
-      y: 0.5 + (top ? -GAP_HALF : GAP_HALF),
+      x: from.x,
+      y: from.y,
       // Back across the field, away from the posts, and up before it falls.
-      vx: -(0.006 + rand() * 0.016),
+      vx:
+        origin.sideways === "back"
+          ? -(0.006 + rand() * 0.016)
+          : (rand() - 0.5) * 0.034,
       vy: -(0.015 + rand() * 0.025),
       color: CONFETTI_COLORS[Math.floor(rand() * CONFETTI_COLORS.length)],
       size: rand() < 0.3 ? 2 : 1,

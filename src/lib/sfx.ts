@@ -305,7 +305,13 @@ export type Sound =
   | "spin"
   /* Clearing the homepage kick's whole ladder. Heard once per run at most,
    * so it can afford to be the longest sound on the site. */
-  | "champion";
+  | "champion"
+  /* The arcade's full game. A boot through the ball, the ring of a post, the
+   * horn at the end of a half, and a pass leaving the hand. */
+  | "kick"
+  | "doink"
+  | "horn"
+  | "throw";
 
 /** Fire and forget. Silent when disabled, silent when unsupported, never
  *  throws into a click handler. */
@@ -372,6 +378,29 @@ export function play(sound: Sound): void {
         note(784, 70, 0.42);
         note(1047, 320, 0.5);
         note(784, 320, 0.5);
+        break;
+      /* THE BOOT. A low, dull thump: noise for the leather and one short low
+       * note under it for the weight. */
+      case "kick":
+        hit(110, 110, 0, 1);
+        note(98, 60, 0.005);
+        break;
+      /* THE DOINK. Metal is a high note that rings on after the hit, and a
+       * second, lower partial is what stops it sounding like a bell. */
+      case "doink":
+        hit(2600, 30, 0, 0.7);
+        note(1568, 60);
+        note(1175, 220, 0.05);
+        break;
+      /* THE HORN. Two low square notes a fifth apart, held: the end of a half
+       * in a stadium sounds like a ship. */
+      case "horn":
+        note(147, 520);
+        note(220, 520);
+        break;
+      /* A PASS leaving the hand: a quick slide down, like air. */
+      case "throw":
+        sweep(900, 420, 90, 0, "triangle");
         break;
     }
   } catch {

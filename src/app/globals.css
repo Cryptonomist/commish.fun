@@ -478,15 +478,19 @@ body {
   border: 2px solid var(--color-rule);
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
 }
-.btn-nav:hover:not([aria-current="page"]) {
+.btn-nav:hover:not([aria-current="page"]):not([aria-pressed="true"]):not(:disabled) {
   color: var(--color-chalk);
   border-color: var(--color-chalk);
 }
-.btn-nav[aria-current="page"] {
+.btn-nav[aria-current="page"],
+.btn-nav[aria-pressed="true"] {
   background: var(--color-action);
   color: var(--color-panel); /* 6.42:1 */
   border-color: var(--color-action);
   box-shadow: 3px 3px 0 #3a1405;
+}
+.btn-nav:disabled {
+  opacity: 0.45;
 }
 
 /* ── THE HEADLINE DOUBLE-PRINT ────────────────────────────────────────────────
