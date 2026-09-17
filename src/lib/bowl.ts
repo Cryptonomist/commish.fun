@@ -350,7 +350,7 @@ export function touching(a: Body, b: Body): boolean {
  *  instantly and a bot search over three speed regimes could not score once.
  *  Limiting the heading is the thing that makes a hard cut cost a pursuer
  *  something, and it is the whole reason there is a game here. */
-function moveToward(b: Body, tx: number, ty: number, speed: number): void {
+export function moveToward(b: Body, tx: number, ty: number, speed: number): void {
   const want = Math.atan2(ty - b.y, tx - b.x);
   const moving = Math.hypot(b.vx, b.vy) > 0.001;
   let heading = want;
