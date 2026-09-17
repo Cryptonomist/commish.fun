@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from "react";
 
+import { BowlGuide, LongKickGuide } from "@/components/ArcadeGuide";
 import { CommishBowl } from "@/components/CommishBowl";
 import { LongKick } from "@/components/LongKick";
 import { play } from "@/lib/sfx";
@@ -24,7 +25,10 @@ const GAMES: { id: Game; label: string; hash: string }[] = [
   { id: "kick", label: "LONG KICK", hash: "#long-kick" },
 ];
 
-const fromHash = (hash: string): Game => (hash === "#long-kick" ? "kick" : "bowl");
+/** The game a hash names, or null for a hash that names neither, which must
+ *  leave the choice alone rather than quietly switching back to the bowl. */
+const fromHash = (hash: string): Game | null =>
+  hash === "#long-kick" ? "kick" : hash === "#bowl" ? "bowl" : null;
 
 export function ArcadeSwitch() {
   const [game, setGame] = useState<Game>("bowl");
@@ -32,7 +36,10 @@ export function ArcadeSwitch() {
   // Read after mount: the server has no hash, and rendering on it would hydrate
   // to different markup than the server sent.
   useEffect(() => {
-    const sync = () => setGame(fromHash(window.location.hash));
+    const sync = () => {
+      const named = fromHash(window.location.hash);
+      if (named) setGame(named);
+    };
     sync();
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
@@ -59,6 +66,8 @@ export function ArcadeSwitch() {
         ))}
       </nav>
       {game === "bowl" ? <CommishBowl /> : <LongKick />}
+      {/* Every control, written down, for the game that is up. */}
+      <div className="mt-4">{game === "bowl" ? <BowlGuide /> : <LongKickGuide />}</div>
     </div>
   );
 }

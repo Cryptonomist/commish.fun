@@ -34,7 +34,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
-import { OptionRow, SoundToggle, useSound, WindBadge } from "@/components/ArcadeKit";
+import {
+  GuideButton,
+  GuideLink,
+  OptionRow,
+  SoundToggle,
+  useSound,
+  WindBadge,
+} from "@/components/ArcadeKit";
 import { BowlScoreboard } from "@/components/BowlScoreboard";
 import { FieldGoalKick, type KickResult } from "@/components/FieldGoalKick";
 import { BOTTOM, TICK_MS, TOP, VIEW_H, VIEW_W } from "@/lib/bowl";
@@ -1007,10 +1014,11 @@ export function CommishBowl() {
       <OptionRow label="WEATHER" options={WEATHER_OPTIONS} value={conditions.weather} onChange={(weather) => setConditions((c) => ({ ...c, weather }))} />
       <OptionRow label="TIME OF DAY" options={TIME_OPTIONS} value={conditions.time} onChange={(time) => setConditions((c) => ({ ...c, time }))} />
       <OptionRow label="GAME LENGTH" options={LENGTH_OPTIONS} value={conditions.length} onChange={(length) => setConditions((c) => ({ ...c, length }))} />
-      <div>
-        <button type="button" onClick={beginGame} disabled={team === null} className="btn btn-primary">
+      <div className="flex flex-col gap-3">
+        <button type="button" onClick={beginGame} disabled={team === null} className="btn btn-primary w-fit">
           {team === null ? "PICK A TEAM FIRST" : "KICK OFF"}
         </button>
+        <GuideLink>How to pass, run, kick and play defense: every control is listed under the game.</GuideLink>
       </div>
     </div>
   );
@@ -1027,13 +1035,25 @@ export function CommishBowl() {
         <>
           <div className="flex items-center justify-between gap-3 border-b-2 border-chalk px-3 py-2 font-matrix text-[10px] leading-4">
             <span className="text-chalk">COMMISH BOWL</span>
-            <SoundToggle on={sfx} onToggle={toggleSfx} />
+            <span className="flex items-center gap-2">
+              <GuideButton />
+              <SoundToggle on={sfx} onToggle={toggleSfx} />
+            </span>
           </div>
           {setupScreen}
         </>
       ) : (
         <>
-          <BowlScoreboard g={g} tools={<SoundToggle on={sfx} onToggle={toggleSfx} />} />
+          <BowlScoreboard
+            g={g}
+            tools={
+              <>
+                {/* Not while the game covers the screen: the guide is under it. */}
+                {fullscreen ? null : <GuideButton />}
+                <SoundToggle on={sfx} onToggle={toggleSfx} />
+              </>
+            }
+          />
 
           {mode.kind === "kick" ? (
             <FieldGoalKick

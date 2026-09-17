@@ -18,12 +18,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { OptionRow, SoundToggle, useSound } from "@/components/ArcadeKit";
+import { GuideButton, GuideLink, OptionRow, SoundToggle, useSound } from "@/components/ArcadeKit";
 import { FieldGoalKick, type KickResult } from "@/components/FieldGoalKick";
 import {
-  drawWind,
   EFFECTS,
-  gust,
   kickWind,
   TIME_OPTIONS,
   type TimeOfDay,
@@ -41,6 +39,7 @@ import {
   type Run,
   runOver,
   STRIKES,
+  windForKick,
 } from "@/lib/longkick";
 import { LANDSCAPE_PLAY_QUERY } from "@/lib/mobile";
 import { PX } from "@/lib/pixel";
@@ -67,7 +66,6 @@ export function LongKick() {
   const [sound, toggleSound] = useSound();
 
   const rngRef = useRef<Rng>(seeded(1));
-  const baseWindRef = useRef<Wind>({ x: 0, y: 0 });
   const bestRef = useRef(0);
 
   /* Sideways on a phone fills the screen, the same way Commish Bowl does and
@@ -105,8 +103,7 @@ export function LongKick() {
      * dice should come from: never during render, where the server and the
      * browser would roll different ones. */
     rngRef.current = seeded(Date.now());
-    baseWindRef.current = drawWind(rngRef.current, weather);
-    setWind(gust(rngRef.current, baseWindRef.current, weather));
+    setWind(windForKick(rngRef.current, weather));
     setRun(newRun());
     setNote(null);
     setCelebrate(false);
@@ -146,7 +143,8 @@ export function LongKick() {
       setScreen("over");
       return;
     }
-    setWind(gust(rngRef.current, baseWindRef.current, weather));
+    // A new wind every kick, miss or make: see windForKick.
+    setWind(windForKick(rngRef.current, weather));
     setNote(null);
     setCelebrate(false);
     setKickNo((n) => n + 1);
@@ -180,6 +178,7 @@ export function LongKick() {
         <span className="flex items-center gap-3">
           <span className="text-chalk tabular-nums">BEST {best > 0 ? `${best} YD` : "NONE"}</span>
           <span className="hidden text-cream-dim sm:inline">NFL RECORD {NFL_RECORD}</span>
+          {sideways && screen === "kick" ? null : <GuideButton />}
           <SoundToggle on={sound} onToggle={toggleSound} />
         </span>
       </div>
@@ -196,10 +195,11 @@ export function LongKick() {
           </div>
           <OptionRow label="WEATHER" options={WEATHER_OPTIONS} value={weather} onChange={setWeather} />
           <OptionRow label="TIME OF DAY" options={TIME_OPTIONS} value={time} onChange={setTime} />
-          <div>
-            <button type="button" onClick={start} className="btn btn-primary">
+          <div className="flex flex-col gap-3">
+            <button type="button" onClick={start} className="btn btn-primary w-fit">
               START KICKING
             </button>
+            <GuideLink>How to aim, set the power and hit it clean: every control is listed under the game.</GuideLink>
           </div>
         </div>
       ) : screen === "kick" ? (

@@ -53,6 +53,49 @@ export function SoundToggle({ on, onToggle }: { on: boolean; onToggle: () => voi
   );
 }
 
+/* ---------------------------------------------------------------- the guide */
+
+/** Where the written how-to-play sits on /arcade, under whichever game is up. */
+export const GUIDE_ID = "how-to-play";
+
+function toGuide(): void {
+  const el = document.getElementById(GUIDE_ID);
+  if (!el) return;
+  const still =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "start" });
+  // Focus follows, so a keyboard or screen reader lands where the eye did.
+  el.focus({ preventScroll: true });
+}
+
+/** A text link to the full controls, for a setup screen. */
+export function GuideLink({ children }: { children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={toGuide}
+      className="w-fit text-left text-xs leading-5 text-cream-dim underline decoration-dotted underline-offset-2 hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chalk"
+    >
+      {children}
+    </button>
+  );
+}
+
+/** The "?" beside the sound switch. */
+export function GuideButton() {
+  return (
+    <button
+      type="button"
+      onClick={toGuide}
+      aria-label="How to play: every control"
+      className="flex h-6 w-6 items-center justify-center border border-rule font-matrix text-[10px] leading-none text-cream-dim transition-colors hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chalk"
+    >
+      ?
+    </button>
+  );
+}
+
 /* ------------------------------------------------------------------- wind */
 
 /* THE ARROW, drawn in pixels rather than typed, because the pixel faces this

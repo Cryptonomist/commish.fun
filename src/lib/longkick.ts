@@ -13,6 +13,22 @@
  * is.
  */
 
+import { drawWind, type Weather, type Wind } from "@/lib/conditions";
+import type { Rng } from "@/lib/rng";
+
+/* A NEW WIND FOR EVERY KICK.
+ *
+ * The first version drew one prevailing wind for a whole run and let each kick
+ * gust a little around it. That is how the wind at a stadium behaves over a
+ * game, which is why Commish Bowl still does it, and it was the wrong game
+ * here: once the flag had been read on the first kick it had been read for the
+ * whole run, and every kick after that was the same aim. Each kick now draws
+ * its own wind from any direction, at any speed the weather allows, so every
+ * kick starts with reading the flag. */
+export function windForKick(r: Rng, weather: Weather): Wind {
+  return drawWind(r, weather);
+}
+
 export const START_DISTANCE = 30;
 export const STRIKES = 3;
 

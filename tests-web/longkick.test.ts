@@ -2,6 +2,7 @@
 
 import { expect } from "chai";
 
+import { EFFECTS, type Weather } from "../src/lib/conditions";
 import { reach } from "../src/lib/fieldgoal";
 import {
   afterKick,
@@ -13,7 +14,9 @@ import {
   runOver,
   START_DISTANCE,
   STRIKES,
+  windForKick,
 } from "../src/lib/longkick";
+import { seeded } from "../src/lib/rng";
 
 describe("the long kick game", () => {
   it("starts at thirty yards with three strikes", () => {
@@ -78,6 +81,37 @@ describe("the long kick game", () => {
     expect(noteFor(53, true, 50)).to.contain("PERSONAL BEST");
     expect(noteFor(NFL_RECORD, true, 60)).to.contain("TIES");
     expect(noteFor(NFL_RECORD + 2, true, 60)).to.contain("NFL RECORD");
+  });
+
+  /* THE WIND IS A NEW READ EVERY KICK. A run used to draw one wind and gust a
+   * little around it, so the flag said the same thing all run. Two hundred
+   * kicks in a row here have to come from every direction, at strengths across
+   * the weather's whole range, and almost never repeat the one before. */
+  it("draws a new wind for every kick, from any direction, across the weather's whole range", () => {
+    for (const weather of ["clear", "rain", "snow", "wind"] as Weather[]) {
+      const { windMin, windMax } = EFFECTS[weather];
+      const r = seeded(weather.length * 97 + 3);
+      const quadrants = new Set<string>();
+      let weakest = Infinity;
+      let strongest = 0;
+      let changed = 0;
+      let last = windForKick(r, weather);
+      for (let i = 0; i < 200; i++) {
+        const w = windForKick(r, weather);
+        const mph = Math.hypot(w.x, w.y);
+        expect(mph, weather).to.be.within(windMin - 1e-9, windMax + 1e-9);
+        weakest = Math.min(weakest, mph);
+        strongest = Math.max(strongest, mph);
+        quadrants.add(`${w.x >= 0 ? "+" : "-"}${w.y >= 0 ? "+" : "-"}`);
+        const turned = Math.abs(Math.atan2(w.y, w.x) - Math.atan2(last.y, last.x));
+        if (turned > 0.2 || Math.abs(mph - Math.hypot(last.x, last.y)) > 1) changed++;
+        last = w;
+      }
+      expect(quadrants.size, `${weather}: directions`).to.equal(4);
+      // Spread across most of the range, not clustered around one speed.
+      expect(strongest - weakest, `${weather}: strengths`).to.be.above((windMax - windMin) * 0.8);
+      expect(changed, `${weather}: kicks with a different wind from the last`).to.be.above(180);
+    }
   });
 
   it("throws confetti for a real best or a record, and not for a first chip shot", () => {
